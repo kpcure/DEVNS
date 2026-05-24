@@ -1,6 +1,7 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import type { Feature, NeverStopConfig } from "./types";
+import { runBuiltinLane, type BuiltinLaneContext } from "./builtin-lanes";
 
 const execAsync = promisify(exec);
 
@@ -150,18 +151,26 @@ export function skippedLane(lane: LaneDefinition): LaneResult {
   };
 }
 
-export async function runLane(lane: LaneDefinition, cwd: string): Promise<LaneResult> {
+export async function runLane(lane: LaneDefinition, cwd: string, context: Omit<BuiltinLaneContext, "cwd"> = {}): Promise<LaneResult> {
   if (lane.type === "command") {
     return runCommandLane(lane, cwd);
+  }
+
+  if (lane.type === "builtin") {
+    return runBuiltinLane(lane, { ...context, cwd });
   }
 
   return skippedLane(lane);
 }
 
-export async function runReviewLanes(config: NeverStopConfig, cwd = process.cwd()): Promise<LaneRunSummary> {
+export async function runReviewLanes(
+  config: NeverStopConfig,
+  cwd = process.cwd(),
+  context: Omit<BuiltinLaneContext, "cwd"> = {}
+): Promise<LaneRunSummary> {
   const results: LaneResult[] = [];
   for (const lane of config.reviewLanes ?? []) {
-    results.push(await runLane(lane, cwd));
+    results.push(await runLane(lane, cwd, context));
   }
 
   const blockingResults = results.filter((result) => result.blocksCompletion);
