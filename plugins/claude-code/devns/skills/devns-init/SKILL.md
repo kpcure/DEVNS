@@ -20,7 +20,7 @@ npm run devns:init -- --project-name "<project name>" --project-description "<pr
 ```
 
 2. If the user has not provided enough background, update `.devns/project.md` with known context and ask for the smallest missing input needed to continue.
-3. Read `.devns/index.md`, `.devns/project.md`, and `.devns/devns.config.json`.
+3. Read `AGENTS.md`, `.devns/index.md`, `.devns/project.md`, and `.devns/devns.config.json`.
 
 ## Inputs To Gather
 
@@ -32,7 +32,7 @@ npm run devns:init -- --project-name "<project name>" --project-description "<pr
 
 ## Workflow
 
-1. Read `AGENTS.md` or other project rules if present.
+1. Read `AGENTS.md` or other project rules if present. Treat the DevNS Context Index section as the entrypoint and follow links progressively.
 2. Inspect repository structure, README, docs, routes, API/schema files, tests, and known legacy/new paths.
 3. Look for both visible product features and implicit harness requirements.
 4. Produce candidate features with source references, confidence, suggested priority, suggested milestone, and known unknowns.

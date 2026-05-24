@@ -1,54 +1,39 @@
 # Agent Operating Protocol
 
-This file defines how an autonomous coding agent should work inside a Never Stop project.
+This file is the first entrypoint for agents working in this repository. Keep it short and use linked files for details.
 
-## Mission
+<!-- devns:start -->
+## DevNS Context Index
 
-Complete one feature at a time, verify it, commit it, record evidence, and continue until no claimable tasks remain.
+DevNS is a local-first agent harness. Use this section as the entrypoint, not as a full methodology dump.
 
-## Sources Of Truth
+### Sources Of Truth
 
-- Feature inventory: `examples/mission-migration-dashboard/features.json`
-- Background notes: project-specific Markdown files under the task directory
-- Human review UI: `web/index.html`
-- Git history: one completed feature per commit
+- Config: `.workbench/dogfood/devns.config.json`
+- Feature inventory: `.workbench/dogfood/features.json`
+- Candidate inventory: `.devns/candidates.json`
+- RFC records: `.devns/rfcs/`
+- Execution history: `.devns/history/`
+- Project background: `.devns/project.md`
+- Project-local skill overrides: `.devns/skills/`
+- Project-local agent overrides: `.devns/agents/`
+- Project-local policies: `.devns/policies/`
+- Project-local lane overrides: `.devns/lanes/`
+- Human dashboard: `apps/dashboard`
+- Dogfood workbench: `.workbench`
 
-## Task Loop
+### Mode Selection
 
-1. Read the feature inventory.
-2. Pick the highest-priority task with status `ready`.
-3. Change its status to `in_progress` and add a short agent note.
-4. Read all linked context files before editing code.
-5. Implement the feature with the smallest coherent change.
-6. Run the verification commands listed on the task.
-7. Update the task with evidence, changed files, risks, and final status.
-8. Create one Git commit for exactly that feature.
-9. Stop only when there are no `ready` tasks, verification fails, or human input is required.
+- Bootstrap: if `.devns/devns.config.json` or `.devns/features.json` is missing, run `devns-init` before implementation.
+- Claim: if no feature is active, inspect the queue and claim only a feature with an approved RFC.
+- Continue: if a feature is `in_progress`, read its RFC, context, evidence, and latest history before editing.
+- Blocked: if requirements, RFC approval, or verification evidence is missing, record the blocker instead of guessing.
+- Review: after implementation, run configured lanes, update evidence/history, then commit exactly one feature.
 
-## Commit Rules
+### Operating Rules
 
+- Do not implement from a one-line feature description; require an approved RFC.
+- Keep generated evidence concise in `features.json`; put detailed execution records in `.devns/history/`.
+- Preserve project-local overrides under `.devns/`.
 - One feature per commit.
-- Commit message format: `<feature id>: <short behavior summary>`
-- Do not mix refactors, cleanup, or unrelated fixes into a feature commit.
-- If a prerequisite is missing, create or update a blocker note instead of guessing.
-
-## Verification Rules
-
-A task can be marked `done` only when:
-
-- All acceptance criteria are addressed.
-- Listed verification commands pass.
-- Any skipped verification is explicitly recorded with a reason.
-- Risks and follow-up items are written into the task record.
-
-## Review Evidence
-
-For every completed task, record:
-
-- Behavior summary
-- Acceptance criteria status
-- Test commands and results
-- Important files changed
-- Known risks
-- Screenshots or report links when relevant
-
+<!-- devns:end -->

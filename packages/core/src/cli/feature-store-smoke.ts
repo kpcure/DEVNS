@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
@@ -17,6 +17,7 @@ async function main() {
       projectName: "Feature Store Smoke",
       projectDescription: "Smoke test workspace"
     });
+    assert.match(await readFile(path.join(cwd, "AGENTS.md"), "utf8"), /DevNS Context Index/);
 
     const config = await readConfig(cwd);
     const inventory = await readInventory(cwd, config);

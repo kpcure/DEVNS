@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { writeAgentsIndex } from "../harness/agents-index";
 
 export type InitOptions = {
   force: boolean;
@@ -55,7 +56,10 @@ export async function main(inputOptions?: InitOptions) {
   await mkdir(path.join(devnsDir, "rfcs"), { recursive: true });
   await mkdir(path.join(devnsDir, "history"), { recursive: true });
   await mkdir(path.join(devnsDir, "skills"), { recursive: true });
+  await mkdir(path.join(devnsDir, "agents"), { recursive: true });
   await mkdir(path.join(devnsDir, "policies"), { recursive: true });
+  await mkdir(path.join(devnsDir, "lanes"), { recursive: true });
+  await mkdir(path.join(devnsDir, "sensors"), { recursive: true });
 
   const files = [
     {
@@ -174,6 +178,14 @@ export async function main(inputOptions?: InitOptions) {
     const didWrite = await writeNewFile(file.path, file.contents, options.force);
     (didWrite ? written : skipped).push(path.relative(cwd, file.path));
   }
+
+  await writeAgentsIndex(cwd, {
+    configPath: ".devns/devns.config.json",
+    featuresPath: ".devns/features.json",
+    dashboardPath: "apps/dashboard",
+    workbenchPath: ".workbench"
+  });
+  written.push("AGENTS.md");
 
   process.stdout.write(
     [
