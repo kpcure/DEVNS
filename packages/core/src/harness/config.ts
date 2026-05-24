@@ -3,11 +3,12 @@ import path from "node:path";
 import configSchema from "../../../../tools/schema/devns-config.schema.json";
 import { validateSchema } from "./schema-validator";
 import type { NeverStopConfig } from "./types";
+import { scanProjectExtensions, type ExtensionScanResult } from "./extensions";
 
 export type ConfigOverrides = Partial<NeverStopConfig>;
 
 export type ConfigSource = {
-  name: "built-in" | "plugin" | "project" | "cli";
+  name: "built-in" | "plugin" | "project" | "extensions" | "cli";
   path?: string;
 };
 
@@ -15,6 +16,7 @@ export type ResolvedConfig = {
   config: NeverStopConfig;
   sources: ConfigSource[];
   projectConfigPath?: string;
+  extensions?: ExtensionScanResult;
 };
 
 export class ConfigError extends Error {
@@ -152,11 +154,17 @@ export async function loadConfig(
     sources.push({ name: "project", path: projectConfigPath });
   }
 
+  const extensions = await scanProjectExtensions(cwd);
+  if (Object.values(extensions.files).some((files) => Object.keys(files).length > 0)) {
+    config = mergeConfig(config as unknown as Record<string, unknown>, extensions.configPatch as Record<string, unknown>) as NeverStopConfig;
+    sources.push({ name: "extensions", path: path.join(cwd, ".devns") });
+  }
+
   if (options.overrides) {
     config = mergeConfig(config as unknown as Record<string, unknown>, options.overrides as Record<string, unknown>) as NeverStopConfig;
     sources.push({ name: "cli" });
   }
 
   validateConfig(config, "Resolved DevNS config");
-  return { config, sources, projectConfigPath };
+  return { config, sources, projectConfigPath, extensions };
 }

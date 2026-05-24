@@ -175,6 +175,7 @@ export type NeverStopConfig = {
     };
   };
   agents?: Record<string, unknown>;
+  sensors?: Record<string, string>;
   reviewLanes?: Array<{
     id: string;
     type: "command" | "agent" | "builtin";
@@ -190,6 +191,13 @@ export type NeverStopConfig = {
       slot: string;
       renderer: string;
     }>;
+  };
+  extensions?: {
+    skills?: Record<string, string>;
+    agents?: Record<string, string>;
+    policies?: Record<string, string>;
+    lanes?: Record<string, string>;
+    sensors?: Record<string, string>;
   };
 };
 

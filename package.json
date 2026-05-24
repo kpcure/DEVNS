@@ -10,6 +10,7 @@
     "devns:init": "tsx packages/core/src/cli/init.ts",
     "devns:queue": "tsx packages/core/src/cli/queue.ts",
     "devns:rfc": "tsx packages/core/src/cli/rfc.ts",
+    "devns:config": "tsx packages/core/src/cli/config.ts",
     "config:smoke": "tsx packages/core/src/cli/config-smoke.ts",
     "lane:smoke": "tsx packages/core/src/cli/lane-smoke.ts",
     "feature-store:smoke": "tsx packages/core/src/cli/feature-store-smoke.ts",
