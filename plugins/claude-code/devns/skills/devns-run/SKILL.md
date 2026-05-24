@@ -9,19 +9,29 @@ Use this skill when working in a repository with DevNS configured.
 
 ## Workflow
 
-1. Read `.devns/devns.config.json`.
-2. Read the configured feature inventory.
-3. If there are no candidate features, use `devns-init` first.
-4. If a candidate or feature has no RFC, use `devns-rfc` first.
-5. If a feature is `in_progress`, continue that feature.
-6. Otherwise claim the highest-priority `ready` feature with an approved RFC.
-7. Read the approved RFC before editing code.
-8. Do technical implementation analysis inside the feature loop.
-9. Implement exactly one feature.
-10. Run the configured review and test lanes.
-11. Record evidence and execution history into the feature JSON.
-12. Create one commit for the feature.
-13. Let the Stop hook decide whether to continue, claim the next feature, or stop for human review.
+Start by running the stable command surface:
+
+```sh
+npm run devns:run -- --json
+```
+
+Then follow the returned mode:
+
+1. `bootstrap_required`: run `devns-init` first.
+2. `continue_active`: continue the active feature only.
+3. `claim_next`: read the returned feature and approved RFC before editing code.
+4. `blocked_ready`: run `devns-rfc` or ask for human RFC approval.
+5. `empty_queue`: stop unless the human adds new candidates or features.
+
+Inside one feature loop:
+
+1. Read the approved RFC and linked context.
+2. Do technical implementation analysis inside the feature loop.
+3. Implement exactly one feature.
+4. Run the configured review and test lanes.
+5. Record evidence and execution history into the feature JSON.
+6. Create one commit for the feature.
+7. Let the Stop hook decide whether to continue, claim the next feature, or stop for human review.
 
 ## Rules
 
