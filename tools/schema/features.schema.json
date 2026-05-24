@@ -69,6 +69,16 @@
             "type": "array",
             "items": { "type": "string" }
           },
+          "history": {
+            "type": "object",
+            "properties": {
+              "latestRecord": { "type": "string" },
+              "latestSummary": { "type": "string" },
+              "recordCount": { "type": "number" },
+              "historyPath": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
           "commit": { "type": "string" },
           "review": {
             "type": "object",

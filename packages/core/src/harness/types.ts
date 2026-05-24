@@ -13,6 +13,53 @@ export type Evidence = {
   url?: string;
 };
 
+export type CheckRecord = {
+  type: "dynamic" | "static";
+  name: string;
+  status: "passed" | "failed" | "skipped";
+  summary: string;
+  command?: string;
+  exitCode?: number;
+};
+
+export type ChangedFileEvidence = {
+  path: string;
+  reason: string;
+  acceptanceCriteria?: string[];
+};
+
+export type HumanChangeNote = {
+  changedBy: string;
+  changedAt: string;
+  fields: string[];
+  summary: string;
+  reason?: string;
+};
+
+export type ExecutionHistoryRecord = {
+  id: string;
+  featureId: string;
+  attempt: number;
+  createdAt: string;
+  actor: "agent" | "human" | "hook" | "system";
+  summary: string;
+  changedFiles: ChangedFileEvidence[];
+  impact: string[];
+  risks: string[];
+  dynamicChecks: CheckRecord[];
+  staticChecks: CheckRecord[];
+  laneResults?: unknown[];
+  humanChange?: HumanChangeNote;
+  followUps?: string[];
+};
+
+export type FeatureHistorySummary = {
+  latestRecord?: string;
+  latestSummary?: string;
+  recordCount?: number;
+  historyPath?: string;
+};
+
 export type FeatureEvent = {
   type: "claimed" | "released" | "blocked" | "failed" | "completed";
   at: string;
@@ -106,6 +153,7 @@ export type Feature = {
   verification?: string[];
   evidence?: Evidence[];
   changedFiles?: string[];
+  history?: FeatureHistorySummary;
   commit?: string;
   reviewDecision?: ReviewDecision;
   agentNotes?: string;
@@ -128,6 +176,7 @@ export type FeaturePatch = Partial<
     | "agentNotes"
     | "evidence"
     | "changedFiles"
+    | "history"
     | "commit"
     | "review"
     | "rfc"

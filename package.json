@@ -13,6 +13,7 @@
     "devns:config": "tsx packages/core/src/cli/config.ts",
     "config:smoke": "tsx packages/core/src/cli/config-smoke.ts",
     "lane:smoke": "tsx packages/core/src/cli/lane-smoke.ts",
+    "history:smoke": "tsx packages/core/src/cli/history-smoke.ts",
     "feature-store:smoke": "tsx packages/core/src/cli/feature-store-smoke.ts",
     "queue:smoke": "tsx packages/core/src/cli/queue-smoke.ts",
     "task-queue:smoke": "tsx packages/core/src/cli/task-queue-smoke.ts",
