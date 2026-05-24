@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { laneResultsToEvidence, runReviewLanes } from "../harness/lane-runner";
-import type { Feature, NeverStopConfig } from "../harness/types";
+import type { Feature, DevnsConfig } from "../harness/types";
 
 async function main() {
   const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-lanes-"));
@@ -14,7 +14,7 @@ async function main() {
     await writeFile(path.join(cwd, "fail.mjs"), "process.stderr.write('bad'); process.exit(7)\n");
     await writeFile(path.join(cwd, "secret.txt"), "api_key = '12345678901234567890'\n");
 
-    const config: NeverStopConfig = {
+    const config: DevnsConfig = {
       version: 1,
       features: ".devns/features.json",
       reviewLanes: [

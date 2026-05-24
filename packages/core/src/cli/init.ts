@@ -13,7 +13,7 @@ export type InitOptions = {
 function parseArgs(argv: string[]): InitOptions {
   const options: InitOptions = {
     force: false,
-    projectName: "DevNS Project",
+    projectName: "DEVNS Project",
     projectDescription: "Describe the project background, migration goal, and constraints."
   };
 
@@ -154,7 +154,7 @@ export async function main(inputOptions?: InitOptions) {
     {
       path: path.join(devnsDir, "index.md"),
       contents: [
-        "# DevNS Index",
+        "# DEVNS Index",
         "",
         "Use this file as the progressive-disclosure entrypoint for agents.",
         "",
@@ -182,7 +182,7 @@ export async function main(inputOptions?: InitOptions) {
       contents: [
         "# .devns",
         "",
-        "This directory is the local DevNS harness workspace.",
+        "This directory is the local DEVNS harness workspace.",
         "",
         "Agents and humans can both read it. Humans should edit project background, review RFCs, and approve ready work. Agents should not implement a feature until its RFC is approved.",
         ""
@@ -215,14 +215,13 @@ export async function main(inputOptions?: InitOptions) {
   await writeAgentsIndex(cwd, {
     configPath: ".devns/devns.config.json",
     featuresPath: ".devns/features.json",
-    dashboardPath: ".devns/workbench/index.html",
-    workbenchPath: ".workbench"
+    dashboardPath: ".devns/workbench/index.html"
   });
   written.push("AGENTS.md");
 
   process.stdout.write(
     [
-      `Initialized DevNS workspace at ${path.relative(cwd, devnsDir)}`,
+      `Initialized DEVNS workspace at ${path.relative(cwd, devnsDir)}`,
       written.length ? `Created:\n${written.map((file) => `- ${file}`).join("\n")}` : "",
       skipped.length ? `Skipped existing files:\n${skipped.map((file) => `- ${file}`).join("\n")}` : ""
     ]

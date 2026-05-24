@@ -1,6 +1,6 @@
 # Configuration
 
-DevNS configuration lives in:
+DEVNS configuration lives in:
 
 ```text
 .devns/devns.config.json

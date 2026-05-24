@@ -1,11 +1,11 @@
 ---
 name: devns-run
-description: Use the DevNS harness to claim one feature, analyze requirements, implement, verify, record evidence, and let the Stop hook decide whether to continue or stop.
+description: Use the DEVNS harness to claim one feature, analyze requirements, implement, verify, record evidence, and let the Stop hook decide whether to continue or stop.
 ---
 
-# DevNS Run
+# DEVNS Run
 
-Use this skill when working in a repository with DevNS configured.
+Use this skill when working in a repository with DEVNS configured.
 
 ## Workflow
 

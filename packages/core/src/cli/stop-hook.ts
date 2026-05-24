@@ -27,7 +27,7 @@ main().catch((error) => {
   process.stdout.write(
     JSON.stringify({
       decision: "block",
-      reason: `DevNS stop hook failed: ${error instanceof Error ? error.message : "Unknown error"}`
+      reason: `DEVNS stop hook failed: ${error instanceof Error ? error.message : "Unknown error"}`
     })
   );
 });

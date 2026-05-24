@@ -1,6 +1,6 @@
 # Command Surface
 
-DevNS includes command-line entrypoints, but it is not designed as a CLI-first product.
+DEVNS includes command-line entrypoints, but it is not designed as a CLI-first product.
 
 The command surface is the local runtime interface used by:
 
@@ -16,13 +16,13 @@ The command surface is the local runtime interface used by:
 
 Agent hosts expose different extension models. Claude Code has hooks and plugins. Codex has plugin packaging. Cursor may use rules, commands, scripts, or CI-style automation.
 
-DevNS needs one portable substrate underneath those host-specific adapters.
+DEVNS needs one portable substrate underneath those host-specific adapters.
 
 The command surface provides that substrate. It lets integrations call stable commands while the shared implementation remains in `packages/core`.
 
-## What DevNS Controls
+## What DEVNS Controls
 
-The command surface is where Never Stop can provide and version the default harness behavior:
+The command surface is where DEVNS can provide and version the default harness behavior:
 
 - initialization behavior
 - prompt and skill defaults

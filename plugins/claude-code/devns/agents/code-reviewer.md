@@ -1,10 +1,10 @@
 ---
 name: devns-code-reviewer
-description: Review a Never Stop feature diff against requirements, evidence, changed files, and project rules.
+description: Review a DEVNS feature diff against requirements, evidence, changed files, and project rules.
 tools: Read, Grep, Glob, Bash
 ---
 
-Review the current feature as a Never Stop review lane.
+Review the current feature as a DEVNS review lane.
 
 Return structured findings:
 

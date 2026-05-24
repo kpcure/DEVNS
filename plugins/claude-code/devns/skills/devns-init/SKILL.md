@@ -1,11 +1,11 @@
 ---
 name: devns-init
-description: Initialize a DevNS project by creating the .devns workspace, collecting project background, scanning the repository, and producing candidate features without starting implementation.
+description: Initialize a DEVNS project by creating the .devns workspace, collecting project background, scanning the repository, and producing candidate features without starting implementation.
 ---
 
-# DevNS Init
+# DEVNS Init
 
-Use this skill when a repository is being prepared for DevNS and the feature inventory is empty, incomplete, or needs to be rebuilt from project context.
+Use this skill when a repository is being prepared for DEVNS and the feature inventory is empty, incomplete, or needs to be rebuilt from project context.
 
 ## Goal
 
@@ -32,7 +32,7 @@ npm run devns:init -- --project-name "<project name>" --project-description "<pr
 
 ## Workflow
 
-1. Read `AGENTS.md` or other project rules if present. Treat the DevNS Context Index section as the entrypoint and follow links progressively.
+1. Read `AGENTS.md` or other project rules if present. Treat the DEVNS Context Index section as the entrypoint and follow links progressively.
 2. Inspect repository structure, README, docs, routes, API/schema files, tests, and known legacy/new paths.
 3. Look for both visible product features and implicit harness requirements.
 4. Produce candidate features with source references, confidence, suggested priority, suggested milestone, and known unknowns.

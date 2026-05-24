@@ -1,6 +1,6 @@
 # Repository Structure
 
-Never Stop separates open-source product files from dogfood and intermediate work.
+DEVNS separates open-source product files from local intermediate work.
 
 ## Open-Source Surface
 
@@ -30,12 +30,12 @@ tools/
 
 ```text
 .workbench/
-  dogfood/
+  local-project/
   notes/
   reports/
 ```
 
-`.workbench/` is ignored by Git. It is where this repository can dogfood Never Stop without mixing planning state, temporary reports, or intermediate feature inventories into the open-source package.
+`.workbench/` is ignored by Git. It is where this repository can keep planning state, temporary reports, and intermediate feature inventories without mixing them into the open-source package.
 
 ## Directory Contracts
 
@@ -50,7 +50,7 @@ Contains:
 - local command entrypoints for hooks, skills, plugins, automation, and CI
 - provider-neutral contracts
 
-The command entrypoints are not meant to make Never Stop a CLI-first product. They are the stable local runtime surface shared by host-specific plugins, hooks, skills, the dashboard, and automation.
+The command entrypoints are not meant to make DEVNS a CLI-first product. They are the stable local runtime surface shared by host-specific plugins, hooks, skills, the dashboard, and automation.
 
 ### `apps/dashboard`
 
@@ -91,21 +91,21 @@ Contains:
 - sample migration inventories
 - small example projects later
 
-Must not contain this repository's active dogfood state.
+Must not contain this repository's active local planning state.
 
 ### `docs`
 
 Public design and usage docs.
 
-Only user-facing English docs belong here. Temporary notes, research, design debate, and dogfood planning belong in `.workbench/`.
+Only user-facing English docs belong here. Temporary notes, research, design debate, and planning drafts belong in `.workbench/`.
 
 ### `.workbench`
 
-Ignored local dogfood state.
+Ignored local development state.
 
 Contains:
 
-- the feature inventory used to build Never Stop itself
+- the feature inventory used to build DEVNS itself
 - scratch reports
 - local experiment notes
 - generated review output
@@ -114,7 +114,7 @@ Do not reference `.workbench` from public templates.
 
 ### `.devns`
 
-Ignored runtime state created inside a repository that uses DevNS.
+Ignored runtime state created inside a repository that uses DEVNS.
 
 Contains:
 

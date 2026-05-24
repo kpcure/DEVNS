@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://devns.dev/schemas/candidates.schema.json",
-  "title": "DevNS Candidate Inventory",
+  "title": "DEVNS Candidate Inventory",
   "type": "object",
   "required": ["candidates"],
   "properties": {

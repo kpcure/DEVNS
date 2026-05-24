@@ -148,7 +148,7 @@ type Roadmap = {
 
 const fallbackData: Roadmap = {
   project: {
-    name: "Never Stop Harness",
+    name: "DEVNS Harness",
     description: "Loading project state from JSON...",
     repository: ""
   },
@@ -480,7 +480,7 @@ function FeatureTable({
       <div className="section-heading">
         <div>
           <h2>Feature Backlog</h2>
-          <p>Dogfood feature inventory for building Never Stop with Never Stop.</p>
+          <p>Feature inventory loaded through the DEVNS local runtime.</p>
         </div>
         <div className="searchbox">
           <Search size={15} aria-hidden="true" />
@@ -493,7 +493,7 @@ function FeatureTable({
         </div>
       </div>
       <div className="sync-note">
-        <span>{savingId ? `Saving ${savingId} to JSON...` : "Edits save back to .workbench/dogfood/features.json"}</span>
+        <span>{savingId ? `Saving ${savingId} to JSON...` : "Edits save back to the configured feature inventory."}</span>
         {error && <strong>{error}</strong>}
       </div>
       <div className="table-wrap">
@@ -676,7 +676,7 @@ function ExtensionPoints() {
       <div className="section-heading">
         <div>
           <h2>Extension Points</h2>
-          <p>Never Stop is a stable core with editable project edges.</p>
+          <p>DEVNS is a stable core with editable project edges.</p>
         </div>
         <Pill tone="info">second development</Pill>
       </div>
@@ -816,7 +816,7 @@ function App() {
             <Sparkles size={20} />
           </div>
           <div>
-            <strong>Never Stop</strong>
+            <strong>DEVNS</strong>
             <span>Agent Harness</span>
           </div>
         </div>

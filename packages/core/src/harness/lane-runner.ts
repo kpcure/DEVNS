@@ -1,11 +1,11 @@
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import type { Feature, NeverStopConfig } from "./types";
+import type { Feature, DevnsConfig } from "./types";
 import { runBuiltinLane, type BuiltinLaneContext } from "./builtin-lanes";
 
 const execAsync = promisify(exec);
 
-export type LaneDefinition = NonNullable<NeverStopConfig["reviewLanes"]>[number];
+export type LaneDefinition = NonNullable<DevnsConfig["reviewLanes"]>[number];
 
 export type LaneFinding = {
   severity: "info" | "warning" | "error";
@@ -164,7 +164,7 @@ export async function runLane(lane: LaneDefinition, cwd: string, context: Omit<B
 }
 
 export async function runReviewLanes(
-  config: NeverStopConfig,
+  config: DevnsConfig,
   cwd = process.cwd(),
   context: Omit<BuiltinLaneContext, "cwd"> = {}
 ): Promise<LaneRunSummary> {

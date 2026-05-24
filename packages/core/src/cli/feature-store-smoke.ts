@@ -17,7 +17,7 @@ async function main() {
       projectName: "Feature Store Smoke",
       projectDescription: "Smoke test workspace"
     });
-    assert.match(await readFile(path.join(cwd, "AGENTS.md"), "utf8"), /DevNS Context Index/);
+    assert.match(await readFile(path.join(cwd, "AGENTS.md"), "utf8"), /DEVNS Context Index/);
 
     const config = await readConfig(cwd);
     const inventory = await readInventory(cwd, config);

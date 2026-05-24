@@ -7,7 +7,7 @@ import {
   patchFeature,
   readInventory
 } from "./state";
-import type { Evidence, Feature, FeatureEvent, NeverStopConfig } from "./types";
+import type { Evidence, Feature, FeatureEvent, DevnsConfig } from "./types";
 
 export class TaskQueueError extends Error {
   constructor(
@@ -54,22 +54,22 @@ function ensureFeature(features: Feature[], featureId: string) {
   return feature;
 }
 
-export async function nextFeature(cwd: string, config: NeverStopConfig) {
+export async function nextFeature(cwd: string, config: DevnsConfig) {
   const inventory = await readInventory(cwd, config);
   return findNextReadyFeature(inventory.features);
 }
 
-export async function blockedReadyFeature(cwd: string, config: NeverStopConfig) {
+export async function blockedReadyFeature(cwd: string, config: DevnsConfig) {
   const inventory = await readInventory(cwd, config);
   return findBlockedReadyFeature(inventory.features);
 }
 
-export async function activeFeature(cwd: string, config: NeverStopConfig) {
+export async function activeFeature(cwd: string, config: DevnsConfig) {
   const inventory = await readInventory(cwd, config);
   return findActiveFeature(inventory.features);
 }
 
-export async function claimFeature(cwd: string, config: NeverStopConfig, featureId?: string, options: QueueOptions = {}) {
+export async function claimFeature(cwd: string, config: DevnsConfig, featureId?: string, options: QueueOptions = {}) {
   const inventory = await readInventory(cwd, config);
   const active = findActiveFeature(inventory.features);
   if (active) {
@@ -102,7 +102,7 @@ export async function claimFeature(cwd: string, config: NeverStopConfig, feature
   );
 }
 
-export async function releaseFeature(cwd: string, config: NeverStopConfig, featureId: string, options: QueueOptions = {}) {
+export async function releaseFeature(cwd: string, config: DevnsConfig, featureId: string, options: QueueOptions = {}) {
   const inventory = await readInventory(cwd, config);
   const feature = ensureFeature(inventory.features, featureId);
   if (feature.status !== "in_progress") {
@@ -117,7 +117,7 @@ export async function releaseFeature(cwd: string, config: NeverStopConfig, featu
 
 export async function blockFeature(
   cwd: string,
-  config: NeverStopConfig,
+  config: DevnsConfig,
   featureId: string,
   reason: string,
   options: QueueOptions = {}
@@ -138,7 +138,7 @@ export async function blockFeature(
 
 export async function failFeature(
   cwd: string,
-  config: NeverStopConfig,
+  config: DevnsConfig,
   featureId: string,
   reason: string,
   options: QueueOptions = {}
@@ -159,7 +159,7 @@ export async function failFeature(
 
 export async function completeFeature(
   cwd: string,
-  config: NeverStopConfig,
+  config: DevnsConfig,
   featureId: string,
   evidence: Evidence[],
   options: QueueOptions = {}

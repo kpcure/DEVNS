@@ -1,4 +1,4 @@
-# DevNS RFC
+# DEVNS RFC
 
 Use this skill before a feature can enter the implementation loop.
 

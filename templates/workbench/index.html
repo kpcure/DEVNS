@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>DevNS Review Workbench</title>
+<title>DEVNS Review Workbench</title>
 <style>
   :root {
     --bg: #f6f4ef;
@@ -336,7 +336,7 @@
     <div class="brand">
       <div class="mark">NS</div>
       <div>
-        <div class="brand-name">DevNS - Never Stop</div>
+        <div class="brand-name">DEVNS Review</div>
         <div class="brand-sub" id="projectName">loading</div>
       </div>
     </div>
@@ -384,14 +384,14 @@
 <script>
 const fallbackInventory = {
   project: {
-    name: "DevNS Review Workbench",
-    description: "Static template. Open a DevNS features.json file to review a real project."
+    name: "DEVNS Review Workbench",
+    description: "Static template. Open a DEVNS features.json file to review a real project."
   },
   features: [
     {
       id: "DEMO-001",
       title: "Open a local features.json snapshot",
-      description: "This static workbench can render DevNS feature inventory JSON. Use the Open JSON button or serve this folder so it can fetch ../features.json.",
+      description: "This static workbench can render DEVNS feature inventory JSON. Use the Open JSON button or serve this folder so it can fetch ../features.json.",
       status: "in_progress",
       priority: "P0",
       milestone: "Demo",
@@ -406,7 +406,7 @@ const fallbackInventory = {
       agentNotes: "Static mode does not write JSON. A future CLI workbench server will enable edits.",
       rfc: {
         status: "approved",
-        summary: "Render DevNS JSON as a human review surface.",
+        summary: "Render DEVNS JSON as a human review surface.",
         goals: ["Fast review", "No build step", "Readable fallback"],
         requirements: [{ id: "REQ-001", type: "explicit", statement: "Render feature inventory.", priority: "must" }],
         acceptanceCriteria: [{ id: "AC-001", statement: "Features are selectable.", verification: "Open page." }],
@@ -576,7 +576,7 @@ function missingFor(feature) {
 function renderTopbar() {
   const project = inventory.project || {};
   const c = counts();
-  $("#projectName").textContent = project.name || "DevNS project";
+  $("#projectName").textContent = project.name || "DEVNS project";
   $("#hookState").textContent = loadMode === "fallback" ? "static" : "snapshot";
   $("#queueBar").innerHTML = ["ready", "in_progress", "done", "blocked", "failed"].map(status => `
     <span class="qpill"><span class="dot ${status}"></span>${statusLabels[status]} <b>${c[status] || 0}</b></span>

@@ -81,7 +81,7 @@ async function commit(cwd: string, options: GitOptions) {
     throw new Error("Missing --id <feature-id>.");
   }
   if (!options.files.length) {
-    throw new Error("Missing --files. DevNS requires explicit files to avoid staging unrelated work.");
+    throw new Error("Missing --files. DEVNS requires explicit files to avoid staging unrelated work.");
   }
 
   const config = await readConfig(cwd);

@@ -197,7 +197,7 @@ export type FeatureInventory = {
   researchSources?: unknown[];
 };
 
-export type NeverStopConfig = {
+export type DevnsConfig = {
   $schema?: string;
   version: number;
   features: string;

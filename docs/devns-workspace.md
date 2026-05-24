@@ -1,6 +1,6 @@
-# DevNS Workspace
+# DEVNS Workspace
 
-DevNS stores project-local harness state in `.devns/`.
+DEVNS stores project-local harness state in `.devns/`.
 
 This directory is ignored by Git by default because it is runtime state for a target repository. Public templates and examples live elsewhere.
 
@@ -31,7 +31,7 @@ This directory is ignored by Git by default because it is runtime state for a ta
 
 ## JSON Contracts
 
-DevNS workspace JSON files have fixed schemas:
+DEVNS workspace JSON files have fixed schemas:
 
 ```text
 .devns/devns.config.json -> tools/schema/devns-config.schema.json
@@ -56,7 +56,7 @@ The command creates deterministic files. The skill then reads repository context
 
 ## Candidate To Implementation
 
-DevNS keeps discovery separate from implementation:
+DEVNS keeps discovery separate from implementation:
 
 ```text
 project background -> candidates.json -> devns-rfc -> approved RFC -> features.json -> devns-run

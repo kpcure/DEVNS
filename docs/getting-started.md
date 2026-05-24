@@ -1,6 +1,6 @@
 # Getting Started
 
-DevNS is a local-first harness for long-running agent work.
+DEVNS is a local-first harness for long-running agent work.
 
 ## Install
 
@@ -13,7 +13,7 @@ npm run build
 
 ## Initialize A Project
 
-In a target repository, create the DevNS state directory:
+In a target repository, create the DEVNS state directory:
 
 ```sh
 npm run devns:init -- --project-name "Example Project" --project-description "Describe the migration or feature goal."
@@ -44,7 +44,7 @@ The first queue is intentionally candidates, not implementation-ready features. 
 npm run harness:validate
 ```
 
-This is an early development command. DevNS command-line entrypoints are intended as a local runtime surface for hooks, skills, plugins, dashboard actions, and automation. The primary human review experience is the dashboard and generated reports.
+This is an early development command. DEVNS command-line entrypoints are intended as a local runtime surface for hooks, skills, plugins, dashboard actions, and automation. The primary human review experience is the dashboard and generated reports.
 
 ## Run The Dashboard
 

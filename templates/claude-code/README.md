@@ -1,6 +1,6 @@
 # Claude Code Template
 
-Copy `.claude/settings.json` into a project that has Never Stop installed.
+Copy `.claude/settings.json` into a project that has DEVNS installed.
 
 Claude Code hook shape:
 
@@ -12,4 +12,4 @@ Claude Code hook shape:
 - To allow stop, exit successfully and print nothing.
 - Stop hooks must handle `stop_hook_active` to avoid recursive blocking.
 
-This template wires Claude Code's `Stop` event to the Never Stop stop-hook runner.
+This template wires Claude Code's `Stop` event to the DEVNS stop-hook runner.

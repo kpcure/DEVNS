@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import featuresSchema from "../../../../tools/schema/features.schema.json";
-import type { CandidateInventory, Feature, FeatureInventory, FeaturePatch, NeverStopConfig } from "./types";
+import type { CandidateInventory, Feature, FeatureInventory, FeaturePatch, DevnsConfig } from "./types";
 import { canClaimFeature } from "./rfc";
 import { validateSchema } from "./schema-validator";
 import { loadConfig } from "./config";
@@ -57,7 +57,7 @@ export function validateFeatureInventory(inventory: FeatureInventory) {
   }
 }
 
-export async function readConfig(cwd: string): Promise<NeverStopConfig> {
+export async function readConfig(cwd: string): Promise<DevnsConfig> {
   return (await loadConfig(cwd)).config;
 }
 
@@ -65,20 +65,20 @@ export function resolveFromCwd(cwd: string, maybeRelativePath: string) {
   return path.isAbsolute(maybeRelativePath) ? maybeRelativePath : path.join(cwd, maybeRelativePath);
 }
 
-export async function readInventory(cwd: string, config: NeverStopConfig) {
+export async function readInventory(cwd: string, config: DevnsConfig) {
   const inventory = await readJsonFile<FeatureInventory>(resolveFromCwd(cwd, config.features));
   validateFeatureInventory(inventory);
   return inventory;
 }
 
-export async function writeInventory(cwd: string, config: NeverStopConfig, inventory: FeatureInventory) {
+export async function writeInventory(cwd: string, config: DevnsConfig, inventory: FeatureInventory) {
   validateFeatureInventory(inventory);
   withRevision(inventory);
   validateFeatureInventory(inventory);
   await writeJsonFile(resolveFromCwd(cwd, config.features), inventory);
 }
 
-export async function readCandidates(cwd: string, config: NeverStopConfig) {
+export async function readCandidates(cwd: string, config: DevnsConfig) {
   if (!config.candidates) {
     return { candidates: [] } satisfies CandidateInventory;
   }
@@ -94,7 +94,7 @@ export async function loadInventory(cwd = process.cwd()) {
 
 export async function saveInventory(
   cwd: string,
-  config: NeverStopConfig,
+  config: DevnsConfig,
   inventory: FeatureInventory,
   options: { expectedRevision?: string } = {}
 ) {
@@ -114,7 +114,7 @@ export async function saveInventory(
 
 export async function patchFeature(
   cwd: string,
-  config: NeverStopConfig,
+  config: DevnsConfig,
   featureId: string,
   patch: FeaturePatch,
   options: { expectedRevision?: string } = {}

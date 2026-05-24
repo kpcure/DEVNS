@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { ChangedFileEvidence, CheckRecord, ExecutionHistoryRecord, Feature, HumanChangeNote, NeverStopConfig } from "./types";
+import type { ChangedFileEvidence, CheckRecord, ExecutionHistoryRecord, Feature, HumanChangeNote, DevnsConfig } from "./types";
 import type { LaneResult } from "./lane-runner";
 
 export type AppendHistoryInput = Omit<ExecutionHistoryRecord, "id" | "attempt" | "createdAt"> & {
@@ -13,7 +13,7 @@ function safeFeatureId(featureId: string) {
   return featureId.replace(/[^a-zA-Z0-9_.-]/g, "_");
 }
 
-export function historyPathForFeature(cwd: string, config: NeverStopConfig, featureId: string) {
+export function historyPathForFeature(cwd: string, config: DevnsConfig, featureId: string) {
   const historyDir = config.history ?? ".devns/history";
   const resolvedHistoryDir = path.isAbsolute(historyDir) ? historyDir : path.join(cwd, historyDir);
   return path.join(resolvedHistoryDir, `${safeFeatureId(featureId)}.jsonl`);
@@ -32,7 +32,7 @@ async function readHistoryRecords(filePath: string): Promise<ExecutionHistoryRec
   }
 }
 
-export async function appendExecutionHistory(cwd: string, config: NeverStopConfig, input: AppendHistoryInput) {
+export async function appendExecutionHistory(cwd: string, config: DevnsConfig, input: AppendHistoryInput) {
   const filePath = historyPathForFeature(cwd, config, input.featureId);
   await mkdir(path.dirname(filePath), { recursive: true });
   const previous = await readHistoryRecords(filePath);

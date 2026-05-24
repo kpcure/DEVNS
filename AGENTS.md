@@ -3,8 +3,8 @@
 This file is the first entrypoint for agents working in this repository. Keep it short and use linked files for details.
 
 <!-- devns:start -->
-## DevNS Context Index
-DevNS is a local-first agent harness. Use this section as the entrypoint, not as a full methodology dump.
+## DEVNS Context Index
+DEVNS is a local-first agent harness. Use this section as the entrypoint, not as a full methodology dump.
 ### Sources Of Truth
 - Config: `.devns/devns.config.json`
 - Feature inventory: `.devns/features.json`
@@ -17,7 +17,6 @@ DevNS is a local-first agent harness. Use this section as the entrypoint, not as
 - Project-local policies: `.devns/policies/`
 - Project-local lane overrides: `.devns/lanes/`
 - Human dashboard: `apps/dashboard`
-- Dogfood workbench: `.workbench`
 ### Mode Selection
 - Bootstrap: if `.devns/devns.config.json` or `.devns/features.json` is missing, run `devns-init` before implementation.
 - Claim: if no feature is active, inspect the queue and claim only a feature with an approved RFC.
@@ -30,4 +29,3 @@ DevNS is a local-first agent harness. Use this section as the entrypoint, not as
 - Preserve project-local overrides under `.devns/`.
 - One feature per commit.
 <!-- devns:end -->
-

@@ -8,15 +8,14 @@ export type AgentsIndexOptions = {
   featuresPath: string;
   configPath: string;
   dashboardPath: string;
-  workbenchPath?: string;
 };
 
 export function renderDevnsAgentsSection(options: AgentsIndexOptions) {
   return [
     sectionStart,
-    "## DevNS Context Index",
+    "## DEVNS Context Index",
     "",
-    "DevNS is a local-first agent harness. Use this section as the entrypoint, not as a full methodology dump.",
+    "DEVNS is a local-first agent harness. Use this section as the entrypoint, not as a full methodology dump.",
     "",
     "### Sources Of Truth",
     "",
@@ -31,7 +30,6 @@ export function renderDevnsAgentsSection(options: AgentsIndexOptions) {
     "- Project-local policies: `.devns/policies/`",
     "- Project-local lane overrides: `.devns/lanes/`",
     `- Human dashboard: \`${options.dashboardPath}\``,
-    options.workbenchPath ? `- Dogfood workbench: \`${options.workbenchPath}\`` : "",
     "",
     "### Mode Selection",
     "",
@@ -71,7 +69,7 @@ export async function writeAgentsIndex(cwd: string, options: AgentsIndexOptions)
   try {
     current = await readFile(filePath, "utf8");
   } catch {
-    // Missing AGENTS.md is fine; init will create one with the DevNS section.
+    // Missing AGENTS.md is fine; init will create one with the DEVNS section.
   }
   const next = upsertDevnsAgentsSection(current, section);
   await writeFile(filePath, next);

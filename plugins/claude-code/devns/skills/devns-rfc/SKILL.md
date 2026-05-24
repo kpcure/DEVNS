@@ -1,9 +1,9 @@
 ---
 name: devns-rfc
-description: Clarify a DevNS candidate feature into an RFC with requirements, acceptance criteria, validation plan, and test case candidates before implementation.
+description: Clarify a DEVNS candidate feature into an RFC with requirements, acceptance criteria, validation plan, and test case candidates before implementation.
 ---
 
-# DevNS RFC
+# DEVNS RFC
 
 Use this skill before a feature can enter the implementation loop.
 

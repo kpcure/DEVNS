@@ -16,4 +16,4 @@ if [[ -f "$PROJECT_DIR/package.json" ]] && npm --prefix "$PROJECT_DIR" run | gre
   exec npm --prefix "$PROJECT_DIR" run harness:stop --silent
 fi
 
-printf '%s' '{"decision":"block","reason":"DevNS stop hook could not find a stop command. Add npm script devns:stop or set DEVNS_STOP_COMMAND."}'
+printf '%s' '{"decision":"block","reason":"DEVNS stop hook could not find a stop command. Add npm script devns:stop or set DEVNS_STOP_COMMAND."}'

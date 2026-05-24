@@ -1,6 +1,6 @@
 # Claude Code Hooks Integration
 
-Never Stop's first concrete integration target is Claude Code's hook system.
+DEVNS's first concrete integration target is Claude Code's hook system.
 
 ## Claude Code Hook Model
 
@@ -26,7 +26,7 @@ Most hook events are configured as matcher groups:
 }
 ```
 
-Events such as `UserPromptSubmit` and `Stop` do not need matchers. `Stop` is the first hook Never Stop uses for the control loop:
+Events such as `UserPromptSubmit` and `Stop` do not need matchers. `Stop` is the first hook DEVNS uses for the control loop:
 
 - it does not use a matcher
 - it runs when Claude Code is about to stop
@@ -49,7 +49,7 @@ To block stop:
 
 The reason is shown back to Claude and becomes the continuation instruction.
 
-## Never Stop Template
+## DEVNS Template
 
 Use:
 
@@ -69,15 +69,15 @@ The actual runner is:
 packages/core/src/cli/claude-stop-hook.ts
 ```
 
-The runner reads the active Never Stop feature inventory, applies the stop gate, and either blocks stopping with a continuation reason or allows Claude Code to stop.
+The runner reads the active DEVNS feature inventory, applies the stop gate, and either blocks stopping with a continuation reason or allows Claude Code to stop.
 
 ## Optional UserPromptSubmit Hook
 
-Never Stop can also use Claude Code's `UserPromptSubmit` hook as a bootstrap helper.
+DEVNS can also use Claude Code's `UserPromptSubmit` hook as a bootstrap helper.
 
-`UserPromptSubmit` runs after the user submits a prompt and before Claude processes it. For Never Stop, this hook should only inject short context:
+`UserPromptSubmit` runs after the user submits a prompt and before Claude processes it. For DEVNS, this hook should only inject short context:
 
-- whether the project has a Never Stop inventory
+- whether the project has a DEVNS inventory
 - whether the feature list is empty
 - whether an active feature is already claimed
 - where Claude should read the operating protocol, such as `AGENTS.md`

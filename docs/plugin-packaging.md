@@ -1,6 +1,6 @@
 # Plugin Packaging
 
-Never Stop should be installable as a plugin for agent hosts, not only as loose templates.
+DEVNS should be installable as a plugin for agent hosts, not only as loose templates.
 
 ## Claude Code
 
@@ -25,13 +25,13 @@ Important hook detail:
 - `{"decision":"block","reason":"..."}` blocks stop.
 - allow-stop behavior is successful exit with no block decision.
 
-Never Stop plugin path:
+DEVNS plugin path:
 
 ```text
 plugins/claude-code/devns/
 ```
 
-Never Stop ships these Claude Code skill entrypoints:
+DEVNS ships these Claude Code skill entrypoints:
 
 - `skills/devns-init/SKILL.md`
 - `skills/devns-rfc/SKILL.md`
@@ -58,13 +58,13 @@ scripts/
 assets/
 ```
 
-Never Stop plugin path:
+DEVNS plugin path:
 
 ```text
 plugins/codex/devns/
 ```
 
-Never Stop ships these Codex skill entrypoints:
+DEVNS ships these Codex skill entrypoints:
 
 - `skills/devns-init.md`
 - `skills/devns-rfc.md`

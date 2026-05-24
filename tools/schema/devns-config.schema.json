@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://devns.dev/schemas/devns-config.schema.json",
-  "title": "DevNS Configuration",
+  "title": "DEVNS Configuration",
   "type": "object",
   "required": ["version", "features"],
   "properties": {

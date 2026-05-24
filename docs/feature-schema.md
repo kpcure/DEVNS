@@ -38,7 +38,7 @@ Default path:
 
 A feature can be present in the inventory before it is ready for implementation.
 
-For implementation and automatic claiming, Never Stop treats `ready` as stronger than "has a title and description." A claimable feature should have an approved RFC that clarifies the requirement before coding starts.
+For implementation and automatic claiming, DEVNS treats `ready` as stronger than "has a title and description." A claimable feature should have an approved RFC that clarifies the requirement before coding starts.
 
 The current RFC model is an optional `rfc` object on each feature. Early inventories can omit it, but the core RFC gate will not claim a `ready` feature until its RFC is approved.
 

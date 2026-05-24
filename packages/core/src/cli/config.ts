@@ -29,7 +29,7 @@ async function inspect(options: ConfigOptions) {
   const extensionFiles = resolved.extensions?.files;
   process.stdout.write(
     [
-      "DevNS config",
+      "DEVNS config",
       `Sources: ${resolved.sources.map((source) => source.name).join(" < ")}`,
       `Features: ${resolved.config.features}`,
       `Skills: ${Object.keys(resolved.config.skills ?? {}).join(", ") || "none"}`,

@@ -1,6 +1,6 @@
 # Codex Plugin
 
-Never Stop includes a Codex plugin package at:
+DEVNS includes a Codex plugin package at:
 
 ```text
 plugins/codex/devns/
@@ -34,13 +34,13 @@ packages/core/
 
 ## Stop Hook Adapter
 
-Codex plugin validation does not require hook wiring in `.codex-plugin/plugin.json`. DevNS therefore ships a stop-hook adapter script instead of embedding host-specific behavior in the manifest:
+Codex plugin validation does not require hook wiring in `.codex-plugin/plugin.json`. DEVNS therefore ships a stop-hook adapter script instead of embedding host-specific behavior in the manifest:
 
 ```sh
 bash plugins/codex/devns/scripts/devns-stop-hook.sh
 ```
 
-The script resolves the target project, forwards stdin to the DevNS stop command, and calls:
+The script resolves the target project, forwards stdin to the DEVNS stop command, and calls:
 
 ```sh
 npm run devns:stop --silent

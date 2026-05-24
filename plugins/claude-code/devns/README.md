@@ -1,4 +1,4 @@
-# DevNS Claude Code Plugin
+# DEVNS Claude Code Plugin
 
 This plugin installs:
 
@@ -12,7 +12,7 @@ The project must provide:
 
 - `.devns/devns.config.json`
 - a feature inventory referenced by that config
-- the DevNS package scripts from this repository
+- the DEVNS package scripts from this repository
 
 Claude Code details:
 

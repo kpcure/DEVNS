@@ -1,4 +1,4 @@
-import type { ClaudeStopHookInput, Feature, NeverStopConfig, StopHookDecision } from "./types";
+import type { ClaudeStopHookInput, Feature, DevnsConfig, StopHookDecision } from "./types";
 import { canClaimFeature, describeRfcBlock } from "./rfc";
 import { claimFeature } from "./task-queue";
 import {
@@ -9,7 +9,7 @@ import {
   readInventory
 } from "./state";
 
-function completionReasons(feature: Feature, config: NeverStopConfig) {
+function completionReasons(feature: Feature, config: DevnsConfig) {
   const policy = config.completionPolicy ?? {};
   const reasons: string[] = [];
   const rfcReadiness = canClaimFeature({ ...feature, status: "ready" });
@@ -100,7 +100,7 @@ export async function evaluateClaudeStopHook(input: ClaudeStopHookInput): Promis
 
     return {
       decision: "allow",
-      reason: "No in-progress or ready Never Stop feature remains."
+      reason: "No in-progress or ready DEVNS feature remains."
     };
   }
 

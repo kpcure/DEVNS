@@ -1,11 +1,11 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
-import type { NeverStopConfig } from "./types";
+import type { DevnsConfig } from "./types";
 
 export type ExtensionKind = "skills" | "agents" | "policies" | "lanes" | "sensors";
 
 export type ExtensionScanResult = {
-  configPatch: Partial<NeverStopConfig>;
+  configPatch: Partial<DevnsConfig>;
   files: Record<ExtensionKind, Record<string, string>>;
 };
 
@@ -58,7 +58,7 @@ export async function scanProjectExtensions(cwd: string): Promise<ExtensionScanR
     sensors: await scanDir(cwd, "sensors")
   };
 
-  const configPatch: Partial<NeverStopConfig> = {
+  const configPatch: Partial<DevnsConfig> = {
     extensions: files
   };
 

@@ -1,6 +1,6 @@
-# Never Stop
+# DEVNS
 
-Never Stop is an extension-first harness for long-running agent work where agents keep shipping small, verified units of work while humans review the outcome through an HTML control plane.
+DEVNS is an extension-first harness for long-running agent work where agents keep shipping small, verified units of work while humans review the outcome through an HTML control plane.
 
 The core idea is simple:
 
@@ -23,21 +23,21 @@ Reviewing ten independent feature commits in the morning is workable, but ineffi
 - Milestone progress is hard to scan.
 - Regressions are easier to miss because commits are reviewed as isolated Git artifacts rather than as a product migration story.
 
-Never Stop treats review as a first-class product surface.
+DEVNS treats review as a first-class product surface.
 
 ## Philosophy
 
 Generic workflows are rarely adopted unchanged by serious engineering teams. Each repository already has its own tests, risk model, release rules, domain language, and review habits.
 
-Never Stop therefore provides a stable harness core with editable edges. Use the defaults to start, then replace the parts that do not fit your project.
+DEVNS therefore provides a stable harness core with editable edges. Use the defaults to start, then replace the parts that do not fit your project.
 
 ## Local Runtime, Not A CLI-First Product
 
-Never Stop includes command-line entrypoints, but the CLI is not the primary product experience.
+DEVNS includes command-line entrypoints, but the CLI is not the primary product experience.
 
 The CLI is the local runtime surface used by hooks, skills, plugins, the dashboard, local automation, and CI. It gives those integrations one stable way to call the harness core instead of depending on internal TypeScript files or reimplementing behavior per host.
 
-This matters because Claude Code, Codex, Cursor, and future hosts expose different plugin and hook models. The command surface is the shared base where Never Stop can control default prompts, skills, hooks, lanes, policies, state transitions, and evidence writing while still letting projects override those pieces through configuration.
+This matters because Claude Code, Codex, Cursor, and future hosts expose different plugin and hook models. The command surface is the shared base where DEVNS can control default prompts, skills, hooks, lanes, policies, state transitions, and evidence writing while still letting projects override those pieces through configuration.
 
 Humans should usually interact with the HTML dashboard and reports. Agents should usually interact through `AGENTS.md`, skills, hooks, and structured JSON. The command surface is the portable substrate underneath those interfaces.
 
@@ -53,10 +53,10 @@ Humans should usually interact with the HTML dashboard and reports. Agents shoul
 ## Repository Shape
 
 - `AGENTS.md`: operating protocol for coding agents.
-- `docs/repository-structure.md`: open-source file layout and ignored dogfood workbench policy.
+- `docs/repository-structure.md`: open-source file layout and ignored local workbench policy.
 - `docs/getting-started.md`: first-run setup.
 - `docs/command-surface.md`: local runtime command surface rationale.
-- `docs/configuration.md`: DevNS config reference.
+- `docs/configuration.md`: DEVNS config reference.
 - `docs/devns-workspace.md`: `.devns/` workspace contract.
 - `docs/feature-schema.md`: feature inventory format.
 - `docs/claude-code-hooks.md`: actual Claude Code hook model and Stop hook integration.
@@ -72,7 +72,7 @@ Humans should usually interact with the HTML dashboard and reports. Agents shoul
 - `packages/core/src/harness/`: actual harness core code.
 - `packages/core/src/cli/claude-stop-hook.ts`: Claude Code Stop hook runner.
 - `apps/dashboard/`: local HTML review plane.
-- `.workbench/`: ignored dogfood state and intermediate artifacts for developing this repository.
+- `.workbench/`: ignored local state and intermediate artifacts for developing this repository.
 
 ## Current Status
 
@@ -80,19 +80,21 @@ This is the first public skeleton: documentation, schema, example data, a static
 
 ## Local Development
 
-Run the local review plane:
+Initialize a local DEVNS workspace:
 
 ```sh
 npm install
-mkdir -p .workbench/dogfood
-cp templates/devns/features.json .workbench/dogfood/features.json
-cp templates/devns/devns.config.json .workbench/dogfood/devns.config.json
+npm run devns:init -- --project-name "Example Project" --project-description "Describe the migration or feature goal."
+open .devns/workbench/index.html
+```
+
+Run the development dashboard:
+
+```sh
 npm run dev
 ```
 
 Then open `http://127.0.0.1:5173/`.
-
-In this repository's dogfood setup, the Backlog view can edit selected feature fields and write them back to `.workbench/dogfood/features.json`, which is ignored by Git.
 
 Build verification:
 

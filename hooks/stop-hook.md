@@ -167,7 +167,7 @@ The Stop Hook should aggregate all lane outputs before deciding whether to conti
 
 Ralph Loop is optimized for keeping Claude Code on one prompt until the task is finished.
 
-Never Stop is queue-aware:
+DEVNS is queue-aware:
 
 - it works across a feature inventory
 - it requires structured evidence

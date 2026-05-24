@@ -68,7 +68,7 @@ async function main() {
   if (!(await exists(".devns/devns.config.json")) || !(await exists(".devns/features.json"))) {
     const payload = {
       mode: "bootstrap_required" as const,
-      prompt: "DevNS workspace is missing. Run devns-init before implementation."
+      prompt: "DEVNS workspace is missing. Run devns-init before implementation."
     };
     options.output === "json" ? writeJson(payload) : writeText(payload.mode, payload.prompt);
     return;

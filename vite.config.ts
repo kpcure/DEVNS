@@ -3,12 +3,13 @@ import react from "@vitejs/plugin-react";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { FeatureStoreError, patchFeature } from "./packages/core/src/harness/state";
-import type { FeaturePatch, NeverStopConfig } from "./packages/core/src/harness/types";
+import type { FeaturePatch, DevnsConfig } from "./packages/core/src/harness/types";
 
-const roadmapPath = path.resolve(__dirname, ".workbench/dogfood/features.json");
-const dogfoodConfig: NeverStopConfig = {
+const inventoryPath = process.env.DEVNS_FEATURES_PATH ?? ".devns/features.json";
+const roadmapPath = path.resolve(__dirname, inventoryPath);
+const dashboardConfig: DevnsConfig = {
   version: 1,
-  features: ".workbench/dogfood/features.json"
+  features: inventoryPath
 };
 const editableFeatureFields = new Set(["status", "priority", "reviewDecision", "agentNotes"]);
 
@@ -28,7 +29,7 @@ function sendJson(res: import("node:http").ServerResponse, status: number, paylo
 
 function roadmapApiPlugin() {
   return {
-    name: "never-stop-roadmap-api",
+    name: "devns-roadmap-api",
     configureServer(server: import("vite").ViteDevServer) {
       server.middlewares.use(async (req, res, next) => {
         try {
@@ -51,7 +52,7 @@ function roadmapApiPlugin() {
               Object.entries(patch).filter(([key]) => editableFeatureFields.has(key))
             ) as FeaturePatch;
 
-            const result = await patchFeature(__dirname, dogfoodConfig, featureId, cleanPatch);
+            const result = await patchFeature(__dirname, dashboardConfig, featureId, cleanPatch);
             sendJson(res, 200, { feature: result.feature, revision: result.revision });
             return;
           }

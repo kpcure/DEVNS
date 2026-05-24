@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type { Feature, FeatureInventory, FeatureRfc, NeverStopConfig } from "../harness/types";
+import type { Feature, FeatureInventory, FeatureRfc, DevnsConfig } from "../harness/types";
 
 async function runHook(cwd: string, input: string) {
   return new Promise<string>((resolve, reject) => {
@@ -136,7 +136,7 @@ async function makeProject(features: Feature[]) {
           requireCommit: true,
           allowEmptyOutputWhenComplete: true
         }
-      } satisfies NeverStopConfig,
+      } satisfies DevnsConfig,
       null,
       2
     )

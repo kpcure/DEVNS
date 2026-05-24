@@ -1,6 +1,6 @@
-# DevNS Run
+# DEVNS Run
 
-Use this workflow in repositories configured with Never Stop.
+Use this workflow in repositories configured with DEVNS.
 
 Start by running the stable command surface:
 
@@ -25,4 +25,4 @@ Inside one feature loop:
 5. Record evidence and execution history.
 6. Commit exactly one feature.
 
-DevNS is extension-first: project-local skills, agents, sensors, and hook policies override defaults.
+DEVNS is extension-first: project-local skills, agents, sensors, and hook policies override defaults.
