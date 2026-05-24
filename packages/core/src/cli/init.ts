@@ -72,6 +72,17 @@ export async function main(inputOptions?: InitOptions) {
         rfcs: ".devns/rfcs",
         history: ".devns/history",
         policies: ".devns/policies",
+        completionPolicy: {
+          mode: "queue",
+          whenNoActiveFeature: "claim_next",
+          whenNoClaimableFeature: "allow_stop",
+          requireApprovedRfc: true,
+          requireEvidence: true,
+          requireReviewDecision: true,
+          requireCleanWorktree: false,
+          requireCommit: true,
+          allowEmptyOutputWhenComplete: true
+        },
         hooks: {
           stop: {
             mode: "gate",

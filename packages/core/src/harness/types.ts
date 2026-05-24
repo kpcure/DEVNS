@@ -204,6 +204,17 @@ export type NeverStopConfig = {
   candidates?: string;
   rfcs?: string;
   history?: string;
+  completionPolicy?: {
+    mode?: "queue";
+    whenNoActiveFeature?: "claim_next" | "allow_stop";
+    whenNoClaimableFeature?: "allow_stop" | "stop_for_human_review";
+    requireApprovedRfc?: boolean;
+    requireEvidence?: boolean;
+    requireReviewDecision?: boolean;
+    requireCleanWorktree?: boolean;
+    requireCommit?: boolean;
+    allowEmptyOutputWhenComplete?: boolean;
+  };
   skills?: {
     init?: string;
     rfc?: string;

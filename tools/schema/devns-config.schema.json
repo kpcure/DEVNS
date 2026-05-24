@@ -12,6 +12,30 @@
     "rfcs": { "type": "string" },
     "history": { "type": "string" },
     "policies": { "type": "string" },
+    "completionPolicy": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["queue"]
+        },
+        "whenNoActiveFeature": {
+          "type": "string",
+          "enum": ["claim_next", "allow_stop"]
+        },
+        "whenNoClaimableFeature": {
+          "type": "string",
+          "enum": ["allow_stop", "stop_for_human_review"]
+        },
+        "requireApprovedRfc": { "type": "boolean" },
+        "requireEvidence": { "type": "boolean" },
+        "requireReviewDecision": { "type": "boolean" },
+        "requireCleanWorktree": { "type": "boolean" },
+        "requireCommit": { "type": "boolean" },
+        "allowEmptyOutputWhenComplete": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
     "review": {
       "type": "object",
       "properties": {

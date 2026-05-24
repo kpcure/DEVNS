@@ -35,6 +35,17 @@ export const defaultConfig: NeverStopConfig = {
   rfcs: ".devns/rfcs",
   history: ".devns/history",
   policies: ".devns/policies",
+  completionPolicy: {
+    mode: "queue",
+    whenNoActiveFeature: "claim_next",
+    whenNoClaimableFeature: "allow_stop",
+    requireApprovedRfc: true,
+    requireEvidence: true,
+    requireReviewDecision: true,
+    requireCleanWorktree: false,
+    requireCommit: true,
+    allowEmptyOutputWhenComplete: true
+  },
   skills: {
     init: "devns-init",
     rfc: "devns-rfc",

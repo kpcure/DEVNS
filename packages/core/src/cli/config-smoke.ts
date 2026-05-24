@@ -11,6 +11,8 @@ async function main() {
   try {
     const defaultOnly = await loadConfig(cwd);
     assert.equal(defaultOnly.config.features, ".devns/features.json");
+    assert.equal(defaultOnly.config.completionPolicy?.whenNoActiveFeature, "claim_next");
+    assert.equal(defaultOnly.config.completionPolicy?.requireCommit, true);
     assert.deepEqual(defaultOnly.sources.map((source) => source.name), ["built-in"]);
 
     await mkdir(path.join(cwd, ".devns"), { recursive: true });
@@ -75,6 +77,8 @@ async function main() {
     assert.equal(resolved.config.hooks?.stop?.mode, "gate");
     assert.equal(resolved.config.hooks?.stop?.retryBudget, 9);
     assert.equal(resolved.config.hooks?.stop?.blockOn?.pluginGate, true);
+    assert.equal(resolved.config.completionPolicy?.whenNoClaimableFeature, "allow_stop");
+    assert.equal(resolved.config.completionPolicy?.requireEvidence, true);
     assert.equal(resolved.config.skills?.run, ".devns/skills/run.md");
     assert.equal(resolved.config.extensions?.agents?.["code-reviewer"], ".devns/agents/code-reviewer.json");
     assert.equal(resolved.config.extensions?.policies?.["stop-hook"], ".devns/policies/stop-hook.json");
