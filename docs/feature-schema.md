@@ -1,0 +1,136 @@
+# Feature Schema
+
+The feature inventory is a JSON file referenced by `devns.config.json`.
+
+Default path:
+
+```text
+.devns/features.json
+```
+
+## Minimal Inventory
+
+```json
+{
+  "$schema": "../tools/schema/features.schema.json",
+  "project": {
+    "name": "Example Project",
+    "description": "A migration project."
+  },
+  "features": [
+    {
+      "id": "EX-001",
+      "title": "Implement one feature",
+      "description": "Describe the expected behavior.",
+      "status": "ready",
+      "priority": "P0",
+      "milestone": "MVP",
+      "risk": "medium",
+      "acceptanceCriteria": [
+        "The behavior is implemented."
+      ]
+    }
+  ]
+}
+```
+
+## RFC Gate
+
+A feature can be present in the inventory before it is ready for implementation.
+
+For implementation and automatic claiming, Never Stop treats `ready` as stronger than "has a title and description." A claimable feature should have an approved RFC that clarifies the requirement before coding starts.
+
+The current RFC model is an optional `rfc` object on each feature. Early inventories can omit it, but the core RFC gate will not claim a `ready` feature until its RFC is approved.
+
+Minimal RFC shape:
+
+```json
+{
+  "rfc": {
+    "status": "approved",
+    "summary": "Clarify the behavior to implement.",
+    "background": "Why this feature is needed.",
+    "featureDescription": "What behavior is being implemented.",
+    "expectedOutcome": "What should be true after implementation.",
+    "goals": ["Behavior users should get"],
+    "nonGoals": ["Explicitly out of scope"],
+    "requirements": [
+      {
+        "id": "REQ-001",
+        "type": "explicit",
+        "statement": "The system must support the expected behavior.",
+        "priority": "must"
+      }
+    ],
+    "acceptanceCriteria": [
+      {
+        "id": "AC-001",
+        "requirementIds": ["REQ-001"],
+        "statement": "The expected behavior is observable and testable."
+      }
+    ],
+    "validationPlan": {
+      "dynamic": ["Run the relevant unit or integration tests."],
+      "static": ["Review changed files against the requirement scope."]
+    },
+    "testCases": [
+      {
+        "id": "TC-001",
+        "acceptanceCriteriaIds": ["AC-001"],
+        "type": "unit",
+        "scenario": "The expected input or state is present.",
+        "expected": "The expected behavior occurs."
+      }
+    ],
+    "humanDecision": {
+      "status": "approved"
+    }
+  }
+}
+```
+
+The intended traceability chain is:
+
+```text
+requirement -> acceptance criterion -> test case -> test target
+```
+
+This lets agents and review lanes reason from the original requirement to dynamic tests, static checks, and execution evidence.
+
+## Status Values
+
+- `ready`
+- `in_progress`
+- `done`
+- `blocked`
+- `failed`
+
+## Priority Values
+
+- `P0`
+- `P1`
+- `P2`
+- `P3`
+
+## Review Decision Values
+
+- `pending`
+- `approved`
+- `needs_changes`
+- `follow_up`
+
+The JSON schema is in:
+
+```text
+tools/schema/features.schema.json
+```
+
+Related workspace schemas are:
+
+```text
+tools/schema/candidates.schema.json
+tools/schema/rfc.schema.json
+tools/schema/devns-config.schema.json
+```
+
+These schemas are the field contract for agents, the dashboard, hooks, and CLI commands. Unknown fields are intentionally rejected in v0.1 unless a specific extension point is added to the schema.

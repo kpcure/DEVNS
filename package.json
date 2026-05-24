@@ -1,0 +1,37 @@
+{
+  "name": "never-stop",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "devns:init": "tsx packages/core/src/cli/init.ts",
+    "devns:queue": "tsx packages/core/src/cli/queue.ts",
+    "devns:rfc": "tsx packages/core/src/cli/rfc.ts",
+    "config:smoke": "tsx packages/core/src/cli/config-smoke.ts",
+    "feature-store:smoke": "tsx packages/core/src/cli/feature-store-smoke.ts",
+    "queue:smoke": "tsx packages/core/src/cli/queue-smoke.ts",
+    "task-queue:smoke": "tsx packages/core/src/cli/task-queue-smoke.ts",
+    "codex-stop-hook:smoke": "tsx packages/core/src/cli/codex-stop-hook-smoke.ts",
+    "devns:stop": "tsx packages/core/src/cli/stop-hook.ts",
+    "harness:stop": "tsx packages/core/src/cli/claude-stop-hook.ts",
+    "harness:validate": "tsx packages/core/src/cli/validate.ts"
+  },
+  "dependencies": {
+    "@tanstack/react-table": "^8.21.3",
+    "@vitejs/plugin-react": "^5.0.0",
+    "lucide-react": "^0.475.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3"
+  }
+}

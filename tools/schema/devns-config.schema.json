@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devns.dev/schemas/devns-config.schema.json",
+  "title": "DevNS Configuration",
+  "type": "object",
+  "required": ["version", "features"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": "number" },
+    "features": { "type": "string" },
+    "candidates": { "type": "string" },
+    "rfcs": { "type": "string" },
+    "history": { "type": "string" },
+    "policies": { "type": "string" },
+    "review": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["html"]
+        },
+        "outputDir": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "skills": {
+      "type": "object",
+      "properties": {
+        "init": { "type": "string" },
+        "rfc": { "type": "string" },
+        "run": { "type": "string" }
+      },
+      "additionalProperties": { "type": "string" }
+    },
+    "hooks": {
+      "type": "object",
+      "properties": {
+        "stop": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["gate"]
+            },
+            "retryBudget": { "type": "number" },
+            "defaultDecision": {
+              "type": "string",
+              "enum": ["stop_for_human_review"]
+            },
+            "blockOn": {
+              "type": "object",
+              "additionalProperties": { "type": "boolean" }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "agents": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "reviewLanes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": ["command", "agent", "builtin"]
+          },
+          "command": { "type": "string" },
+          "agent": { "type": "string" },
+          "required": { "type": "boolean" },
+          "blocksCompletion": { "type": "boolean" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "ui": {
+      "type": "object",
+      "properties": {
+        "theme": { "type": "string" },
+        "panels": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "slot", "renderer"],
+            "properties": {
+              "id": { "type": "string" },
+              "slot": { "type": "string" },
+              "renderer": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

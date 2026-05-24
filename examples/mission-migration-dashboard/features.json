@@ -1,0 +1,158 @@
+{
+  "project": {
+    "name": "Mission Migration Dashboard",
+    "description": "Example inventory for migrating a legacy feature set with autonomous agent loops.",
+    "repository": "https://github.com/example/legacy-product"
+  },
+  "features": [
+    {
+      "id": "MIG-001",
+      "title": "Render migrated account summary",
+      "description": "Port the legacy account summary panel into the new application shell.",
+      "status": "done",
+      "priority": "P0",
+      "milestone": "Account Read Path",
+      "risk": "medium",
+      "context": [
+        "docs/account-summary.md"
+      ],
+      "acceptanceCriteria": [
+        "Shows balance, account status, and last activity date",
+        "Matches legacy empty-state behavior",
+        "Does not call deprecated account endpoints"
+      ],
+      "verification": [
+        "npm test -- account-summary",
+        "npm run e2e -- account-summary"
+      ],
+      "evidence": [
+        {
+          "type": "test",
+          "summary": "Unit and E2E verification passed locally"
+        }
+      ],
+      "changedFiles": [
+        "src/accounts/AccountSummary.tsx",
+        "tests/account-summary.test.ts"
+      ],
+      "commit": "abc1234",
+      "review": {
+        "confidence": "medium",
+        "summary": "Behavior matches the known legacy cases. Date localization remains the main area to inspect.",
+        "risks": [
+          "Date formatting differs across locales"
+        ]
+      },
+      "reviewDecision": "pending",
+      "agentNotes": "Implemented from the documented read-path contract.",
+      "rfc": {
+        "status": "approved",
+        "summary": "Clarify the minimum behavior and validation model for Render migrated account summary.",
+        "background": "A feature must be clarified before an agent can safely implement it.",
+        "featureDescription": "Port the legacy account summary panel into the new application shell.",
+        "expectedOutcome": "The feature has testable acceptance criteria and candidate test cases before implementation starts.",
+        "goals": [
+          "Capture behavior before coding",
+          "Map requirements to acceptance criteria and tests"
+        ],
+        "nonGoals": [
+          "Define the final implementation plan"
+        ],
+        "requirements": [
+          {
+            "id": "REQ-001",
+            "type": "explicit",
+            "statement": "The feature must have a reviewable RFC before implementation.",
+            "priority": "must"
+          }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-001",
+            "requirementIds": [
+              "REQ-001"
+            ],
+            "statement": "The RFC includes background, expected outcome, acceptance criteria, and test case candidates.",
+            "verification": "Inspect the RFC fields in the feature inventory."
+          }
+        ],
+        "validationPlan": {
+          "dynamic": [
+            "Run the project validation command after schema changes."
+          ],
+          "static": [
+            "Review RFC traceability from requirement to test target."
+          ]
+        },
+        "testCases": [
+          {
+            "id": "TC-001",
+            "acceptanceCriteriaIds": [
+              "AC-001"
+            ],
+            "type": "unit",
+            "scenario": "A feature has an approved RFC with one requirement and one acceptance criterion.",
+            "expected": "The feature can be considered eligible for implementation.",
+            "candidateTestName": "allows_feature_with_approved_rfc"
+          }
+        ],
+        "unknowns": [],
+        "risks": [
+          "Overly broad RFCs can slow down small fixes."
+        ],
+        "humanDecision": {
+          "status": "approved",
+          "notes": "Example RFC approved for template purposes."
+        }
+      }
+    },
+    {
+      "id": "MIG-002",
+      "title": "Migrate payment method validation",
+      "description": "Move payment method validation from the legacy form helper into the new validation layer.",
+      "status": "in_progress",
+      "priority": "P0",
+      "milestone": "Payments",
+      "risk": "high",
+      "context": [
+        "docs/payment-validation.md"
+      ],
+      "acceptanceCriteria": [
+        "Preserves card, bank, and wallet validation behavior",
+        "Returns field-level errors compatible with the new form runtime",
+        "Covers legacy invalid-input fixtures"
+      ],
+      "verification": [
+        "npm test -- payment-validation"
+      ],
+      "evidence": [],
+      "changedFiles": [],
+      "reviewDecision": "pending",
+      "agentNotes": "Active task claimed by agent session."
+    },
+    {
+      "id": "MIG-003",
+      "title": "Replace legacy notification adapter",
+      "description": "Route notification calls through the new event adapter.",
+      "status": "ready",
+      "priority": "P1",
+      "milestone": "Notifications",
+      "risk": "low",
+      "context": [
+        "docs/notification-adapter.md"
+      ],
+      "acceptanceCriteria": [
+        "Uses the new event adapter for success and failure notifications",
+        "Removes direct imports from the legacy notification module",
+        "Keeps existing notification copy unchanged"
+      ],
+      "verification": [
+        "npm test -- notifications"
+      ],
+      "evidence": [],
+      "changedFiles": [],
+      "reviewDecision": "pending",
+      "agentNotes": ""
+    }
+  ]
+}

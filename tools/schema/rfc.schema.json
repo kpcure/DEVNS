@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devns.dev/schemas/rfc.schema.json",
+  "title": "DevNS RFC Record",
+  "type": "object",
+  "required": ["id", "title", "rfc"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string" },
+    "title": { "type": "string" },
+    "rfc": {
+      "type": "object",
+      "required": [
+        "status",
+        "summary",
+        "background",
+        "featureDescription",
+        "expectedOutcome",
+        "goals",
+        "nonGoals",
+        "requirements",
+        "acceptanceCriteria",
+        "validationPlan",
+        "testCases"
+      ],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["draft", "needs_human_review", "approved", "needs_changes", "blocked", "superseded"]
+        },
+        "summary": { "type": "string" },
+        "background": { "type": "string" },
+        "featureDescription": { "type": "string" },
+        "expectedOutcome": { "type": "string" },
+        "goals": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "nonGoals": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "type", "statement", "priority"],
+            "properties": {
+              "id": { "type": "string" },
+              "type": {
+                "type": "string",
+                "enum": ["explicit", "implicit"]
+              },
+              "statement": { "type": "string" },
+              "source": { "type": "string" },
+              "priority": {
+                "type": "string",
+                "enum": ["must", "should", "could"]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "acceptanceCriteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "statement"],
+            "properties": {
+              "id": { "type": "string" },
+              "requirementIds": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "statement": { "type": "string" },
+              "verification": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "validationPlan": {
+          "type": "object",
+          "required": ["dynamic", "static"],
+          "properties": {
+            "dynamic": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "static": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "testCases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "type", "scenario", "expected"],
+            "properties": {
+              "id": { "type": "string" },
+              "acceptanceCriteriaIds": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "type": {
+                "type": "string",
+                "enum": ["unit", "integration", "e2e", "static", "manual"]
+              },
+              "scenario": { "type": "string" },
+              "expected": { "type": "string" },
+              "candidateTestName": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "unknowns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["question", "severity"],
+            "properties": {
+              "question": { "type": "string" },
+              "severity": {
+                "type": "string",
+                "enum": ["blocking", "non_blocking"]
+              },
+              "owner": {
+                "type": "string",
+                "enum": ["human", "agent"]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "risks": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "humanDecision": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": ["pending", "approved", "needs_changes", "rejected"]
+            },
+            "decidedBy": { "type": "string" },
+            "decidedAt": { "type": "string" },
+            "notes": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

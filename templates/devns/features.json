@@ -1,0 +1,89 @@
+{
+  "$schema": "../../tools/schema/features.schema.json",
+  "project": {
+    "name": "Example Project",
+    "description": "Replace this with your migration or feature project."
+  },
+  "features": [
+    {
+      "id": "EX-001",
+      "title": "Replace with a real feature",
+      "description": "Describe the behavior to migrate or implement.",
+      "status": "ready",
+      "priority": "P0",
+      "milestone": "MVP",
+      "risk": "medium",
+      "context": [],
+      "acceptanceCriteria": [
+        "Write concrete acceptance criteria."
+      ],
+      "verification": [
+        "npm test"
+      ],
+      "evidence": [],
+      "changedFiles": [],
+      "reviewDecision": "pending",
+      "agentNotes": "",
+      "rfc": {
+        "status": "approved",
+        "summary": "Clarify the minimum behavior and validation model for Replace with a real feature.",
+        "background": "A feature must be clarified before an agent can safely implement it.",
+        "featureDescription": "Describe the behavior to migrate or implement.",
+        "expectedOutcome": "The feature has testable acceptance criteria and candidate test cases before implementation starts.",
+        "goals": [
+          "Capture behavior before coding",
+          "Map requirements to acceptance criteria and tests"
+        ],
+        "nonGoals": [
+          "Define the final implementation plan"
+        ],
+        "requirements": [
+          {
+            "id": "REQ-001",
+            "type": "explicit",
+            "statement": "The feature must have a reviewable RFC before implementation.",
+            "priority": "must"
+          }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-001",
+            "requirementIds": [
+              "REQ-001"
+            ],
+            "statement": "The RFC includes background, expected outcome, acceptance criteria, and test case candidates.",
+            "verification": "Inspect the RFC fields in the feature inventory."
+          }
+        ],
+        "validationPlan": {
+          "dynamic": [
+            "Run the project validation command after schema changes."
+          ],
+          "static": [
+            "Review RFC traceability from requirement to test target."
+          ]
+        },
+        "testCases": [
+          {
+            "id": "TC-001",
+            "acceptanceCriteriaIds": [
+              "AC-001"
+            ],
+            "type": "unit",
+            "scenario": "A feature has an approved RFC with one requirement and one acceptance criterion.",
+            "expected": "The feature can be considered eligible for implementation.",
+            "candidateTestName": "allows_feature_with_approved_rfc"
+          }
+        ],
+        "unknowns": [],
+        "risks": [
+          "Overly broad RFCs can slow down small fixes."
+        ],
+        "humanDecision": {
+          "status": "approved",
+          "notes": "Example RFC approved for template purposes."
+        }
+      }
+    }
+  ]
+}

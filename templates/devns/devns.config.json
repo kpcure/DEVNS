@@ -1,0 +1,49 @@
+{
+  "$schema": "../../tools/schema/devns-config.schema.json",
+  "version": 1,
+  "features": ".devns/features.json",
+  "candidates": ".devns/candidates.json",
+  "rfcs": ".devns/rfcs",
+  "history": ".devns/history",
+  "policies": ".devns/policies",
+  "skills": {
+    "init": "devns-init",
+    "rfc": "devns-rfc",
+    "run": "devns-run"
+  },
+  "hooks": {
+    "stop": {
+      "mode": "gate",
+      "retryBudget": 3,
+      "defaultDecision": "stop_for_human_review",
+      "blockOn": {
+        "highSeverityReviewFinding": true,
+        "skippedRequiredVerification": true,
+        "lowConfidenceForHighRisk": true,
+        "outOfScopeFiles": true
+      }
+    }
+  },
+  "reviewLanes": [
+    {
+      "id": "deterministic-checks",
+      "type": "command",
+      "command": "npm test",
+      "required": true,
+      "blocksCompletion": true
+    },
+    {
+      "id": "code-review",
+      "type": "agent",
+      "agent": "codeReviewer",
+      "required": true,
+      "blocksCompletion": true
+    },
+    {
+      "id": "reviewability-gate",
+      "type": "builtin",
+      "required": true,
+      "blocksCompletion": true
+    }
+  ]
+}
