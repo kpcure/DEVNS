@@ -1,5 +1,5 @@
-import type { ClaudeStopHookInput, StopHookDecision } from "./types";
-import { describeRfcBlock } from "./rfc";
+import type { ClaudeStopHookInput, Feature, NeverStopConfig, StopHookDecision } from "./types";
+import { canClaimFeature, describeRfcBlock } from "./rfc";
 import { claimFeature } from "./task-queue";
 import {
   findActiveFeature,
@@ -8,6 +8,42 @@ import {
   readConfig,
   readInventory
 } from "./state";
+
+function completionReasons(feature: Feature, config: NeverStopConfig) {
+  const policy = config.completionPolicy ?? {};
+  const reasons: string[] = [];
+  const rfcReadiness = canClaimFeature({ ...feature, status: "ready" });
+
+  if (policy.requireApprovedRfc !== false && !rfcReadiness.ready) {
+    reasons.push(...rfcReadiness.reasons);
+  }
+
+  if (policy.requireEvidence !== false && !feature.evidence?.length) {
+    reasons.push("No verification evidence is recorded yet.");
+  }
+
+  if (policy.requireReviewDecision !== false && (!feature.reviewDecision || feature.reviewDecision === "pending")) {
+    reasons.push("Review decision is still pending.");
+  }
+
+  if (policy.requireCommit && !feature.commit) {
+    reasons.push("No feature commit is recorded yet.");
+  }
+
+  if (policy.requireCleanWorktree && !(feature.evidence ?? []).some((item) => item.type === "git-clean")) {
+    reasons.push("Clean worktree evidence is missing.");
+  }
+
+  return reasons;
+}
+
+function activeContinuationReason(feature: Feature, reasons: string[]) {
+  return [
+    `Continue feature ${feature.id}: ${feature.title}.`,
+    ...reasons,
+    "Before stopping, finish the feature loop: verify, update evidence/history, record commit metadata when required, and commit exactly this feature."
+  ].join(" ");
+}
 
 export async function evaluateClaudeStopHook(input: ClaudeStopHookInput): Promise<StopHookDecision> {
   const cwd = input.cwd || process.cwd();
@@ -24,26 +60,18 @@ export async function evaluateClaudeStopHook(input: ClaudeStopHookInput): Promis
   const activeFeature = findActiveFeature(inventory.features);
 
   if (activeFeature) {
-    const missingEvidence = !activeFeature.evidence?.length;
-    const pendingReview = !activeFeature.reviewDecision || activeFeature.reviewDecision === "pending";
+    const reasons = completionReasons(activeFeature, config);
 
-    if (missingEvidence || pendingReview) {
+    if (reasons.length) {
       return {
         decision: "block",
-        reason: [
-          `Continue feature ${activeFeature.id}: ${activeFeature.title}.`,
-          missingEvidence ? "No verification evidence is recorded yet." : "",
-          pendingReview ? "Review decision is still pending." : "",
-          "Before stopping, run the configured verification/review lanes and update the feature JSON."
-        ]
-          .filter(Boolean)
-          .join(" ")
+        reason: activeContinuationReason(activeFeature, reasons)
       };
     }
 
     return {
       decision: "allow",
-      reason: `Active feature ${activeFeature.id} has evidence and a review decision.`
+      reason: `Active feature ${activeFeature.id} satisfies completion policy.`
     };
   }
 
@@ -52,18 +80,34 @@ export async function evaluateClaudeStopHook(input: ClaudeStopHookInput): Promis
   if (!nextFeature) {
     const blockedReady = findBlockedReadyFeature(inventory.features);
     if (blockedReady) {
+      const reason = [
+        describeRfcBlock(blockedReady.feature, blockedReady.readiness),
+        "Run the RFC clarification skill or ask the human to approve/update the RFC before claiming work."
+      ].join("\n");
+
+      if (config.completionPolicy?.whenNoClaimableFeature === "stop_for_human_review") {
+        return {
+          decision: "block",
+          reason
+        };
+      }
+
       return {
-        decision: "block",
-        reason: [
-          describeRfcBlock(blockedReady.feature, blockedReady.readiness),
-          "Run the RFC clarification skill or ask the human to approve/update the RFC before claiming work."
-        ].join("\n")
+        decision: "allow",
+        reason
       };
     }
 
     return {
       decision: "allow",
       reason: "No in-progress or ready Never Stop feature remains."
+    };
+  }
+
+  if (config.completionPolicy?.whenNoActiveFeature === "allow_stop") {
+    return {
+      decision: "allow",
+      reason: `Next feature ${nextFeature.id} is claimable, but completion policy allows stop when no feature is active.`
     };
   }
 
