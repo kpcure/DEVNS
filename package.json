@@ -11,6 +11,7 @@
     "devns:queue": "tsx packages/core/src/cli/queue.ts",
     "devns:rfc": "tsx packages/core/src/cli/rfc.ts",
     "config:smoke": "tsx packages/core/src/cli/config-smoke.ts",
+    "lane:smoke": "tsx packages/core/src/cli/lane-smoke.ts",
     "feature-store:smoke": "tsx packages/core/src/cli/feature-store-smoke.ts",
     "queue:smoke": "tsx packages/core/src/cli/queue-smoke.ts",
     "task-queue:smoke": "tsx packages/core/src/cli/task-queue-smoke.ts",
