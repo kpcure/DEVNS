@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-import { mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { writeAgentsIndex } from "../harness/agents-index";
 
 export type InitOptions = {
@@ -48,6 +49,8 @@ function json(value: unknown) {
   return `${JSON.stringify(value, null, 2)}\n`;
 }
 
+const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
+
 export async function main(inputOptions?: InitOptions) {
   const cwd = process.cwd();
   const options = inputOptions ?? parseArgs(process.argv.slice(2));
@@ -60,6 +63,7 @@ export async function main(inputOptions?: InitOptions) {
   await mkdir(path.join(devnsDir, "policies"), { recursive: true });
   await mkdir(path.join(devnsDir, "lanes"), { recursive: true });
   await mkdir(path.join(devnsDir, "sensors"), { recursive: true });
+  await mkdir(path.join(devnsDir, "workbench"), { recursive: true });
 
   const files = [
     {
@@ -72,6 +76,10 @@ export async function main(inputOptions?: InitOptions) {
         rfcs: ".devns/rfcs",
         history: ".devns/history",
         policies: ".devns/policies",
+        review: {
+          mode: "html",
+          outputDir: ".devns/workbench"
+        },
         completionPolicy: {
           mode: "queue",
           whenNoActiveFeature: "claim_next",
@@ -182,6 +190,9 @@ export async function main(inputOptions?: InitOptions) {
     }
   ];
 
+  const workbenchTemplatePath = path.join(packageRoot, "templates", "workbench", "index.html");
+  const workbenchOutputPath = path.join(devnsDir, "workbench", "index.html");
+
   const written: string[] = [];
   const skipped: string[] = [];
 
@@ -190,10 +201,21 @@ export async function main(inputOptions?: InitOptions) {
     (didWrite ? written : skipped).push(path.relative(cwd, file.path));
   }
 
+  try {
+    await copyFile(workbenchTemplatePath, workbenchOutputPath, options.force ? 0 : 1);
+    written.push(path.relative(cwd, workbenchOutputPath));
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+      skipped.push(path.relative(cwd, workbenchOutputPath));
+    } else {
+      throw error;
+    }
+  }
+
   await writeAgentsIndex(cwd, {
     configPath: ".devns/devns.config.json",
     featuresPath: ".devns/features.json",
-    dashboardPath: "apps/dashboard",
+    dashboardPath: ".devns/workbench/index.html",
     workbenchPath: ".workbench"
   });
   written.push("AGENTS.md");

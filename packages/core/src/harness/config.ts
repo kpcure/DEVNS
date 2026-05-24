@@ -35,6 +35,10 @@ export const defaultConfig: NeverStopConfig = {
   rfcs: ".devns/rfcs",
   history: ".devns/history",
   policies: ".devns/policies",
+  review: {
+    mode: "html",
+    outputDir: ".devns/workbench"
+  },
   completionPolicy: {
     mode: "queue",
     whenNoActiveFeature: "claim_next",
