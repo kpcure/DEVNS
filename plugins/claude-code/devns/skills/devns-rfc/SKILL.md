@@ -49,16 +49,16 @@ If any apply, add them as implicit requirements, acceptance criteria, or unknown
 npm run devns:rfc -- scaffold --id <candidate-or-feature-id>
 ```
 
-3. Read `AGENTS.md`, project rules, `.devns/project.md`, `.devns/index.md`, and the configured feature/candidate inventory.
-4. Inspect source references attached to the candidate.
-5. Search nearby routes, APIs, schemas, tests, docs, fixtures, and legacy implementation hints.
-6. Extract explicit and implicit requirements.
-7. Convert requirements into acceptance criteria.
-8. Convert acceptance criteria into test case candidates and test targets.
-9. Mark test cases that can become unit tests as `type: "unit"`.
-10. Record unknowns. Ask at most 3-5 high-impact clarification questions.
-11. Update the RFC object with `status: "needs_human_review"` unless blocking unknowns make it `blocked`.
-12. If the RFC is already attached to a feature, check gate readiness:
+1. Read `AGENTS.md`, project rules, `.devns/project.md`, `.devns/index.md`, and the configured feature/candidate inventory.
+2. Inspect source references attached to the candidate.
+3. Search nearby routes, APIs, schemas, tests, docs, fixtures, and legacy implementation hints.
+4. Extract explicit and implicit requirements.
+5. Convert requirements into acceptance criteria.
+6. Convert acceptance criteria into test case candidates and test targets.
+7. Mark test cases that can become unit tests as `type: "unit"`.
+8. Record unknowns. Ask at most 3-5 high-impact clarification questions.
+9. Update the RFC object with `status: "needs_human_review"` unless blocking unknowns make it `blocked`.
+10. If the RFC is already attached to a feature, check gate readiness:
 
 ```sh
 npm run devns:rfc -- check --id <feature-id>

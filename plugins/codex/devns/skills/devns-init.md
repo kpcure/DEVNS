@@ -14,8 +14,8 @@ Create the `.devns/` workspace if needed, collect project background, and discov
 npm run devns:init -- --project-name "<project name>" --project-description "<project background>"
 ```
 
-2. If the user has not provided enough background, update `.devns/project.md` with known context and ask for the smallest missing input needed to continue.
-3. Read `AGENTS.md`, `.devns/index.md`, `.devns/project.md`, and `.devns/devns.config.json`.
+1. If the user has not provided enough background, update `.devns/project.md` with known context and ask for the smallest missing input needed to continue.
+2. Read `AGENTS.md`, `.devns/index.md`, `.devns/project.md`, and `.devns/devns.config.json`.
 
 ## Workflow
 

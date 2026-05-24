@@ -22,7 +22,8 @@
     "codex-stop-hook:smoke": "tsx packages/core/src/cli/codex-stop-hook-smoke.ts",
     "devns:stop": "tsx packages/core/src/cli/stop-hook.ts",
     "harness:stop": "tsx packages/core/src/cli/claude-stop-hook.ts",
-    "harness:validate": "tsx packages/core/src/cli/validate.ts"
+    "harness:validate": "tsx packages/core/src/cli/validate.ts",
+    "lint:md": "markdownlint-cli2"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
@@ -37,6 +38,7 @@
   "devDependencies": {
     "@types/node": "^22.10.7",
     "@types/react": "^19.2.15",
-    "@types/react-dom": "^19.2.3"
+    "@types/react-dom": "^19.2.3",
+    "markdownlint-cli2": "^0.22.1"
   }
 }

@@ -1,0 +1,16 @@
+{
+  "config": {
+    "MD013": false
+  },
+  "globs": [
+    "**/*.md",
+    "!node_modules",
+    "!.workbench",
+    "!.devns",
+    "!.codex",
+    "!dist"
+  ],
+  "ignores": [
+    "plugins/claude-code/devns/agents/*.md"
+  ]
+}

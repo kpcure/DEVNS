@@ -16,4 +16,3 @@ Return structured findings:
 - whether it blocks completion
 
 Prioritize correctness, regressions, security, missing tests, and out-of-scope changes.
-
