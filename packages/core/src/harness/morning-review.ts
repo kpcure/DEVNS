@@ -81,6 +81,16 @@ async function git(cwd: string, args: string[]) {
   }
 }
 
+async function inferCommitForFeature(cwd: string, feature: Feature) {
+  const configured = feature.implementationCommit ?? feature.commit;
+  if (configured) return configured;
+
+  const byFeatureId = await git(cwd, ["log", "--all", "-n", "1", "--format=%H", `--grep=^${feature.id}[: ]`]);
+  if (byFeatureId) return byFeatureId;
+
+  return undefined;
+}
+
 function trimDiff(value: string) {
   const maxLength = 28_000;
   if (value.length <= maxLength) {
@@ -102,7 +112,7 @@ function parseDiffStat(stat: string) {
 }
 
 async function diffForFeature(cwd: string, feature: Feature): Promise<ReviewDiffSummary | undefined> {
-  const base = feature.implementationCommit ?? feature.commit;
+  const base = await inferCommitForFeature(cwd, feature);
   if (!base) return undefined;
 
   const stat = await git(cwd, ["show", "--stat", "--oneline", "--find-renames", base]);

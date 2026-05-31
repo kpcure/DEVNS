@@ -68,7 +68,7 @@ async function main() {
     await writeFile(path.join(cwd, "src", "a.ts"), "export const a = true;\n");
     await writeFile(path.join(cwd, "src", "b.ts"), "export const b = true;\n");
     await execFileAsync("git", ["add", "."], { cwd });
-    await execFileAsync("git", ["commit", "-m", "Implement morning review smoke"], { cwd });
+    await execFileAsync("git", ["commit", "-m", "REV-001: implement morning review smoke"], { cwd });
     const head = (await execFileAsync("git", ["rev-parse", "HEAD"], { cwd })).stdout.trim();
 
     inventory.features = [
@@ -101,6 +101,14 @@ async function main() {
     assert.match(rev001?.lessons[0] ?? "", /RFC intent/);
     assert.match(rev001?.diff?.patch ?? "", /shared/);
     assert.ok((rev001?.diff?.filesChanged ?? 0) > 0);
+
+    const configless = await readInventory(cwd, config);
+    delete configless.features[0].commit;
+    delete configless.features[0].implementationCommit;
+    await writeInventory(cwd, config, configless);
+    const inferred = await writeMorningReviewReport(cwd, "2026-05-31");
+    const inferredPacket = inferred.report.packets.find((packet) => packet.featureId === "REV-001");
+    assert.match(inferredPacket?.diff?.patch ?? "", /shared/);
 
     const json = JSON.parse(await readFile(path.join(cwd, result.jsonPath), "utf8"));
     assert.equal(json.packets.length, 2);
