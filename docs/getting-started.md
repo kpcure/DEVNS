@@ -11,9 +11,10 @@ npm install
 npm run build
 ```
 
-For a target project after DEVNS is installed as a dependency, use the package bin:
+For a target project, install DEVNS from GitHub first. The unscoped `devns` name on npm belongs to another package, so `npx devns` is safe only after this local install.
 
 ```sh
+npm install --save-dev github:kpcure/DEVNS
 npx devns doctor
 ```
 

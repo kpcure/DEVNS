@@ -53,6 +53,8 @@ The user-facing entrypoint is:
 npx devns <command>
 ```
 
+Install DEVNS locally first with `npm install --save-dev github:kpcure/DEVNS`. The unscoped `devns` package name on npm belongs to another project, so avoid one-shot `npx devns` before the local install.
+
 The command argument is intentionally small and prompt-friendly: `doctor`, `init`, `run`, `dashboard`, `validate`, `discover`, `rfc`, `queue`, `lanes`, `review`, `complete`, or `stop`. Skills and hooks may call more specific internal scripts, but humans and general agents should start with this single entrypoint. In this source checkout, `npm run devns -- <command>` is the local development equivalent.
 
 The current repository also exposes thin npm-backed internal development commands:

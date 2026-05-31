@@ -1,10 +1,25 @@
 # DEVNS
 
-[中文说明](README.zh-CN.md)
+[![CI](https://github.com/kpcure/DEVNS/actions/workflows/ci.yml/badge.svg)](https://github.com/kpcure/DEVNS/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6.svg)](https://www.typescriptlang.org/)
+
+[中文说明](README.zh-CN.md) | [Roadmap](ROADMAP.md) | [Contributing](CONTRIBUTING.md) | [Security](SECURITY.md)
 
 DEVNS is a local-first control plane that keeps long-running coding agents tied to approved intent, explicit evidence, and reviewable feature-sized commits.
 
-The core idea is simple:
+Coding agents can write code quickly. DEVNS focuses on the part that usually breaks next: keeping long-running agent work grounded, reviewable, and recoverable.
+
+## Why DEVNS
+
+Without a harness, an overnight agent run can leave you with a pile of commits and no reliable answer to four questions:
+
+- What was the approved intent?
+- Which acceptance criteria were actually verified?
+- What changed in product code versus agent state?
+- What should a human review first?
+
+DEVNS turns that into a local workflow:
 
 - JSON is the fast, agent-readable source of truth.
 - Markdown records the project knowledge that should survive across sessions.
@@ -12,6 +27,39 @@ The core idea is simple:
 - Every agent run claims one feature, implements it, verifies it, commits it, records evidence, and loops.
 - The next morning review is not a raw commit list. It is a structured mission report grouped by milestone, risk, behavior, evidence, and diff.
 - The core is generic, but the edges are designed for second development: skills, hooks, review agents, test agents, sensors, and UI panels can be replaced by each project.
+
+## Quick Start
+
+Install from GitHub today. The unscoped `devns` name on npm belongs to another project, so do not use one-shot `npx devns` before installing DEVNS locally.
+
+```sh
+npm install --save-dev github:kpcure/DEVNS
+npx devns doctor
+npx devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
+npx devns discover --json
+npx devns run --json
+npx devns dashboard
+```
+
+When developing this repository locally:
+
+```sh
+npm install
+npm run devns -- doctor
+npm run devns -- dashboard
+```
+
+```mermaid
+flowchart LR
+  A["Project goal"] --> B["Discovery candidates"]
+  B --> C["RFC clarification"]
+  C --> D["Approved feature"]
+  D --> E["Agent implementation"]
+  E --> F["Lanes and evidence"]
+  F --> G["Review packet"]
+  G --> H["Feature commit"]
+  H --> I["Morning review"]
+```
 
 This project is inspired by the May 20, 2026 Claude blog article, [Using Claude Code: The unreasonable effectiveness of HTML](https://claude.com/blog/using-claude-code-the-unreasonable-effectiveness-of-html), which argues that HTML is unusually effective as a human-in-the-loop interface for agent work because it is easier to inspect, navigate, and interact with than plain Markdown for many review tasks.
 
@@ -34,11 +82,12 @@ Generic workflows are rarely adopted unchanged by serious engineering teams. Eac
 
 DEVNS therefore provides a stable harness core with editable edges. Use the defaults to start, then replace the parts that do not fit your project.
 
-## First Run
+## First Run Details
 
 After installing DEVNS in a target project, start with the doctor:
 
 ```sh
+npm install --save-dev github:kpcure/DEVNS
 npx devns doctor
 ```
 
@@ -53,7 +102,7 @@ The doctor reports the current DEVNS mode and the next action. It tells you whet
 For a new project, initialize the DEVNS workspace first:
 
 ```sh
-npm run devns -- init --project-name "Example Project" --project-description "Describe the migration or feature goal."
+npx devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
 ```
 
 Then use the `devns-init` skill to discover candidate features. Candidates are not executable work yet. A candidate must go through the `devns-rfc` skill and receive human approval before it can become a ready feature.
@@ -61,13 +110,13 @@ Then use the `devns-init` skill to discover candidate features. Candidates are n
 For an existing DEVNS workspace, ask the agent to use the `devns-run` skill or run:
 
 ```sh
-npm run devns -- run --json
+npx devns run --json
 ```
 
 Humans can open the dashboard with:
 
 ```sh
-npm run devns -- dashboard
+npx devns dashboard
 ```
 
 ## Local Runtime, Not A CLI-First Product
