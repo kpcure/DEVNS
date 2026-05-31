@@ -1,22 +1,33 @@
 {
   "name": "devns",
-  "version": "0.0.1",
-  "description": "Local-first harness for long-running agent work with feature JSON, hook gating, and HTML review.",
+  "version": "1.0.0",
+  "description": "Local-first harness for long-running agent work with feature JSON, verification gates, review packets, and HTML review.",
   "author": {
-    "name": "Never Stop"
+    "name": "DEVNS"
   },
+  "homepage": "https://github.com/kpcure/DEVNS#readme",
+  "repository": "https://github.com/kpcure/DEVNS",
+  "license": "Apache-2.0",
+  "keywords": [
+    "agent-harness",
+    "codex",
+    "workflow",
+    "review"
+  ],
+  "skills": "./skills/",
   "interface": {
-    "displayName": "DevNS",
-    "shortDescription": "Run long-lived agent work through a feature JSON harness.",
-    "longDescription": "DevNS helps agents claim one feature, analyze requirements, verify work, record evidence, and continue through a local harness while humans review progress in HTML.",
-    "developerName": "DevNS",
+    "displayName": "DEVNS",
+    "shortDescription": "Run agent work through a feature JSON harness.",
+    "longDescription": "DEVNS helps Codex initialize a local harness, clarify features into RFCs, claim exactly one approved feature, run verification lanes, record evidence/history, and produce review packets for humans and read-only review agents.",
+    "developerName": "DEVNS",
     "category": "Productivity",
-    "defaultPrompt": "Use the DevNS workflow. Start uncertain sessions with `npm run devns:doctor -- --json`; initialize candidate features when needed, clarify each feature into an RFC before implementation, only claim features with approved RFCs, verify work, record evidence, and commit exactly one feature.",
+    "defaultPrompt": [
+      "Use DEVNS to check project status and continue one feature.",
+      "Initialize DEVNS and discover candidate features.",
+      "Clarify a DEVNS feature into an approved RFC."
+    ],
     "capabilities": [
-      "skills",
-      "hooks",
-      "scripts"
+      "skills"
     ]
-  },
-  "license": "MIT"
+  }
 }

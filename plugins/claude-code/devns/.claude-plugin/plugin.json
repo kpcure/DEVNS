@@ -1,8 +1,9 @@
 {
   "name": "devns",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Local-first harness for long-running agent work with feature JSON, Stop hook gating, and HTML review.",
   "author": {
     "name": "Never Stop"
-  }
+  },
+  "license": "Apache-2.0"
 }

@@ -14,6 +14,7 @@ plugins/codex/devns/.codex-plugin/plugin.json
 
 The package includes:
 
+- `.codex-plugin/plugin.json`
 - `skills/devns-init.md`
 - `skills/devns-rfc.md`
 - `skills/devns-run.md`
@@ -24,7 +25,7 @@ The RFC skill exists because the core RFC gate will not claim a `ready` feature 
 
 The `devns-init` skill is the intended first user-facing entrypoint. It can call `npm run devns:init` to create `.devns/`, then scan repository context and fill `.devns/candidates.json`.
 
-Skill files are loaded from the plugin package's `skills/` directory. They are not listed one by one inside `.codex-plugin/plugin.json`; the manifest declares the plugin identity and capabilities, while the directory structure provides the skills.
+Skill files are loaded from the plugin package's `skills/` directory. They are not listed one by one inside `.codex-plugin/plugin.json`; the manifest declares `"skills": "./skills/"`, plugin identity, and presentation metadata.
 
 The Codex plugin is a thin adapter. Shared harness logic lives in:
 
@@ -34,7 +35,7 @@ packages/core/
 
 ## Stop Hook Adapter
 
-Codex plugin validation does not require hook wiring in `.codex-plugin/plugin.json`. DEVNS therefore ships a stop-hook adapter script instead of embedding host-specific behavior in the manifest:
+Codex plugin validation does not support hook wiring in `.codex-plugin/plugin.json`. DEVNS therefore ships a stop-hook adapter script instead of embedding host-specific behavior in the manifest:
 
 ```sh
 bash plugins/codex/devns/scripts/devns-stop-hook.sh

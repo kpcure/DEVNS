@@ -5,7 +5,9 @@ This plugin package gives Codex a DEVNS workflow surface:
 - `devns-init`: initialize or refresh a DEVNS workspace and discover candidate features. It does not implement code.
 - `devns-rfc`: clarify a candidate or feature into a reviewable RFC before implementation.
 - `devns-run`: continue the active feature or claim one approved feature for implementation.
-- `hooks/devns-stop-hook.sh`: host adapter target for lifecycle stop hooks.
+- `.codex-plugin/plugin.json`: Codex plugin manifest with identity, presentation metadata, and `skills` discovery path.
+- `scripts/devns-stop-hook.sh`: optional host adapter target for lifecycle stop hooks.
+- `hooks/README.md`: hook boundary and manual wiring notes.
 - `prompts/`: reusable prompt contracts for RFC clarification, code review lanes, Stop hook continuation, and domain knowledge curation.
 
 Start every uncertain session with the deterministic workspace check when the target project exposes it:
@@ -24,7 +26,7 @@ Then follow the returned mode:
 - `blocked_ready`: use `devns-rfc` or ask the human to approve/update the RFC.
 - `empty_queue`: stop unless the human adds more candidates or features.
 
-The plugin is a thin adapter. The shared state remains `.devns` JSON, and the shared behavior lives behind DEVNS commands in the target repository.
+The plugin is a thin adapter. The shared state remains `.devns` JSON, and the shared behavior lives behind DEVNS commands in the target repository. The Codex manifest intentionally does not declare hooks; it declares the plugin identity and skill path, while hook wiring stays as an explicit host/template concern.
 
 ## Hook And Provider Boundary
 

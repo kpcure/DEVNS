@@ -74,6 +74,8 @@ DEVNS ships these Codex skill entrypoints:
 
 The Codex manifest advertises plugin capabilities. The loadable skill files live in `skills/`.
 
+DEVNS keeps hook wiring out of `.codex-plugin/plugin.json`. The manifest points at skills and describes the plugin; `scripts/devns-stop-hook.sh` and `templates/codex/hooks.json` are optional host wiring assets.
+
 ## Packaging Rule
 
 Plugins should be thin host adapters.
