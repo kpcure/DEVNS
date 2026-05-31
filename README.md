@@ -37,6 +37,7 @@ npx @kpcure/devns doctor
 npx @kpcure/devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
 npx @kpcure/devns discover --json
 npx @kpcure/devns run --json
+npx @kpcure/devns stop-log --tail 20
 npx @kpcure/devns dashboard
 ```
 
@@ -135,7 +136,7 @@ Humans should usually interact with the HTML dashboard and reports. Agents shoul
 4. An agent reads `AGENTS.md`, claims one approved feature, implements it, verifies it, and commits exactly one feature.
 5. Review lanes and the evidence-quality gate persist static, dynamic, and optional read-only review-agent evidence.
 6. `devns complete` records implementation commit metadata and durable history for that feature.
-7. A stop hook gates unfinished active work, reads structured evidence, then claims the next approved feature when policy allows.
+7. A single stop-hook orchestrator gates unfinished active work, can run missing read-only Review Agent lanes, reads structured evidence, then claims the next approved feature when policy allows.
 8. The dashboard and reports render human-facing review by feature, risk, evidence, and diff.
 
 ## Repository Shape

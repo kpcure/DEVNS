@@ -176,6 +176,7 @@ export function renderReviewPacketPrompt(packet: ReviewPacket) {
     "# DEVNS Review Agent Packet",
     "",
     "You are reviewing one completed feature. Stay read-only and report findings only.",
+    "This prompt may be invoked by the single DEVNS Stop Hook orchestrator. Do not call the Stop Hook, claim work, edit files, install packages, or create commits. Return only the lane-result JSON object.",
     "",
     "## Instructions",
     ...packet.reviewInstructions.map((item) => `- ${item}`),
@@ -203,7 +204,52 @@ export function renderReviewPacketPrompt(packet: ReviewPacket) {
     JSON.stringify(packet.history, null, 2),
     "",
     "## Project Rules",
-    JSON.stringify(packet.projectRules, null, 2)
+    JSON.stringify(packet.projectRules, null, 2),
+    "",
+    "## Required Output",
+    "",
+    "Return only one DEVNS lane-result JSON object. Do not wrap it in Markdown.",
+    "",
+    "Required top-level fields:",
+    "",
+    "```json",
+    JSON.stringify(
+      {
+        lane: "code-review",
+        type: "agent",
+        status: "pass",
+        decision: "allow",
+        summary: "Short review summary.",
+        confidence: "high",
+        findings: [],
+        scores: {
+          correctness: 1,
+          requirementCoverage: 1,
+          scope: 1,
+          security: 1,
+          test: 1
+        },
+        evidence: [
+          {
+            type: "review-context",
+            summary: "Reviewed RFC, diff, evidence, history, and project rules."
+          }
+        ],
+        artifacts: [],
+        recommendedActions: [],
+        blocksCompletion: false,
+        required: true
+      },
+      null,
+      2
+    ),
+    "```",
+    "",
+    "Finding rules:",
+    "- Prioritize correctness, security, requirement mismatch, missing tests/evidence, and out-of-scope changes.",
+    "- Blocking findings must be high-confidence, evidence-backed errors with file and line when available.",
+    "- If product behavior cannot be semantically verified from existing evidence, use `needs_human_review` and explain the missing evidence.",
+    "- If no actionable issue exists, use `allow` but still list residual test gaps in `recommendedActions`."
   ].join("\n");
 }
 

@@ -55,7 +55,7 @@ npx @kpcure/devns <command>
 
 Use the scoped npm package `@kpcure/devns`. The unscoped `devns` package name on npm belongs to another project.
 
-The command argument is intentionally small and prompt-friendly: `doctor`, `init`, `run`, `dashboard`, `validate`, `discover`, `rfc`, `queue`, `lanes`, `review`, `complete`, or `stop`. Skills and hooks may call more specific internal scripts, but humans and general agents should start with this single entrypoint. In this source checkout, `npm run devns -- <command>` is the local development equivalent.
+The command argument is intentionally small and prompt-friendly: `doctor`, `init`, `run`, `dashboard`, `validate`, `discover`, `rfc`, `queue`, `lanes`, `review`, `complete`, `stop-log`, or `stop`. Skills and hooks may call more specific internal scripts, but humans and general agents should start with this single entrypoint. In this source checkout, `npm run devns -- <command>` is the local development equivalent.
 
 The current repository also exposes thin npm-backed internal development commands:
 
@@ -63,6 +63,7 @@ The current repository also exposes thin npm-backed internal development command
 npx @kpcure/devns doctor [--json]
 npx @kpcure/devns init --project-name "Project" --project-description "Goal" [--host auto|codex|claude|both|none]
 npx @kpcure/devns run [--json] [--no-claim]
+npx @kpcure/devns stop-log [--tail 20] [--json]
 npx @kpcure/devns dashboard
 npx @kpcure/devns validate [--json] [--strict] [--fix]
 npx @kpcure/devns eval run --tier t1 [--mode <mode>] [--json]
@@ -77,6 +78,7 @@ npm run devns:lanes -- run [--feature <feature-id>] [--write] [--json]
 npm run devns:lanes -- ingest --feature <feature-id> --result <lane-result.json> [--actor review-agent:<name>] [--json]
 npm run devns:evidence -- add --feature <feature-id> --type <type> --summary <text> [--verification <kind>] [--covers-ac AC-001]
 npm run devns:eval -- run --tier t1 [--mode <mode>] [--json] [--report evals/out/report.md]
+npm run devns:stop-log [-- --tail 20] [-- --json]
 npm run devns:review -- generate [--date YYYY-MM-DD] [--json]
 npm run devns:review -- packet [--feature <feature-id>] [--commit <sha>] [--base <sha>] [--format json|prompt] [--write] [--json]
 npm run devns:complete -- [--id <feature-id>] [--commit <sha>] [--review approved|needs_changes|follow_up] [--force --reason <text>] [--json]
@@ -95,6 +97,8 @@ npm run harness:stop
 
 `npm run devns:doctor` is the first command to run after install. It checks whether the workspace exists, validates that the feature inventory can load, reports the current mode, and prints the next action.
 
+`npm run devns:stop-log` reads `.devns/history/stop-hook.jsonl`, the local diagnostic trace written by DEVNS hook adapters and the stop-hook core. Use it when a host appears to skip a Stop hook, when a `decision:block` does not visibly continue the agent, or when you need to distinguish "adapter did not run" from "core returned a blocker."
+
 In a target repository, this alias may not exist yet. Agents should inspect `package.json` and fall back to the available DEVNS status surface, usually `npm run devns:status -- --json` or `npm run devns:queue -- status --json`, before declaring the workflow blocked.
 
 `npm run devns:status` is a short alias for queue status. It is useful for dashboard debugging and human inspection.
@@ -103,9 +107,13 @@ In a target repository, this alias may not exist yet. Agents should inspect `pac
 
 `npm run devns:run` is the agent-facing loop entry. It detects bootstrap, active, claimable, blocked, and empty-queue modes. By default it claims the next approved feature when no feature is active; pass `--no-claim` to inspect without mutating state. When a feature is active or claimed, JSON output includes `workerHandoff`, a compact contract for running that one feature in an isolated worker/subagent or fresh implementation context when the host supports it.
 
+`npm run harness:validate` and `npx @kpcure/devns validate` are deterministic health checks. They inspect workspace shape, schema validity, RFC readiness, evidence quality, lane evidence records, hook wiring, and curated history/review artifacts. They are intentionally fast and do not run a model-based semantic review. Semantic validation must come from configured `type: "agent"` review lanes, browser/human evidence, or project-specific command lanes.
+
 `npm run devns:discover` is the deterministic substrate under the `devns-init` skill. It reads a conservative set of project signals and writes candidate features to `.devns/candidates.json`. It never creates claimable features.
 
 `npm run devns:lanes -- run` executes configured review lanes. Command lanes capture exit code, duration, stdout/stderr digests, evidence, and a decision of `allow`, `warn`, `needs_human_review`, or `block`. Pass `--write` to append the full lane result envelope to feature history and store concise lane evidence on the active feature.
+
+Agent lanes are review-worker adapters. For a lane such as `code-review`, DEVNS writes a review packet and prompt, injects `DEVNS_REVIEW_PROMPT`, `DEVNS_REVIEW_PACKET`, `DEVNS_FEATURE_ID`, `DEVNS_DIFF_BASE`, and `DEVNS_REPO`, then executes the lane command. The command must return one `tools/schema/lane-result.schema.json` object. `devns init --host codex` installs `.devns/adapters/code-review.codex.sh` and `.devns/lanes/code-review.json` so Codex projects have a ready read-only review worker.
 
 A browser smoke check can be wired as a command lane, for example by copying `templates/devns/lanes/browser-smoke.json` into `.devns/lanes/browser-smoke.json` and changing the command to the project's Playwright/Cypress/browser script. Browser evidence should be recorded with `verificationType: "browser_smoke"`.
 
@@ -115,7 +123,7 @@ A browser smoke check can be wired as a command lane, for example by copying `te
 
 `npm run devns:eval -- run` executes DEVNS harness evaluation cases. T1 is deterministic and treats each gate as a classifier over trap/clean fixtures, reporting per-mode precision, recall, and F1. T2 and T3 are reserved for model-in-the-loop reviewer calibration and end-to-end seed repositories.
 
-For robust review automation, run deterministic static and dynamic lanes first, then run any read-only review-agent lane against the Git diff, RFC, lane output, and relevant history. The Stop hook should only aggregate those persisted results.
+For robust review automation, run deterministic static and dynamic lanes first, then run any read-only review-agent lane against the Git diff, RFC, lane output, and relevant history. The Stop hook can also run configured missing read-only agent lanes through `hooks.stop.reviewAgent.mode = "run_missing"`, but it still returns one unified decision from persisted state and should not be modeled as multiple same-event hooks.
 
 `evidence-quality-gate` is a built-in review lane that checks acceptance criteria and deterministic evidence coverage. It is also used by validation and completion so a feature cannot be marked done from a title plus prose-only notes.
 

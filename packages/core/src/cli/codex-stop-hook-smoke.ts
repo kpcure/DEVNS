@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { Feature, FeatureInventory, FeatureRfc, DevnsConfig } from "../harness/types";
@@ -180,6 +180,69 @@ function parseMaybeJson(stdout: string) {
   return stdout.trim() ? JSON.parse(stdout) : undefined;
 }
 
+async function readStopLog(cwd: string) {
+  const raw = await readFile(path.join(cwd, ".devns", "history", "stop-hook.jsonl"), "utf8");
+  return raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map(
+      (line) =>
+        JSON.parse(line) as {
+          source?: string;
+          phase?: string;
+          mode?: string;
+          decision?: string;
+          selectedFeatureId?: string;
+          reasons?: string[];
+          laneIds?: string[];
+        }
+    );
+}
+
+async function installReviewAgentLane(cwd: string) {
+  const configPath = path.join(cwd, ".devns", "devns.config.json");
+  const config = JSON.parse(await readFile(configPath, "utf8")) as DevnsConfig;
+  config.reviewLanes = [
+    ...(config.reviewLanes ?? []),
+    {
+      id: "code-review",
+      type: "agent",
+      command: "node review-agent.mjs",
+      required: true,
+      blocksCompletion: true
+    }
+  ];
+  await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`);
+  await writeFile(
+    path.join(cwd, "review-agent.mjs"),
+    [
+      "const result = {",
+      "  lane: 'code-review',",
+      "  type: 'agent',",
+      "  status: 'pass',",
+      "  decision: 'allow',",
+      "  summary: 'Review Agent smoke pass.',",
+      "  confidence: 'high',",
+      "  findings: [],",
+      "  evidence: [{ type: 'review-context', summary: `Reviewed ${process.env.DEVNS_REVIEW_PROMPT || 'prompt'}.` }],",
+      "  artifacts: process.env.DEVNS_REVIEW_PACKET ? [process.env.DEVNS_REVIEW_PACKET] : [],",
+      "  recommendedActions: [],",
+      "  blocksCompletion: false,",
+      "  required: true",
+      "};",
+      "process.stdout.write(JSON.stringify(result));"
+    ].join("\n")
+  );
+}
+
+async function readFeature(cwd: string, featureId: string) {
+  const inventory = JSON.parse(await readFile(path.join(cwd, ".devns", "features.json"), "utf8")) as FeatureInventory;
+  const found = inventory.features.find((item) => item.id === featureId);
+  assert.ok(found, `Feature ${featureId} should exist.`);
+  return found;
+}
+
 async function main() {
   const activeProject = await makeProject([feature("SMOKE-001", "in_progress")]);
   const claimProject = await makeProject([feature("SMOKE-002", "ready")]);
@@ -198,6 +261,8 @@ async function main() {
     feature("SMOKE-005", "in_progress"),
     feature("SMOKE-006", "in_progress")
   ]);
+  const reviewAgentProject = await makeProject([feature("SMOKE-007", "in_progress")]);
+  await installReviewAgentLane(reviewAgentProject);
 
   try {
     const recursive = await runHook(activeProject, JSON.stringify({ cwd: activeProject, stop_hook_active: true }));
@@ -209,6 +274,19 @@ async function main() {
     assert.match(active.reason, /No verification evidence/);
     assert.match(active.reason, /Required lane evidence is missing: smoke-lane/);
     assert.match(active.reason, /No feature commit/);
+    const activeLog = await readStopLog(activeProject);
+    assert.ok(activeLog.some((entry) => entry.source === "adapter" && entry.phase === "start"));
+    assert.ok(activeLog.some((entry) => entry.source === "adapter" && entry.phase === "exec"));
+    assert.ok(
+      activeLog.some(
+        (entry) =>
+          entry.source === "core" &&
+          entry.mode === "active_block" &&
+          entry.decision === "block" &&
+          entry.selectedFeatureId === "SMOKE-001" &&
+          (entry.reasons ?? []).some((reason) => /No verification evidence/.test(reason))
+      )
+    );
 
     const multiActive = parseMaybeJson(await runHook(multiActiveProject, JSON.stringify({ cwd: multiActiveProject })));
     assert.ok(multiActive, "Multi-active hook should block with JSON output.");
@@ -220,16 +298,95 @@ async function main() {
     assert.equal(claim.decision, "block");
     assert.match(claim.reason, /Claimed next feature SMOKE-002/);
     assert.match(claim.reason, /Start a Sub Agent, isolated worker, or fresh implementation context/);
+    assert.match(claim.reason, /Feature context:/);
+    assert.match(claim.reason, /Validation context:/);
+    assert.match(claim.reason, /Semantic agent lane configured: no/);
     assert.match(claim.reason, /"strategy":"prefer_isolated_worker"/);
     assert.match(claim.reason, /"featureId":"SMOKE-002"/);
+    assert.match(claim.reason, /"rfcContext"/);
+    assert.match(claim.reason, /"validationContext"/);
+    const claimLog = await readStopLog(claimProject);
+    assert.ok(
+      claimLog.some(
+        (entry) =>
+          entry.source === "core" &&
+          entry.mode === "claim_next_block" &&
+          entry.decision === "block" &&
+          entry.selectedFeatureId === "SMOKE-002"
+      )
+    );
+
+    const secondClaimStop = parseMaybeJson(await runHook(claimProject, JSON.stringify({ cwd: claimProject })));
+    assert.ok(secondClaimStop, "Second hook after claim should block the active feature loop.");
+    assert.equal(secondClaimStop.decision, "block");
+    assert.match(secondClaimStop.reason, /Continue feature SMOKE-002/);
+    assert.match(secondClaimStop.reason, /No verification evidence/);
+    const secondClaimLog = await readStopLog(claimProject);
+    assert.ok(
+      secondClaimLog.some(
+        (entry) =>
+          entry.source === "core" &&
+          entry.mode === "active_block" &&
+          entry.decision === "block" &&
+          entry.selectedFeatureId === "SMOKE-002"
+      )
+    );
+
+    const reviewAgent = parseMaybeJson(await runHook(reviewAgentProject, JSON.stringify({ cwd: reviewAgentProject })));
+    assert.ok(reviewAgent, "Review-agent project hook should block after recording agent evidence.");
+    assert.equal(reviewAgent.decision, "block");
+    assert.match(reviewAgent.reason, /Continue feature SMOKE-007/);
+    assert.doesNotMatch(reviewAgent.reason, /Required lane evidence is missing: code-review/);
+    assert.doesNotMatch(reviewAgent.reason, /Review decision is still pending/);
+    assert.match(reviewAgent.reason, /Required lane evidence is missing: smoke-lane/);
+    const reviewedFeature = await readFeature(reviewAgentProject, "SMOKE-007");
+    assert.equal(reviewedFeature.reviewDecision, "approved");
+    assert.ok((reviewedFeature.evidence ?? []).some((item) => item.type === "lane:code-review" && item.actor === "review-agent:code-review"));
+    assert.ok(reviewedFeature.history?.historyPath, "Review-agent hook should write execution history.");
+    const reviewAgentLog = await readStopLog(reviewAgentProject);
+    assert.ok(
+      reviewAgentLog.some(
+        (entry) =>
+          entry.source === "core" &&
+          entry.phase === "review_agent" &&
+          entry.mode === "run_missing" &&
+          entry.selectedFeatureId === "SMOKE-007" &&
+          (entry.laneIds ?? []).includes("code-review")
+      )
+    );
+    assert.ok(
+      reviewAgentLog.some(
+        (entry) =>
+          entry.source === "core" &&
+          entry.phase === "review_agent" &&
+          entry.mode === "review_agent_allow" &&
+          entry.selectedFeatureId === "SMOKE-007"
+      )
+    );
 
     const complete = await runHook(completeProject, JSON.stringify({ cwd: completeProject }));
     assert.equal(complete.trim(), "");
+    const completeLog = await readStopLog(completeProject);
+    assert.ok(
+      completeLog.some(
+        (entry) =>
+          entry.source === "core" &&
+          entry.mode === "active_allow_complete" &&
+          entry.decision === "allow" &&
+          entry.selectedFeatureId === "SMOKE-003"
+      )
+    );
 
     const empty = await runHook(emptyProject, JSON.stringify({ cwd: emptyProject }));
     assert.equal(empty.trim(), "");
+    const emptyLog = await readStopLog(emptyProject);
+    assert.ok(emptyLog.some((entry) => entry.source === "core" && entry.mode === "empty_allow" && entry.decision === "allow"));
   } finally {
-    await Promise.all([activeProject, claimProject, completeProject, emptyProject, multiActiveProject].map((project) => rm(project, { recursive: true, force: true })));
+    await Promise.all(
+      [activeProject, claimProject, completeProject, emptyProject, multiActiveProject, reviewAgentProject].map((project) =>
+        rm(project, { recursive: true, force: true })
+      )
+    );
   }
 
   process.stdout.write("Codex stop hook smoke passed.\n");

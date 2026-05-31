@@ -48,6 +48,7 @@
     "devns:complete": "tsx packages/core/src/cli/complete.ts",
     "devns:evidence": "tsx packages/core/src/cli/evidence.ts",
     "devns:eval": "tsx packages/core/src/cli/eval.ts",
+    "devns:stop-log": "tsx packages/core/src/cli/stop-log.ts",
     "devns:status": "tsx packages/core/src/cli/queue.ts status",
     "devns:doctor": "tsx packages/core/src/cli/doctor.ts",
     "devns:dashboard": "vite --host 127.0.0.1",

@@ -70,6 +70,11 @@ export const defaultConfig: DevnsConfig = {
         missingApprovedRfc: true,
         skippedRequiredVerification: true,
         outOfScopeFiles: true
+      },
+      reviewAgent: {
+        mode: "run_missing",
+        laneIds: ["code-review"],
+        requireDeterministicEvidence: false
       }
     }
   },

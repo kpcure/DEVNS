@@ -84,6 +84,21 @@
             "blockOn": {
               "type": "object",
               "additionalProperties": { "type": "boolean" }
+            },
+            "reviewAgent": {
+              "type": "object",
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "enum": ["off", "run_missing"]
+                },
+                "laneIds": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "requireDeterministicEvidence": { "type": "boolean" }
+              },
+              "additionalProperties": false
             }
           },
           "additionalProperties": false

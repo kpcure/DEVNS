@@ -36,6 +36,11 @@
         "skippedRequiredVerification": true,
         "lowConfidenceForHighRisk": true,
         "outOfScopeFiles": true
+      },
+      "reviewAgent": {
+        "mode": "run_missing",
+        "laneIds": ["code-review"],
+        "requireDeterministicEvidence": false
       }
     }
   },
@@ -51,6 +56,7 @@
       "id": "code-review",
       "type": "agent",
       "agent": "codeReviewer",
+      "command": "bash .devns/adapters/code-review.codex.sh",
       "required": true,
       "blocksCompletion": true
     },

@@ -332,6 +332,19 @@ export async function runAgentLane(
   cwd: string,
   context: Omit<BuiltinLaneContext, "cwd"> = {}
 ): Promise<LaneResult> {
+  if (!context.feature) {
+    return {
+      ...skippedLane(lane),
+      summary: `Agent lane ${lane.id} skipped because no active or selected feature was provided.`,
+      findings: [
+        {
+          severity: "info",
+          message: "Run agent lanes with --feature <id> or while a feature is in_progress."
+        }
+      ]
+    };
+  }
+
   if (!lane.command) {
     return skippedLane(lane);
   }
@@ -354,6 +367,7 @@ export async function runAgentLane(
       maxBuffer: 1024 * 1024 * 10,
       env: {
         ...process.env,
+        DEVNS_STOP_COMMAND: process.env.DEVNS_STOP_COMMAND ?? "true",
         DEVNS_FEATURE_ID: context.feature?.id ?? "",
         DEVNS_REVIEW_PACKET: packetResult?.jsonPath ?? "",
         DEVNS_REVIEW_PROMPT: packetResult?.promptPath ?? "",

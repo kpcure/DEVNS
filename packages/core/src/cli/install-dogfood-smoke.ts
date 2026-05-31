@@ -65,9 +65,16 @@ async function main() {
     const config = JSON.parse(await readFile(path.join(cwd, ".devns", "devns.config.json"), "utf8"));
     assert.equal(config.reviewLanes.some((lane: { id: string }) => lane.id === "test"), false);
     const codexHooks = JSON.parse(await readFile(path.join(cwd, ".codex", "hooks.json"), "utf8"));
+    assert.match(codexHooks.hooks.Stop[0].hooks[0].command, /DEVNS_PROJECT_DIR=/);
+    assert.match(codexHooks.hooks.Stop[0].hooks[0].command, new RegExp(cwd.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
     assert.match(codexHooks.hooks.Stop[0].hooks[0].command, /plugins\/codex\/devns\/scripts\/devns-stop-hook\.sh/);
     const stopHook = await stat(path.join(cwd, "plugins", "codex", "devns", "scripts", "devns-stop-hook.sh"));
     assert.equal(Boolean(stopHook.mode & 0o111), true);
+    const reviewAdapter = await stat(path.join(cwd, ".devns", "adapters", "code-review.codex.sh"));
+    assert.equal(Boolean(reviewAdapter.mode & 0o111), true);
+    const reviewLane = JSON.parse(await readFile(path.join(cwd, ".devns", "lanes", "code-review.json"), "utf8"));
+    assert.equal(reviewLane.type, "agent");
+    assert.equal(reviewLane.command, "bash .devns/adapters/code-review.codex.sh");
 
     const emptyRfc = JSON.parse(await runDevns(repoRoot, cwd, "rfc", "check", "--all", "--json"));
     assert.deepEqual(emptyRfc, { results: [], ready: true });
@@ -75,6 +82,15 @@ async function main() {
     const lanes = JSON.parse(await runDevns(repoRoot, cwd, "lanes", "run", "--json"));
     assert.equal(lanes.blocksCompletion, false);
     assert.ok(lanes.results.some((result: { lane: string }) => result.lane === "security_basic"));
+    assert.ok(
+      lanes.results.some(
+        (result: { lane: string; type: string; status: string; summary: string }) =>
+          result.lane === "code-review" &&
+          result.type === "agent" &&
+          result.status === "skipped" &&
+          /no active or selected feature/.test(result.summary)
+      )
+    );
 
     const validation = JSON.parse(await runDevns(repoRoot, cwd, "validate", "--json"));
     assert.equal(validation.summary.fail, 0);

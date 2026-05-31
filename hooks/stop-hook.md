@@ -8,7 +8,7 @@ Run when the host client is about to stop after an agent turn.
 
 The hook is not just a cleanup script. It is a gate that decides whether the agent may stop, must continue the current task, should commit and move to the next task, or must hand control back to a human.
 
-The hook itself must stay lightweight. It reads persisted DEVNS JSON state and concise evidence; it does not run long tests, browser automation, package installs, or LLM review. Those jobs must run before the final stop attempt and write lane evidence/history for the hook to inspect.
+The hook itself must stay bounded. It reads persisted DEVNS JSON state and concise evidence; it does not run long tests, browser automation, package installs, or arbitrary project commands. When configured, the single Stop Hook orchestrator may run missing read-only Review Agent lanes before making its final decision. Those agent lanes receive a bounded review packet and must return structured lane-result JSON.
 
 ## Steps
 
@@ -16,8 +16,9 @@ The hook itself must stay lightweight. It reads persisted DEVNS JSON state and c
 2. Read the active task from the feature inventory.
 3. Confirm that requirement analysis has been completed when required by policy.
 4. Read existing lane evidence and execution history.
-5. Optionally inspect lightweight git state when policy requires a clean worktree.
-6. Evaluate the result with the hook decision model below.
+5. If configured `hooks.stop.reviewAgent.mode` is `run_missing`, run missing required read-only agent lanes such as `code-review` and persist their evidence/history.
+6. Optionally inspect lightweight git state when policy requires a clean worktree.
+7. Evaluate the result with the hook decision model below.
 
 ## Decision Model
 
@@ -153,7 +154,9 @@ Each lane emits:
 - recommended actions
 - whether it blocks completion
 
-The Stop Hook should aggregate all lane outputs before deciding whether to continue, complete, or stop for human review.
+The Stop Hook should aggregate all lane outputs before deciding whether to continue, complete, or stop for human review. DEVNS uses one host-neutral Stop Hook orchestrator for this decision. Do not split status checking and review-agent checking into two same-event hooks, because host runtimes may run matching hooks independently or in parallel.
+
+When the hook claims the next feature, the continuation reason should include enough context for a fresh worker: feature title, expected outcome, requirements, acceptance criteria, context sources, history path, validation plan, configured lanes, and whether semantic agent review is configured.
 
 ## Guardrails
 

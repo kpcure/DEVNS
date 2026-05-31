@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { laneResultsToEvidence, runReviewLanes } from "../harness/lane-runner";
@@ -44,6 +44,7 @@ async function main() {
           id: "agent-schema-only",
           type: "agent",
           agent: "codeReviewer",
+          command: "node missing-review-agent.mjs",
           required: true,
           blocksCompletion: true
         },
@@ -88,6 +89,21 @@ async function main() {
       changedFiles: ["pass.mjs"],
       agentNotes: "Smoke notes"
     };
+    await mkdir(path.join(cwd, ".devns"), { recursive: true });
+    await writeFile(
+      path.join(cwd, ".devns", "features.json"),
+      JSON.stringify(
+        {
+          project: {
+            name: "Lane smoke",
+            description: "Lane smoke project"
+          },
+          features: [feature]
+        },
+        null,
+        2
+      )
+    );
 
     const summary = await runReviewLanes(config, cwd, {
       feature,
@@ -105,9 +121,10 @@ async function main() {
     assert.equal(summary.results[2]?.status, "fail");
     assert.equal(summary.results[2]?.decision, "warn");
     assert.equal(summary.results[2]?.blocksCompletion, false);
-    assert.equal(summary.results[3]?.status, "skipped");
-    assert.equal(summary.results[3]?.decision, "needs_human_review");
-    assert.equal(summary.results[3]?.blocksCompletion, false);
+    assert.equal(summary.results[3]?.status, "error");
+    assert.equal(summary.results[3]?.decision, "block");
+    assert.equal(summary.results[3]?.blocksCompletion, true);
+    assert.match(summary.results[3]?.summary ?? "", /missing-review-agent/);
     assert.equal(summary.results[4]?.status, "fail");
     assert.match(summary.results[4]?.summary ?? "", /outside declared feature surface/);
     assert.equal(summary.results[5]?.status, "pass");

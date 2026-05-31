@@ -8,7 +8,7 @@ DEVNS 是一个面向长时间 Agent 开发的本地优先 harness。它让 Agen
 - Markdown 用来沉淀项目知识、设计理由、踩坑记录和长期上下文。
 - HTML 看板是人的控制台，用来查看功能点、证据、风险、diff 和 morning review。
 - 每次 Agent 只领取一个已批准 RFC 的功能点，完成实现、验证、记录证据并提交一个 commit。
-- Stop hook 负责在 Agent 自然结束后接管流程：检查当前功能点状态、触发只读审查、决定是否继续领取下一个功能点。
+- 单一 Stop hook 编排器负责在 Agent 自然结束后接管流程：检查当前功能点状态、按配置触发缺失的只读审查、决定是否继续领取下一个功能点。
 - DEVNS 不提供 LLM Provider，也不试图替代 Claude Code、Codex、Cursor 等宿主；它提供可插拔的流程、状态、提示词、hook、review agent 契约和 dashboard。
 
 ## 解决什么问题
@@ -136,7 +136,7 @@ Claude Code、Codex 等宿主负责运行 Agent；DEVNS 负责提供：
 - RFC、需求澄清、实现 handoff、history 写入等 prompt contract。
 - dashboard 和 morning review 的数据结构。
 
-Stop hook 不是 Agent 主动调用的命令，而是宿主在 Agent 自然结束一轮 query 后触发的 hook。DEVNS 的 hook 逻辑会读取结构化状态、检查是否需要 review、是否可以 complete、是否继续领取下一个功能点。
+Stop hook 不是 Agent 主动调用的命令，而是宿主在 Agent 自然结束一轮 query 后触发的 hook。DEVNS 的 hook 逻辑会读取结构化状态、必要时通过一个统一编排器补跑缺失的只读 Review Agent lane、检查是否可以 complete、是否继续领取下一个功能点。不要把状态检查和 review 检查拆成两个同事件 hook；宿主可能并发运行它们，导致返回结果冲突。
 
 ## 本地开发
 

@@ -12,6 +12,21 @@ DEVNS 在运行 `type: "agent"` 的 lane 前会生成 review packet，并通过�
 - `DEVNS_DIFF_BASE`：实现提交或 diff base。
 - `DEVNS_REPO`：仓库根目录。
 
+Codex 宿主下，`devns init --host codex` 会准备：
+
+- `.devns/adapters/code-review.codex.sh`
+- `.devns/lanes/code-review.json`
+
+运行方式是：
+
+```sh
+npm run devns -- lanes run --feature <feature-id> --write --json
+```
+
+这个命令会先生成 review packet/prompt，再调用 adapter。adapter 使用只读 Codex worker 输出 lane-result JSON，并设置 `DEVNS_STOP_COMMAND=true`，避免嵌套 Codex review 过程递归触发项目 Stop Hook。
+
+Stop Hook 也可以在 `hooks.stop.reviewAgent.mode = "run_missing"` 时自动补跑缺失的只读 Review Agent lane。这里仍然只有一个 Stop Hook：它先运行缺失的 `code-review` lane，写入 evidence/history 和 reviewDecision，然后基于更新后的状态统一返回 allow/block。不要把状态检查和评审检查拆成两个同事件 hook，因为宿主可能并发执行它们，导致一个 hook 要继续修、另一个 hook 要认领下一个需求的冲突。
+
 packet 包含 RFC、验收标准、证据质量、已有 evidence、执行历史、项目规则、Git status 和 bounded diff。评审者必须基于这些字段判断，不能凭空补充仓库外事实。
 
 ## 输出

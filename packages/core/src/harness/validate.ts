@@ -121,6 +121,7 @@ async function validateWorkspace(
     config.rfcs ?? defaultConfig.rfcs ?? ".devns/rfcs",
     config.history ?? defaultConfig.history ?? ".devns/history",
     config.review?.outputDir ?? defaultConfig.review?.outputDir ?? ".devns/reviews",
+    ".devns/adapters",
     config.policies ?? defaultConfig.policies ?? ".devns/policies",
     ".devns/skills",
     ".devns/agents",
@@ -339,6 +340,17 @@ async function validateLanes(cwd: string, config: DevnsConfig, inventory: Featur
         lane.agent ? "pass" : "fail",
         lane.agent ? `Agent lane ${lane.id} declares agent ${lane.agent}.` : `Agent lane ${lane.id} is missing agent id.`
       );
+      check(
+        checks,
+        "lane",
+        `lane.agent_command.${lane.id}`,
+        lane.command ? "pass" : "fail",
+        lane.command
+          ? `Agent lane ${lane.id} has command ${lane.command}.`
+          : `Agent lane ${lane.id} is missing a command adapter.`,
+        undefined,
+        "Set command to a read-only adapter such as `bash .devns/adapters/code-review.codex.sh`."
+      );
     }
   }
 
@@ -439,7 +451,7 @@ async function validateHooks(cwd: string, config: DevnsConfig, checks: Validatio
     "hook",
     "hook.long_tasks_boundary",
     "pass",
-    "Long-running work is modeled as lanes/evidence, not as Stop hook work.",
+    "Long-running work is modeled as lanes/evidence; Stop hook review is limited to configured read-only agent lanes.",
     longTaskLanes.map((lane) => `${lane.id}: ${lane.type === "command" ? lane.command : lane.type}`)
   );
 }

@@ -41,9 +41,10 @@ Claude Code can match more than one hook for the same event, including `Stop`. T
 DEVNS therefore models stop behavior as one deterministic command orchestrator with logical phases:
 
 1. Inspect active feature completion gates and persisted lane/review evidence.
-2. Block with a continuation reason when review, verification, commit, or evidence is missing.
-3. Allow stop when the active feature satisfies completion policy.
-4. When no feature is active and policy says `claim_next`, claim the next approved feature and block with the next implementation prompt.
+2. Optionally run configured missing read-only Review Agent lanes and persist provider-neutral lane-result evidence.
+3. Block with a continuation reason when review, verification, commit, or evidence is missing.
+4. Allow stop when the active feature satisfies completion policy.
+5. When no feature is active and policy says `claim_next`, claim the next approved feature and block with the next implementation prompt.
 
 Host-native agent hooks are optional adapters. For example, a Claude `type: "agent"` hook can act as a read-only reviewer, but DEVNS core still consumes provider-neutral lane result JSON rather than depending on Claude, Codex, or any LLM provider.
 
@@ -82,9 +83,9 @@ The actual runner is:
 packages/core/src/cli/claude-stop-hook.ts
 ```
 
-The runner reads the active DEVNS feature inventory, applies the stop gate, and either blocks stopping with a continuation reason or allows Claude Code to stop.
+The runner reads the active DEVNS feature inventory, applies the stop gate, optionally runs configured missing read-only Review Agent lanes, and either blocks stopping with a continuation reason or allows Claude Code to stop.
 
-The runner should stay fast. Long tests, browser automation, or LLM review should run before the final stop attempt and write evidence/history that the stop hook can inspect.
+The runner should stay bounded. Long tests, browser automation, and arbitrary project commands should run before the final stop attempt and write evidence/history that the stop hook can inspect. Configured Review Agent lanes are the exception: they receive a bounded packet, run read-only, set recursion guards, and return structured lane-result JSON.
 
 ## Optional UserPromptSubmit Hook
 

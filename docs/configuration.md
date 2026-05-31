@@ -42,11 +42,18 @@ DEVNS configuration lives in:
     "stop": {
       "mode": "gate",
       "retryBudget": 3,
-      "defaultDecision": "stop_for_human_review"
+      "defaultDecision": "stop_for_human_review",
+      "reviewAgent": {
+        "mode": "run_missing",
+        "laneIds": ["code-review"],
+        "requireDeterministicEvidence": false
+      }
     }
   }
 }
 ```
+
+`reviewAgent.mode = "run_missing"` lets the single Stop Hook orchestrator run configured missing read-only `type: "agent"` lanes before returning its final decision. Set it to `"off"` when review must only happen before the stop attempt.
 
 ## Review Lanes
 

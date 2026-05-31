@@ -46,6 +46,7 @@ function parseArgs(argv: string[]): InitOptions {
 }
 
 async function writeNewFile(filePath: string, contents: string, force: boolean) {
+  await mkdir(path.dirname(filePath), { recursive: true });
   try {
     await writeFile(filePath, contents, { flag: force ? "w" : "wx" });
   } catch (error) {
@@ -109,6 +110,57 @@ async function copyNewDirectory(sourcePath: string, destinationPath: string, for
   }
 }
 
+function shellQuote(value: string) {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+async function writeCodexHooks(cwd: string, force: boolean) {
+  const scriptPath = path.join(cwd, "plugins", "codex", "devns", "scripts", "devns-stop-hook.sh");
+  const hooks = {
+    hooks: {
+      Stop: [
+        {
+          matcher: "",
+          hooks: [
+            {
+              type: "command",
+              command: `DEVNS_PROJECT_DIR=${shellQuote(cwd)} bash ${shellQuote(scriptPath)}`,
+              statusMessage: "DEVNS stop hook"
+            }
+          ]
+        }
+      ]
+    }
+  };
+  return writeNewFile(path.join(cwd, ".codex", "hooks.json"), `${JSON.stringify(hooks, null, 2)}\n`, force);
+}
+
+function reviewAgentAdapterFor(adapters: ReadonlyArray<"codex" | "claude">) {
+  if (adapters.includes("codex")) return "codex";
+  if (adapters.includes("claude")) return "claude";
+  return undefined;
+}
+
+async function writeReviewAgentAdapter(cwd: string, adapter: "codex" | "claude", force: boolean) {
+  const sourcePath = path.join(packageRoot, "templates", "devns", "adapters", `code-review.${adapter}.sh`);
+  const destinationPath = path.join(cwd, ".devns", "adapters", `code-review.${adapter}.sh`);
+  const didCopy = await copyNewFile(sourcePath, destinationPath, force);
+  await chmod(destinationPath, 0o755);
+  return didCopy;
+}
+
+async function writeReviewAgentLane(cwd: string, adapter: "codex" | "claude", force: boolean) {
+  const lane = {
+    id: "code-review",
+    type: "agent",
+    agent: adapter === "codex" ? "codex-review" : "devns-code-reviewer",
+    command: `bash .devns/adapters/code-review.${adapter}.sh`,
+    required: true,
+    blocksCompletion: true
+  };
+  return writeNewFile(path.join(cwd, ".devns", "lanes", "code-review.json"), `${JSON.stringify(lane, null, 2)}\n`, force);
+}
+
 async function readPackageScripts(cwd: string) {
   try {
     const raw = await readFile(path.join(cwd, "package.json"), "utf8");
@@ -164,6 +216,8 @@ export async function main(inputOptions?: InitOptions) {
   const cwd = process.cwd();
   const options = inputOptions ?? parseArgs(process.argv.slice(2));
   const host = options.host ?? "auto";
+  const adapters = hostAdaptersFor(host);
+  const reviewAdapter = reviewAgentAdapterFor(adapters);
   const devnsDir = path.join(cwd, ".devns");
   const scripts = await readPackageScripts(cwd);
 
@@ -172,6 +226,7 @@ export async function main(inputOptions?: InitOptions) {
   await mkdir(path.join(devnsDir, "reviews"), { recursive: true });
   await mkdir(path.join(devnsDir, "skills"), { recursive: true });
   await mkdir(path.join(devnsDir, "agents"), { recursive: true });
+  await mkdir(path.join(devnsDir, "adapters"), { recursive: true });
   await mkdir(path.join(devnsDir, "policies"), { recursive: true });
   await mkdir(path.join(devnsDir, "lanes"), { recursive: true });
   await mkdir(path.join(devnsDir, "sensors"), { recursive: true });
@@ -212,6 +267,11 @@ export async function main(inputOptions?: InitOptions) {
               missingApprovedRfc: true,
               skippedRequiredVerification: true,
               outOfScopeFiles: true
+            },
+            reviewAgent: {
+              mode: "run_missing",
+              laneIds: ["code-review"],
+              requireDeterministicEvidence: false
             }
           }
         },
@@ -333,7 +393,15 @@ export async function main(inputOptions?: InitOptions) {
   const didCopyWorkbench = await copyNewFile(workbenchTemplatePath, workbenchOutputPath, options.force);
   (didCopyWorkbench ? written : skipped).push(path.relative(cwd, workbenchOutputPath));
 
-  for (const adapter of hostAdaptersFor(host)) {
+  if (reviewAdapter) {
+    const didCopyAdapter = await writeReviewAgentAdapter(cwd, reviewAdapter, options.force);
+    (didCopyAdapter ? written : skipped).push(`.devns/adapters/code-review.${reviewAdapter}.sh`);
+
+    const didWriteLane = await writeReviewAgentLane(cwd, reviewAdapter, options.force);
+    (didWriteLane ? written : skipped).push(".devns/lanes/code-review.json");
+  }
+
+  for (const adapter of adapters) {
     if (adapter === "codex") {
       const didCopyPlugin = await copyNewDirectory(
         path.join(packageRoot, "plugins", "codex", "devns"),
@@ -342,11 +410,7 @@ export async function main(inputOptions?: InitOptions) {
       );
       (didCopyPlugin ? written : skipped).push("plugins/codex/devns");
 
-      const didCopyHook = await copyNewFile(
-        path.join(packageRoot, "templates", "codex", "hooks.json"),
-        path.join(cwd, ".codex", "hooks.json"),
-        options.force
-      );
+      const didCopyHook = await writeCodexHooks(cwd, options.force);
       (didCopyHook ? written : skipped).push(".codex/hooks.json");
 
       await chmod(path.join(cwd, "plugins", "codex", "devns", "scripts", "devns-stop-hook.sh"), 0o755);

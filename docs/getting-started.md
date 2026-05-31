@@ -46,7 +46,7 @@ This creates:
   policies/
 ```
 
-By default `init` uses `--host auto`: when it is run inside Codex or Claude Code it also writes the matching local host adapter. Use `--host codex`, `--host claude`, `--host both`, or `--host none` to be explicit. The Codex adapter writes `.codex/hooks.json`, installs `plugins/codex/devns/`, and marks `plugins/codex/devns/scripts/devns-stop-hook.sh` executable.
+By default `init` uses `--host auto`: when it is run inside Codex or Claude Code it also writes the matching local host adapter. Use `--host codex`, `--host claude`, `--host both`, or `--host none` to be explicit. The Codex adapter writes `.codex/hooks.json` with an absolute hook command, installs `plugins/codex/devns/`, marks `plugins/codex/devns/scripts/devns-stop-hook.sh` executable, and prepares `.devns/adapters/code-review.codex.sh` plus `.devns/lanes/code-review.json` for read-only review-agent lanes.
 
 Then use the `devns-init` skill to scan repository context and fill `.devns/candidates.json`.
 
@@ -92,13 +92,23 @@ npx @kpcure/devns run --json
 npx @kpcure/devns dashboard
 ```
 
+If Stop hook behavior is unclear, inspect the local hook trace:
+
+```sh
+npx @kpcure/devns stop-log --tail 20
+```
+
+The trace lives at `.devns/history/stop-hook.jsonl` and records adapter invocation, command selection, core decision mode, selected feature, and block reasons without writing diagnostics to hook stdout.
+
 ## Validate
 
 ```sh
 npx @kpcure/devns validate
 ```
 
-This is an early development command. DEVNS command-line entrypoints are intended as a local runtime surface for hooks, skills, plugins, dashboard actions, and automation. The primary human review experience is the dashboard and generated reports.
+This is a deterministic health check, not an LLM reviewer. It checks workspace shape, schemas, RFC readiness, evidence quality, lane records, hook wiring, and history/report artifacts. For semantic validation, configure a `type: "agent"` review lane or record browser/human/review-agent evidence before completion.
+
+DEVNS command-line entrypoints are intended as a local runtime surface for hooks, skills, plugins, dashboard actions, and automation. The primary human review experience is the dashboard and generated reports.
 
 ## Run The Dashboard
 
@@ -136,6 +146,6 @@ npx @kpcure/devns stop
 
 The Stop hook is triggered by the host when the client is about to stop. Do not use it as the normal command an agent calls to keep working.
 
-Run review/test lanes before the final stop attempt and persist evidence in `.devns/history/` and `.devns/features.json`. The stop command should stay lightweight: it reads persisted state, blocks with a continuation reason when evidence is missing, allows stop when complete, or claims the next approved feature when policy requires continuation.
+Run review/test lanes before the final stop attempt and persist evidence in `.devns/history/` and `.devns/features.json` when possible. The stop command stays bounded: it reads persisted state, may run configured missing read-only Review Agent lanes, blocks with a continuation reason when evidence is missing, allows stop when complete, or claims the next approved feature when policy requires continuation.
 
 DEVNS does not provide an LLM provider. Claude subagents, Codex tasks, CI jobs, local scripts, or humans can act as review workers if they produce the DEVNS lane-result contract.

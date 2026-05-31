@@ -6,4 +6,8 @@ if [[ -z "${DEVNS_REVIEW_PROMPT:-}" || ! -f "$DEVNS_REVIEW_PROMPT" ]]; then
   exit 1
 fi
 
-claude -p --output-format json < "$DEVNS_REVIEW_PROMPT"
+REPO="${DEVNS_REPO:-$PWD}"
+(
+  cd "$REPO"
+  DEVNS_STOP_COMMAND=true claude -p < "$DEVNS_REVIEW_PROMPT"
+)

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { evaluateClaudeStopHook } from "../harness/claude-stop";
+import { safeAppendStopHookTrace } from "../harness/stop-log";
 import type { ClaudeStopHookInput } from "../harness/types";
 
 async function readStdin() {
@@ -12,7 +13,17 @@ async function readStdin() {
 
 async function main() {
   const raw = await readStdin();
-  const input = raw ? (JSON.parse(raw) as ClaudeStopHookInput) : {};
+  let input: ClaudeStopHookInput;
+  try {
+    input = raw ? (JSON.parse(raw) as ClaudeStopHookInput) : {};
+  } catch (error) {
+    await safeAppendStopHookTrace(process.cwd(), {
+      source: "cli",
+      phase: "parse_error",
+      error: error instanceof Error ? error.message : "Unknown JSON parse error"
+    });
+    throw error;
+  }
   const result = await evaluateClaudeStopHook(input);
 
   if (result.decision === "block") {
@@ -23,7 +34,12 @@ async function main() {
   process.exitCode = 0;
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
+  await safeAppendStopHookTrace(process.cwd(), {
+    source: "cli",
+    phase: "error",
+    error: error instanceof Error ? error.message : "Unknown error"
+  });
   process.stdout.write(
     JSON.stringify({
       decision: "block",

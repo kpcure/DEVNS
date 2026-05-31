@@ -28,6 +28,21 @@ Generate the packet with:
 npm run devns:review -- packet --feature <feature-id> --format prompt --write
 ```
 
+In normal automation, `devns lanes run --feature <feature-id> --write --json` does this for `type: "agent"` lanes before invoking the configured adapter. Host init can install a lane like:
+
+```json
+{
+  "id": "code-review",
+  "type": "agent",
+  "agent": "codex-review",
+  "command": "bash .devns/adapters/code-review.codex.sh",
+  "required": true,
+  "blocksCompletion": true
+}
+```
+
+The Codex adapter reads `DEVNS_REVIEW_PROMPT`, runs `codex exec` in read-only mode, captures the final message, and prints one lane-result JSON object to stdout. It sets `DEVNS_STOP_COMMAND=true` for the nested Codex process so the review worker does not recursively trigger the project Stop hook.
+
 This writes `.devns/reviews/packets/<feature-id>.review-packet.json` and, for prompt format, `.devns/reviews/packets/<feature-id>.review-prompt.md`.
 
 Required packet sections:
@@ -65,12 +80,37 @@ DEVNS uses one host-neutral stop command as an orchestrator. It reads persisted 
 
 Provider-specific agent hooks may be installed as optional producers of lane evidence. They should write or return the same lane result shape that command and builtin lanes use.
 
-Long-running review should happen before the final stop attempt:
+Review work can happen in two safe places:
+
+1. Before the final stop attempt, through `devns lanes run --feature <id> --write --json`.
+2. Inside the single Stop Hook orchestrator, only for configured missing read-only agent lanes such as `code-review`.
+
+The second mode is controlled by:
+
+```json
+{
+  "hooks": {
+    "stop": {
+      "reviewAgent": {
+        "mode": "run_missing",
+        "laneIds": ["code-review"],
+        "requireDeterministicEvidence": false
+      }
+    }
+  }
+}
+```
+
+When this mode runs, the Stop Hook first executes the missing Review Agent lane, writes lane evidence and feature history, updates the feature review decision from the structured lane result, and then makes one final block/allow/claim decision from the updated state.
+
+The preferred explicit flow is still:
 
 1. Main agent finishes the feature implementation.
 2. Command lanes run static and dynamic verification.
 3. Optional review-agent lane reads the Git diff plus RFC/history/evidence and writes a lane result.
 4. The Stop hook reads persisted lane evidence and decides whether to block, allow, or claim the next feature.
+
+The Stop hook should not rely on two same-event hooks running serially. If review-agent evidence is missing and hook-run review is disabled, the orchestrator returns a block reason telling the host/main agent to run lanes first; the lane runner then invokes the review worker and persists the result for the next Stop hook decision.
 
 ## Agent Instructions For Plugins
 

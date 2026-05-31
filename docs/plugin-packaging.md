@@ -25,7 +25,7 @@ Important hook detail:
 - `{"decision":"block","reason":"..."}` blocks stop.
 - allow-stop behavior is successful exit with no block decision.
 - Hooks are host lifecycle callbacks. The main agent should not call the Stop hook as its normal in-turn continuation mechanism.
-- Multiple hooks for the same lifecycle event must not be treated as a portable serial pipeline. Persist review evidence before the stop attempt, then let one DEVNS stop command aggregate state.
+- Multiple hooks for the same lifecycle event must not be treated as a portable serial pipeline. Persist review evidence before the stop attempt when possible; if hook-run review is configured, let one DEVNS stop command run the missing read-only agent lane and then aggregate state.
 
 DEVNS plugin path:
 
@@ -75,6 +75,8 @@ DEVNS ships these Codex skill entrypoints:
 The Codex manifest advertises plugin capabilities. The loadable skill files live in `skills/`.
 
 DEVNS keeps hook wiring out of `.codex-plugin/plugin.json`. The manifest points at skills and describes the plugin; `scripts/devns-stop-hook.sh` and `templates/codex/hooks.json` are optional host wiring assets.
+
+`devns init --host codex` should prefer generating a project-local hook command with an absolute adapter path and `DEVNS_PROJECT_DIR`, so host cwd differences do not prevent the adapter from starting. DEVNS hook adapters and the shared stop core append diagnostics to `.devns/history/stop-hook.jsonl`; use `devns stop-log` to inspect recent invocations without polluting hook stdout.
 
 ## Packaging Rule
 

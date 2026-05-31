@@ -2,10 +2,14 @@ import type { ClaudeStopHookInput, Feature, DevnsConfig, StopHookDecision } from
 import { canClaimFeature, describeRfcBlock } from "./rfc";
 import { claimFeature } from "./task-queue";
 import { gitStatus } from "./git";
+import { appendExecutionHistory, buildChangedFileEvidence, laneResultsToChecks } from "./history";
+import { laneResultsToEvidence, runReviewLanes, type LaneDefinition, type LaneResult } from "./lane-runner";
+import { safeAppendStopHookTrace } from "./stop-log";
 import { stopHookWorkerContinuation } from "./worker-handoff";
 import {
   findBlockedReadyFeature,
   findNextReadyFeature,
+  patchFeature,
   readConfig,
   readInventory
 } from "./state";
@@ -42,6 +46,131 @@ function laneCompletionReasons(feature: Feature, config: DevnsConfig) {
     }
   }
   return reasons;
+}
+
+function hasDeterministicEvidence(feature: Feature) {
+  return (feature.evidence ?? []).some((item) => {
+    if (item.verificationType === "command" || item.verificationType === "static_review" || item.verificationType === "browser_smoke") {
+      return true;
+    }
+    return item.type === "verification" || item.actor?.startsWith("lane:");
+  });
+}
+
+function stopReviewAgentLanes(config: DevnsConfig, feature: Feature): LaneDefinition[] {
+  const policy = config.hooks?.stop?.reviewAgent;
+  if (policy?.mode === "off") {
+    return [];
+  }
+
+  if (policy?.requireDeterministicEvidence && !hasDeterministicEvidence(feature)) {
+    return [];
+  }
+
+  const laneIds = new Set(policy?.laneIds ?? []);
+  const hasExplicitLaneIds = laneIds.size > 0;
+  return (config.reviewLanes ?? []).filter((lane) => {
+    if (lane.type !== "agent" || !lane.command) {
+      return false;
+    }
+    if (hasExplicitLaneIds ? !laneIds.has(lane.id) : !(lane.required || lane.blocksCompletion)) {
+      return false;
+    }
+    return !laneEvidenceFor(feature, lane.id).length;
+  });
+}
+
+function reviewDecisionForAgentResults(results: LaneResult[]): Feature["reviewDecision"] {
+  if (results.some((result) => result.decision === "block" || result.decision === "needs_human_review" || result.status === "error")) {
+    return "needs_changes";
+  }
+
+  if (results.some((result) => result.decision === "warn" || result.status === "flaky_suspected")) {
+    return "follow_up";
+  }
+
+  return "approved";
+}
+
+function reviewConfidenceForAgentResults(results: LaneResult[]): NonNullable<Feature["review"]>["confidence"] {
+  if (results.some((result) => result.confidence === "low")) {
+    return "low";
+  }
+
+  if (results.some((result) => result.confidence === "medium")) {
+    return "medium";
+  }
+
+  return "high";
+}
+
+async function runMissingReviewAgents(cwd: string, config: DevnsConfig, feature: Feature) {
+  const lanes = stopReviewAgentLanes(config, feature);
+  if (!lanes.length) {
+    return feature;
+  }
+
+  await safeAppendStopHookTrace(cwd, {
+    source: "core",
+    phase: "review_agent",
+    mode: "run_missing",
+    selectedFeatureId: feature.id,
+    laneIds: lanes.map((lane) => lane.id),
+    reason: "Stop hook is running missing Review Agent lanes before making one unified decision."
+  });
+
+  const summary = await runReviewLanes({ ...config, reviewLanes: lanes }, cwd, { feature });
+  const checks = laneResultsToChecks(summary.results);
+  const risks = summary.results.flatMap((result) =>
+    result.decision === "allow" ? [] : [`${result.lane}: ${result.summary}`]
+  );
+  const errors = summary.results
+    .filter((result) => result.status === "error" || result.status === "fail")
+    .map((result) => ({
+      summary: result.summary,
+      cause: `${result.lane} returned ${result.status}.`
+    }));
+  const history = await appendExecutionHistory(cwd, config, {
+    featureId: feature.id,
+    actor: "hook",
+    summary: summary.blocksCompletion ? "Stop hook Review Agent found blocking results." : "Stop hook Review Agent completed.",
+    decisions: ["Run missing Review Agent lanes inside the single Stop hook orchestrator before returning a unified decision."],
+    alternativesRejected: ["Do not use two concurrent Stop hooks that can return conflicting continuation decisions."],
+    changedFiles: buildChangedFileEvidence(feature),
+    impact: [`Review Agent lanes recorded for ${feature.id}: ${lanes.map((lane) => lane.id).join(", ")}.`],
+    pitfalls: [],
+    errors,
+    fixes: [],
+    lessons: ["Review Agent lanes must return provider-neutral lane-result JSON so the Stop hook can make a deterministic final decision."],
+    risks,
+    dynamicChecks: checks.dynamicChecks,
+    staticChecks: checks.staticChecks,
+    laneResults: summary.results
+  });
+  const evidence = laneResultsToEvidence(summary.results);
+  const reviewDecision = reviewDecisionForAgentResults(summary.results);
+  const result = await patchFeature(cwd, config, feature.id, {
+    evidence: [...(feature.evidence ?? []), ...evidence],
+    history: history.summary,
+    reviewDecision,
+    review: {
+      ...(feature.review ?? {}),
+      confidence: reviewConfidenceForAgentResults(summary.results),
+      summary: summary.blocksCompletion ? summary.continuationReason ?? "Review Agent blocked completion." : "Review Agent allowed completion.",
+      risks
+    }
+  });
+
+  await safeAppendStopHookTrace(cwd, {
+    source: "core",
+    phase: "review_agent",
+    mode: summary.blocksCompletion ? "review_agent_block" : "review_agent_allow",
+    selectedFeatureId: feature.id,
+    laneIds: lanes.map((lane) => lane.id),
+    reason: summary.continuationReason ?? "Review Agent lanes did not block completion."
+  });
+
+  return result.feature;
 }
 
 async function cleanWorktreeReasons(cwd: string, feature: Feature, config: DevnsConfig) {
@@ -84,8 +213,12 @@ async function completionReasons(cwd: string, feature: Feature, config: DevnsCon
     reasons.push(...laneCompletionReasons(feature, config));
   }
 
-  if (policy.requireReviewDecision !== false && (!feature.reviewDecision || feature.reviewDecision === "pending")) {
-    reasons.push("Review decision is still pending.");
+  if (policy.requireReviewDecision !== false) {
+    if (!feature.reviewDecision || feature.reviewDecision === "pending") {
+      reasons.push("Review decision is still pending.");
+    } else if (feature.reviewDecision === "needs_changes") {
+      reasons.push("Review decision requires changes before completion.");
+    }
   }
 
   if (policy.requireCommit && !feature.commit) {
@@ -110,44 +243,82 @@ function activeContinuationReason(feature: Feature, reasons: string[]) {
 export async function evaluateClaudeStopHook(input: ClaudeStopHookInput): Promise<StopHookDecision> {
   const cwd = input.cwd || process.cwd();
 
+  async function finish(
+    mode: string,
+    result: StopHookDecision,
+    details: Partial<Parameters<typeof safeAppendStopHookTrace>[1]> = {}
+  ) {
+    await safeAppendStopHookTrace(cwd, {
+      source: "core",
+      phase: "decision",
+      sessionId: input.session_id,
+      hookEventName: input.hook_event_name,
+      stopHookActive: input.stop_hook_active,
+      decision: result.decision,
+      mode,
+      reason: result.reason,
+      ...details
+    });
+    return result;
+  }
+
   if (input.stop_hook_active) {
-    return {
+    return finish("recursive_allow", {
       decision: "allow",
       reason: "Stop hook is already active; allowing stop to avoid recursive blocking."
-    };
+    });
   }
 
   const config = await readConfig(cwd);
   const inventory = await readInventory(cwd, config);
   const activeFeatures = inventory.features.filter((feature) => feature.status === "in_progress");
+  const readyFeatures = inventory.features.filter((feature) => feature.status === "ready");
+  const traceState = {
+    featureCount: inventory.features.length,
+    activeFeatureIds: activeFeatures.map((feature) => feature.id),
+    readyFeatureIds: readyFeatures.map((feature) => feature.id)
+  };
 
   if (activeFeatures.length > 1) {
-    return {
-      decision: "block",
-      reason: [
-        "DEVNS invalid queue state: multiple features are in_progress.",
-        `Active features: ${activeFeatures.map((feature) => feature.id).join(", ")}.`,
-        "Resolve to exactly one active feature before continuing; DEVNS 1.0 is single-feature serial by default."
-      ].join(" ")
-    };
+    return finish(
+      "invalid_multiple_active",
+      {
+        decision: "block",
+        reason: [
+          "DEVNS invalid queue state: multiple features are in_progress.",
+          `Active features: ${activeFeatures.map((feature) => feature.id).join(", ")}.`,
+          "Resolve to exactly one active feature before continuing; DEVNS 1.0 is single-feature serial by default."
+        ].join(" ")
+      },
+      traceState
+    );
   }
 
   const activeFeature = activeFeatures[0];
 
   if (activeFeature) {
-    const reasons = await completionReasons(cwd, activeFeature, config);
+    const reviewedFeature = await runMissingReviewAgents(cwd, config, activeFeature);
+    const reasons = await completionReasons(cwd, reviewedFeature, config);
 
     if (reasons.length) {
-      return {
-        decision: "block",
-        reason: activeContinuationReason(activeFeature, reasons)
-      };
+      return finish(
+        "active_block",
+        {
+          decision: "block",
+          reason: activeContinuationReason(reviewedFeature, reasons)
+        },
+        { ...traceState, selectedFeatureId: reviewedFeature.id, reasons }
+      );
     }
 
-    return {
-      decision: "allow",
-      reason: `Active feature ${activeFeature.id} satisfies completion policy.`
-    };
+    return finish(
+      "active_allow_complete",
+      {
+        decision: "allow",
+        reason: `Active feature ${reviewedFeature.id} satisfies completion policy.`
+      },
+      { ...traceState, selectedFeatureId: reviewedFeature.id }
+    );
   }
 
   const nextFeature = findNextReadyFeature(inventory.features);
@@ -161,29 +332,45 @@ export async function evaluateClaudeStopHook(input: ClaudeStopHookInput): Promis
       ].join("\n");
 
       if (config.completionPolicy?.whenNoClaimableFeature === "stop_for_human_review") {
-        return {
-          decision: "block",
-          reason
-        };
+        return finish(
+          "blocked_ready_human_review",
+          {
+            decision: "block",
+            reason
+          },
+          { ...traceState, selectedFeatureId: blockedReady.feature.id, blockedReadyFeatureIds: [blockedReady.feature.id] }
+        );
       }
 
-      return {
-        decision: "allow",
-        reason
-      };
+      return finish(
+        "blocked_ready_allow",
+        {
+          decision: "allow",
+          reason
+        },
+        { ...traceState, selectedFeatureId: blockedReady.feature.id, blockedReadyFeatureIds: [blockedReady.feature.id] }
+      );
     }
 
-    return {
-      decision: "allow",
-      reason: "No in-progress or ready DEVNS feature remains."
-    };
+    return finish(
+      "empty_allow",
+      {
+        decision: "allow",
+        reason: "No in-progress or ready DEVNS feature remains."
+      },
+      traceState
+    );
   }
 
   if (config.completionPolicy?.whenNoActiveFeature === "allow_stop") {
-    return {
-      decision: "allow",
-      reason: `Next feature ${nextFeature.id} is claimable, but completion policy allows stop when no feature is active.`
-    };
+    return finish(
+      "claimable_allow_stop",
+      {
+        decision: "allow",
+        reason: `Next feature ${nextFeature.id} is claimable, but completion policy allows stop when no feature is active.`
+      },
+      { ...traceState, selectedFeatureId: nextFeature.id }
+    );
   }
 
   const result = await claimFeature(cwd, config, nextFeature.id, {
@@ -192,14 +379,22 @@ export async function evaluateClaudeStopHook(input: ClaudeStopHookInput): Promis
   });
 
   if (!result) {
-    return {
-      decision: "allow",
-      reason: "No claimable feature remains."
-    };
+    return finish(
+      "claim_race_allow",
+      {
+        decision: "allow",
+        reason: "No claimable feature remains."
+      },
+      traceState
+    );
   }
 
-  return {
-    decision: "block",
-    reason: stopHookWorkerContinuation(config, result.feature, cwd)
-  };
+  return finish(
+    "claim_next_block",
+    {
+      decision: "block",
+      reason: stopHookWorkerContinuation(config, result.feature, cwd)
+    },
+    { ...traceState, selectedFeatureId: result.feature.id }
+  );
 }

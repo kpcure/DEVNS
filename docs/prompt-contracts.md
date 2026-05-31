@@ -4,7 +4,7 @@ These contracts are the prompt-level part of DEVNS. Commands and JSON schemas ma
 
 ## Stop Hook Continuation
 
-The Stop hook is a lifecycle gate, not a worker. It should read persisted state and return one concise instruction packet.
+The Stop hook is a lifecycle gate, not the implementation worker. It should read persisted state and return one concise instruction packet. It may run configured missing read-only Review Agent lanes, but those lanes must receive a bounded packet and return lane-result JSON instead of editing files or continuing implementation.
 
 The continuation packet should include:
 
@@ -15,7 +15,7 @@ The continuation packet should include:
 - for claim-next, a worker handoff that tells the host to start a Sub Agent, isolated worker, or fresh implementation context before editing
 - required evidence to write before the next stop attempt
 
-It must not ask the agent to run broad discovery, long tests, browser checks, package installs, or LLM review inside the hook. Those are lanes that must finish before the stop attempt.
+It must not ask the agent to run broad discovery, long tests, browser checks, package installs, or arbitrary project commands inside the hook. Those are lanes that should finish before the stop attempt. Review Agent work is allowed only through configured `type: "agent"` lanes with a read-only adapter and structured output.
 
 ## Feature Worker Handoff
 

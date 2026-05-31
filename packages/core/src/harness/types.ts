@@ -289,6 +289,11 @@ export type DevnsConfig = {
       retryBudget?: number;
       defaultDecision?: "stop_for_human_review";
       blockOn?: Record<string, boolean>;
+      reviewAgent?: {
+        mode?: "off" | "run_missing";
+        laneIds?: string[];
+        requireDeterministicEvidence?: boolean;
+      };
     };
   };
   agents?: Record<string, unknown>;
