@@ -112,7 +112,7 @@ async function main() {
       [
         `${feature.id} still needs human or read-only review evidence before approved completion.`,
         evidenceQuality.summary,
-        "Run `npx devns review packet --feature <id> --format prompt --write`, record reviewer/human evidence, or pass --force for an explicit override."
+        "Run `npx @kpcure/devns review packet --feature <id> --format prompt --write`, record reviewer/human evidence, or pass --force for an explicit override."
       ].join(" ")
     );
   }
@@ -154,7 +154,7 @@ async function main() {
     ],
     errors: [],
     fixes: [],
-    lessons: ["Use `npx devns complete` instead of hand-editing feature completion fields."],
+    lessons: ["Use `npx @kpcure/devns complete` instead of hand-editing feature completion fields."],
     risks: options.force ? [`Completion was forced: ${options.reason}`] : [],
     dynamicChecks: [],
     staticChecks: []

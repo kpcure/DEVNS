@@ -11,13 +11,13 @@ Create the `.devns/` workspace if needed, collect project background, and discov
 1. Start by checking the current mode:
 
 ```sh
-npx devns doctor --json
+npx @kpcure/devns doctor --json
 ```
 
 1. If `.devns/devns.config.json` is missing, run:
 
 ```sh
-npx devns init --project-name "<project name>" --project-description "<project background>"
+npx @kpcure/devns init --project-name "<project name>" --project-description "<project background>"
 ```
 
 1. If the user has not provided enough background, update `.devns/project.md` with known context and ask for the smallest missing input needed to continue.
@@ -32,7 +32,7 @@ npx devns init --project-name "<project name>" --project-description "<project b
 5. Use the deterministic discovery command when it fits the repository:
 
 ```sh
-npx devns discover --json
+npx @kpcure/devns discover --json
 ```
 
 6. Write or propose updates to `.devns/candidates.json`.

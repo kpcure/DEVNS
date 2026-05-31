@@ -407,7 +407,7 @@ async function validateHooks(cwd: string, config: DevnsConfig, checks: Validatio
         ? "DEVNS package entrypoint is present for hook adapters."
         : "No DEVNS stop entrypoint was found.",
     undefined,
-    "Install DEVNS so hook adapters can call `npx devns stop`, or expose a project-local stop script."
+    "Install DEVNS so hook adapters can call `npx @kpcure/devns stop`, or expose a project-local stop script."
   );
 
   const codexHook = path.join(cwd, ".codex/hooks.json");
@@ -487,7 +487,7 @@ async function validateKnowledge(cwd: string, config: DevnsConfig, inventory: Fe
     latestReview ? "pass" : "warn",
     latestReview ? `Latest morning review report ${latestReview.date} is readable.` : "No latest morning review report found.",
     latestReview ? [`${latestReview.packets.length} packet(s)`] : undefined,
-    "Run `npx devns review generate`."
+    "Run `npx @kpcure/devns review generate`."
   );
 }
 
@@ -519,7 +519,7 @@ export async function runHarnessValidation(cwd = process.cwd(), options: Harness
         hasConfig ? "Config exists." : "Missing .devns/devns.config.json.",
         hasFeatures ? "Feature inventory exists." : "Missing .devns/features.json."
       ],
-      "Run `npx devns init --project-name <name> --project-description <goal>`."
+      "Run `npx @kpcure/devns init --project-name <name> --project-description <goal>`."
     );
     const result = summarize(checks, strict);
     return {

@@ -58,7 +58,7 @@ Questions must be recommendation-first and bounded. Ask at most five, each with 
 2. If no RFC file exists, create the deterministic scaffold:
 
 ```sh
-npx devns rfc scaffold --id <candidate-or-feature-id>
+npx @kpcure/devns rfc scaffold --id <candidate-or-feature-id>
 ```
 
 1. Read `AGENTS.md`, project rules, `.devns/project.md`, `.devns/index.md`, and the configured feature/candidate inventory.
@@ -73,14 +73,14 @@ npx devns rfc scaffold --id <candidate-or-feature-id>
    To generate bounded recommended-option questions from the current RFC state, run:
 
 ```sh
-npx devns rfc clarify --id <candidate-or-feature-id> --json
+npx @kpcure/devns rfc clarify --id <candidate-or-feature-id> --json
 ```
 
 9. Update the RFC object with `status: "needs_human_review"` unless blocking unknowns make it `blocked`.
 10. If the RFC is already attached to a feature, check gate readiness:
 
 ```sh
-npx devns rfc check --id <feature-id>
+npx @kpcure/devns rfc check --id <feature-id>
 ```
 
 ## Readiness Rule

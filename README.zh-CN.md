@@ -26,11 +26,10 @@ DEVNS 重点解决这些问题：
 
 ## 首次使用
 
-当前可以从 GitHub 安装到目标项目。注意：npm 上未加 scope 的 `devns` 名称属于另一个项目，不要在未安装本项目时直接执行一次性 `npx devns`。
+当前可以直接使用 npm scoped package。注意：npm 上未加 scope 的 `devns` 名称属于另一个项目。
 
 ```sh
-npm install --save-dev github:kpcure/DEVNS
-npx devns doctor
+npx @kpcure/devns doctor
 ```
 
 在本仓库本地开发时，也可以使用：
@@ -42,7 +41,7 @@ npm run devns -- doctor
 如果目标项目还没有 DEVNS 工作区，先初始化：
 
 ```sh
-npx devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
+npx @kpcure/devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
 ```
 
 然后让 Agent 使用 `devns-init` skill 发现候选功能点。候选功能点还不能直接开发，必须先通过 `devns-rfc` skill 做需求澄清，并由人批准 RFC 后才会进入可领取队列。

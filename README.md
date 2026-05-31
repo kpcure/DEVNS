@@ -30,15 +30,14 @@ DEVNS turns that into a local workflow:
 
 ## Quick Start
 
-Install from GitHub today. The unscoped `devns` name on npm belongs to another project, so do not use one-shot `npx devns` before installing DEVNS locally.
+Install from npm with the scoped package name. The unscoped `devns` name on npm belongs to another project.
 
 ```sh
-npm install --save-dev github:kpcure/DEVNS
-npx devns doctor
-npx devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
-npx devns discover --json
-npx devns run --json
-npx devns dashboard
+npx @kpcure/devns doctor
+npx @kpcure/devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
+npx @kpcure/devns discover --json
+npx @kpcure/devns run --json
+npx @kpcure/devns dashboard
 ```
 
 When developing this repository locally:
@@ -87,8 +86,7 @@ DEVNS therefore provides a stable harness core with editable edges. Use the defa
 After installing DEVNS in a target project, start with the doctor:
 
 ```sh
-npm install --save-dev github:kpcure/DEVNS
-npx devns doctor
+npx @kpcure/devns doctor
 ```
 
 When developing this repository locally, the same entrypoint is available through npm:
@@ -102,7 +100,7 @@ The doctor reports the current DEVNS mode and the next action. It tells you whet
 For a new project, initialize the DEVNS workspace first:
 
 ```sh
-npx devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
+npx @kpcure/devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
 ```
 
 Then use the `devns-init` skill to discover candidate features. Candidates are not executable work yet. A candidate must go through the `devns-rfc` skill and receive human approval before it can become a ready feature.
@@ -110,13 +108,13 @@ Then use the `devns-init` skill to discover candidate features. Candidates are n
 For an existing DEVNS workspace, ask the agent to use the `devns-run` skill or run:
 
 ```sh
-npx devns run --json
+npx @kpcure/devns run --json
 ```
 
 Humans can open the dashboard with:
 
 ```sh
-npx devns dashboard
+npx @kpcure/devns dashboard
 ```
 
 ## Local Runtime, Not A CLI-First Product
@@ -125,7 +123,7 @@ DEVNS exposes one user-facing command, `devns`, but the CLI is not the primary p
 
 The command is the local runtime surface used by hooks, skills, plugins, the dashboard, local automation, and CI. It gives those integrations one stable way to call the harness core instead of depending on internal TypeScript files or reimplementing behavior per host.
 
-This matters because Claude Code, Codex, Cursor, and future hosts expose different plugin and hook models. The command surface is the shared base where DEVNS can control default prompts, skills, hooks, lanes, policies, state transitions, and evidence writing while still letting projects override those pieces through configuration. Internal `devns:*` and `harness:*` scripts are development and adapter details; general users should start from `npx devns ...` or the host skill.
+This matters because Claude Code, Codex, Cursor, and future hosts expose different plugin and hook models. The command surface is the shared base where DEVNS can control default prompts, skills, hooks, lanes, policies, state transitions, and evidence writing while still letting projects override those pieces through configuration. Internal `devns:*` and `harness:*` scripts are development and adapter details; general users should start from `npx @kpcure/devns ...` or the host skill.
 
 Humans should usually interact with the HTML dashboard and reports. Agents should usually interact through `AGENTS.md`, skills, hooks, and structured JSON. The command surface is the portable substrate underneath those interfaces.
 
@@ -180,7 +178,7 @@ Initialize a local DEVNS workspace:
 
 ```sh
 npm install
-npx devns doctor
+npx @kpcure/devns doctor
 npm run devns -- doctor
 npm run devns -- init --project-name "Example Project" --project-description "Describe the migration or feature goal."
 npm run devns -- doctor

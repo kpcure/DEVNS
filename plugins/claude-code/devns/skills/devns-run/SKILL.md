@@ -10,7 +10,7 @@ Use this skill when working in a repository with DEVNS configured.
 If you are unsure what to do, check the workspace first:
 
 ```sh
-npx devns doctor --json
+npx @kpcure/devns doctor --json
 ```
 
 ## Workflow
@@ -18,7 +18,7 @@ npx devns doctor --json
 Start by running the stable command surface:
 
 ```sh
-npx devns run --json
+npx @kpcure/devns run --json
 ```
 
 Then follow the returned mode:

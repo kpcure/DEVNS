@@ -13,7 +13,7 @@ Describe the bug and what you expected instead.
 ## Reproduction
 
 ```sh
-npx devns doctor --json
+npx @kpcure/devns doctor --json
 ```
 
 Add the smallest command sequence or fixture that reproduces the issue.

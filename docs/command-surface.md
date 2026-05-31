@@ -50,21 +50,21 @@ This keeps host adapters thin and avoids duplicating harness behavior in each pl
 The user-facing entrypoint is:
 
 ```sh
-npx devns <command>
+npx @kpcure/devns <command>
 ```
 
-Install DEVNS locally first with `npm install --save-dev github:kpcure/DEVNS`. The unscoped `devns` package name on npm belongs to another project, so avoid one-shot `npx devns` before the local install.
+Use the scoped npm package `@kpcure/devns`. The unscoped `devns` package name on npm belongs to another project.
 
 The command argument is intentionally small and prompt-friendly: `doctor`, `init`, `run`, `dashboard`, `validate`, `discover`, `rfc`, `queue`, `lanes`, `review`, `complete`, or `stop`. Skills and hooks may call more specific internal scripts, but humans and general agents should start with this single entrypoint. In this source checkout, `npm run devns -- <command>` is the local development equivalent.
 
 The current repository also exposes thin npm-backed internal development commands:
 
 ```sh
-npx devns doctor [--json]
-npx devns init --project-name "Project" --project-description "Goal"
-npx devns run [--json] [--no-claim]
-npx devns dashboard
-npx devns validate [--json] [--strict] [--fix]
+npx @kpcure/devns doctor [--json]
+npx @kpcure/devns init --project-name "Project" --project-description "Goal"
+npx @kpcure/devns run [--json] [--no-claim]
+npx @kpcure/devns dashboard
+npx @kpcure/devns validate [--json] [--strict] [--fix]
 
 npm run devns:init
 npm run devns:doctor [-- --json]

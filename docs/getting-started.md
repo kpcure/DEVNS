@@ -11,11 +11,10 @@ npm install
 npm run build
 ```
 
-For a target project, install DEVNS from GitHub first. The unscoped `devns` name on npm belongs to another package, so `npx devns` is safe only after this local install.
+Use the scoped npm package. The unscoped `devns` name on npm belongs to another package.
 
 ```sh
-npm install --save-dev github:kpcure/DEVNS
-npx devns doctor
+npx @kpcure/devns doctor
 ```
 
 ## Initialize A Project
@@ -23,13 +22,13 @@ npx devns doctor
 Start with the doctor. It reports the current mode and the next action:
 
 ```sh
-npx devns doctor
+npx @kpcure/devns doctor
 ```
 
 In a target repository, create the DEVNS state directory:
 
 ```sh
-npx devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
+npx @kpcure/devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
 ```
 
 This creates:
@@ -62,39 +61,39 @@ npm install
 1. Ask DEVNS what state the repository is in:
 
 ```sh
-npx devns doctor
+npx @kpcure/devns doctor
 ```
 
 1. If the workspace is missing, initialize it:
 
 ```sh
-npx devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
+npx @kpcure/devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
 ```
 
 1. Ask an agent to use the `devns-init` skill to discover candidate features. Do not implement from discovery output.
    The deterministic discovery command is:
 
 ```sh
-npx devns discover --json
+npx @kpcure/devns discover --json
 ```
 
 2. Ask an agent to use the `devns-rfc` skill for selected candidates. Only approved RFCs can become ready features.
 3. Start or inspect the implementation loop:
 
 ```sh
-npx devns run --json
+npx @kpcure/devns run --json
 ```
 
 1. Open the dashboard when you want the human view:
 
 ```sh
-npx devns dashboard
+npx @kpcure/devns dashboard
 ```
 
 ## Validate
 
 ```sh
-npx devns validate
+npx @kpcure/devns validate
 ```
 
 This is an early development command. DEVNS command-line entrypoints are intended as a local runtime surface for hooks, skills, plugins, dashboard actions, and automation. The primary human review experience is the dashboard and generated reports.
@@ -104,7 +103,7 @@ This is an early development command. DEVNS command-line entrypoints are intende
 For this repository's local dashboard:
 
 ```sh
-npx devns dashboard
+npx @kpcure/devns dashboard
 ```
 
 Open `http://127.0.0.1:5173/`.
@@ -130,7 +129,7 @@ cp -R templates/claude-code/.claude .claude
 The Stop hook calls:
 
 ```sh
-npx devns stop
+npx @kpcure/devns stop
 ```
 
 The Stop hook is triggered by the host when the client is about to stop. Do not use it as the normal command an agent calls to keep working.

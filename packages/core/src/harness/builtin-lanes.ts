@@ -294,7 +294,7 @@ export async function runEvidenceQualityGate(lane: LaneDefinition, context: Buil
       ],
       {
         blocksCompletion: lane.blocksCompletion ?? true,
-        recommendedActions: ["Run `npx devns lanes run --feature <id> --write` after verification evidence exists."]
+        recommendedActions: ["Run `npx @kpcure/devns lanes run --feature <id> --write` after verification evidence exists."]
       }
     );
   }

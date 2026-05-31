@@ -72,7 +72,7 @@ async function main() {
   if (!hasConfig || !hasFeatures) {
     const payload = {
       mode: "bootstrap_required" as const,
-      nextAction: "Run npx devns init, then use the devns-init skill to discover candidate features.",
+      nextAction: "Run npx @kpcure/devns init, then use the devns-init skill to discover candidate features.",
       checks
     };
     options.output === "json" ? writeJson(payload) : writeText(payload);
@@ -101,7 +101,7 @@ async function main() {
     nextAction = `Continue ${active.id}. Read the approved RFC, finish verification, update evidence/history, and commit exactly this feature.`;
   } else if (next) {
     mode = "claim_next";
-    nextAction = `Claim ${next.id} with npx devns run --json, or inspect it first with npx devns queue next --json.`;
+    nextAction = `Claim ${next.id} with npx @kpcure/devns run --json, or inspect it first with npx @kpcure/devns queue next --json.`;
   } else if (blocked) {
     mode = "blocked_ready";
     nextAction = `Clarify or approve the RFC for ${blocked.feature.id} before implementation.`;
