@@ -1,14 +1,17 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const require = createRequire(import.meta.url);
+const tsxLoader = require.resolve("tsx/esm");
 const child = spawn(
   process.execPath,
   [
     "--import",
-    path.join(packageRoot, "node_modules/tsx/dist/esm/index.mjs"),
+    tsxLoader,
     path.join(packageRoot, "packages/core/src/cli/devns.ts"),
     ...process.argv.slice(2)
   ],

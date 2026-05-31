@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -13,7 +14,10 @@ type CommandTarget =
     };
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
-const tsxLoader = path.join(packageRoot, "node_modules/tsx/dist/esm/index.mjs");
+const require = createRequire(import.meta.url);
+const tsxLoader = require.resolve("tsx/esm");
+const vitePackageRoot = path.dirname(require.resolve("vite/package.json"));
+const viteBin = path.join(vitePackageRoot, "bin/vite.js");
 
 const commands: Record<string, CommandTarget> = {
   init: { type: "tsx", file: "packages/core/src/cli/init.ts" },
@@ -75,7 +79,7 @@ async function main() {
 
   const child =
     target.type === "dashboard"
-      ? spawn(process.execPath, [path.join(packageRoot, "node_modules/vite/bin/vite.js"), "--host", "127.0.0.1"], {
+      ? spawn(process.execPath, [viteBin, "--host", "127.0.0.1"], {
           stdio: "inherit",
           cwd: packageRoot,
           env: {
