@@ -126,7 +126,7 @@ export async function evaluateClaudeStopHook(input: ClaudeStopHookInput): Promis
       reason: [
         "DEVNS invalid queue state: multiple features are in_progress.",
         `Active features: ${activeFeatures.map((feature) => feature.id).join(", ")}.`,
-        "Resolve to exactly one active feature before continuing; DEVNS 0.2 is single-feature serial by default."
+        "Resolve to exactly one active feature before continuing; DEVNS 1.0 is single-feature serial by default."
       ].join(" ")
     };
   }

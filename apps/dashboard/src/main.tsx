@@ -1312,7 +1312,7 @@ function App() {
       <main className="main">
         <header className="hero">
           <div>
-            <p className="eyebrow">Dogfood dashboard</p>
+            <p className="eyebrow">DEVNS 1.0 review dashboard</p>
             <h1>{data.project.name}</h1>
             <p>{data.project.description}</p>
             {loadError && <p className="load-error">{loadError}</p>}

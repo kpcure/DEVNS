@@ -1,6 +1,6 @@
 {
   "name": "devns",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "Local-first harness for long-running agent work with JSON state, RFC gates, verification lanes, and human review dashboards.",
   "private": false,
   "type": "module",
