@@ -1,5 +1,7 @@
 # DEVNS
 
+[中文说明](README.zh-CN.md)
+
 DEVNS is an extension-first harness for long-running agent work where agents keep shipping small, verified units of work while humans review the outcome through an HTML control plane.
 
 The core idea is simple:
