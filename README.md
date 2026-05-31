@@ -199,7 +199,7 @@ Build verification:
 npm run build
 ```
 
-Claude Code Stop hook setup:
+Claude Code Stop hook setup uses a native `type: "agent"` Stop hook prompt:
 
 ```sh
 cp -R templates/claude-code/.claude .claude

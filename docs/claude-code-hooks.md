@@ -6,7 +6,7 @@ DEVNS's first concrete integration target is Claude Code's hook system.
 
 Claude Code hooks are configured in `.claude/settings.json`.
 
-This section is based on the Claude Code hooks and subagents documentation. The important product boundary for DEVNS is that hooks are host lifecycle callbacks, while subagents are provider-specific workers. DEVNS core should consume persisted JSON evidence from those workers rather than depending on a specific provider runtime.
+This section is based on the Claude Code hooks and subagents documentation at `https://code.claude.com/docs/en/hooks`. The important product boundary for DEVNS is that hooks are host lifecycle callbacks, while subagents are provider-specific workers. DEVNS core should consume persisted JSON evidence from those workers rather than depending on a specific provider runtime.
 
 Most hook events are configured as matcher groups:
 
@@ -33,12 +33,21 @@ Events such as `UserPromptSubmit` and `Stop` do not need matchers. `Stop` is the
 - it does not use a matcher
 - it runs when Claude Code is about to stop
 - Claude Code passes input JSON on stdin
-- the hook can block stopping by printing JSON with `decision: "block"`
 - the hook must handle `stop_hook_active` to avoid recursive blocking
+
+Claude Code supports command hooks and experimental agent hooks:
+
+- `type: "command"` runs a shell command; it can block by printing JSON with `decision: "block"`.
+- `type: "agent"` spawns a Claude subagent from a `prompt`; it can block by returning JSON with `ok: false` and `reason`.
 
 Claude Code can match more than one hook for the same event, including `Stop`. Treat those hooks as independent checks, not as a same-event pipeline. A DEVNS design must not rely on one `Stop` hook producing a file or decision that a second `Stop` hook reads immediately in the same stop event.
 
-DEVNS therefore models stop behavior as one deterministic command orchestrator with logical phases:
+DEVNS therefore models stop behavior as one logical orchestrator with host-specific implementations:
+
+- Claude Code uses a `type: "agent"` Stop hook whose prompt inspects DEVNS state, runs/ingests missing code review evidence, and then returns Claude's `ok` schema.
+- Codex uses a command adapter because Codex hook wiring is script-based in DEVNS today.
+
+The logical phases are:
 
 1. Inspect active feature completion gates and persisted lane/review evidence.
 2. Optionally run configured missing read-only Review Agent lanes and persist provider-neutral lane-result evidence.
@@ -46,13 +55,13 @@ DEVNS therefore models stop behavior as one deterministic command orchestrator w
 4. Allow stop when the active feature satisfies completion policy.
 5. When no feature is active and policy says `claim_next`, claim the next approved feature and block with the next implementation prompt.
 
-Host-native agent hooks are optional adapters. For example, a Claude `type: "agent"` hook can act as a read-only reviewer, but DEVNS core still consumes provider-neutral lane result JSON rather than depending on Claude, Codex, or any LLM provider.
+The Claude agent hook should not call another LLM reviewer when it is already acting as the reviewer. It should generate a review packet, perform the review in that hook agent, ingest one `lane:code-review` result, and then run the deterministic final DEVNS stop decision with `DEVNS_STOP_AGENT_HOOK=claude`.
 
 ## Stop Hook Output
 
-To allow stop, exit successfully and print nothing.
+For a command hook, allow stop by exiting successfully and printing nothing.
 
-To block stop:
+For a command hook, block stop with:
 
 ```json
 {
@@ -63,6 +72,18 @@ To block stop:
 
 The reason is shown back to Claude and becomes the continuation instruction.
 
+For an agent hook, allow stop with:
+
+```json
+{ "ok": true }
+```
+
+For an agent hook, block stop with:
+
+```json
+{ "ok": false, "reason": "Continue feature CAND-003. Verification evidence is missing." }
+```
+
 ## DEVNS Template
 
 Use:
@@ -71,21 +92,24 @@ Use:
 templates/claude-code/.claude/settings.json
 ```
 
-It wires Claude Code's `Stop` event to:
+It wires Claude Code's `Stop` event to a `type: "agent"` hook with this shape:
 
-```sh
-npm --prefix . run harness:stop
+```json
+{
+  "type": "agent",
+  "prompt": "You are the single DEVNS Stop Review Agent hook..."
+}
 ```
 
-The actual runner is:
+The prompt tells the hook agent to read:
 
 ```text
-packages/core/src/cli/claude-stop-hook.ts
+plugins/claude-code/devns/prompts/stop-review-agent-hook.md
 ```
 
-The runner reads the active DEVNS feature inventory, applies the stop gate, optionally runs configured missing read-only Review Agent lanes, and either blocks stopping with a continuation reason or allows Claude Code to stop.
+That prompt is the Claude-native orchestration contract: inspect active feature state, review/ingest missing `code-review` evidence, run the final DEVNS stop decision, and translate it to the agent hook `ok` schema.
 
-The runner should stay bounded. Long tests, browser automation, and arbitrary project commands should run before the final stop attempt and write evidence/history that the stop hook can inspect. Configured Review Agent lanes are the exception: they receive a bounded packet, run read-only, set recursion guards, and return structured lane-result JSON.
+The hook should stay bounded. Long tests, browser automation, and arbitrary project commands should run before the final stop attempt and write evidence/history that the hook can inspect. The hook agent may perform read-only review from a bounded packet and write only DEVNS lane evidence/history.
 
 ## Optional UserPromptSubmit Hook
 

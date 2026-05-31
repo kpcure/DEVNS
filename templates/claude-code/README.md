@@ -8,8 +8,9 @@ Claude Code hook shape:
 - Most hook events use matcher groups.
 - `Stop` does not use a matcher. It runs when Claude Code is about to stop.
 - Claude Code sends hook input JSON on stdin.
-- Returning `{"decision":"block","reason":"..."}` blocks stopping and feeds the reason back to Claude.
-- To allow stop, exit successfully and print nothing.
+- `type: "agent"` Stop hooks spawn a Claude subagent from a prompt.
+- Returning `{"ok":false,"reason":"..."}` blocks stopping and feeds the reason back to Claude.
+- Returning `{"ok":true}` allows stop.
 - Stop hooks must handle `stop_hook_active` to avoid recursive blocking.
 
-This template wires Claude Code's `Stop` event to the DEVNS stop-hook runner.
+This template wires Claude Code's `Stop` event to the DEVNS Stop Review Agent prompt. The hook agent reads DEVNS state, reviews/ingests missing `code-review` evidence for the active feature, then translates the final DEVNS stop decision to Claude Code's `ok` schema.

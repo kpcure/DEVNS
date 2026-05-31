@@ -67,9 +67,9 @@ export function renderDevnsAgentsSection(options: AgentsIndexOptions) {
     "",
     "- Stop hooks are host lifecycle callbacks. Do not manually invoke them as the normal way to continue work; end the turn naturally and let the host trigger the hook.",
     "- Do not model DEVNS as two same-event Stop hooks where the first hook writes review output and the second hook immediately reads it. Matching hooks may run independently or in parallel in host runtimes.",
-    "- DEVNS uses one host-neutral stop command as the orchestrator: it inspects persisted JSON evidence/history, decides whether to block or allow stopping, and may claim the next approved feature.",
-    "- Review agents are optional read-only evidence producers behind lanes. DEVNS defines the lane-result contract; it does not provide an LLM provider or require a specific subagent runtime.",
-    "- Long tests, browser checks, static analysis, and LLM review should run before the final stop attempt and write evidence/history for the stop hook to inspect.",
+    "- DEVNS uses one logical Stop Hook orchestrator. Claude Code can use a native `type: \"agent\"` hook prompt; Codex currently uses a command adapter. Do not run two same-event Stop hooks as a pipeline.",
+    "- Review agents are optional read-only evidence producers behind lanes, or in Claude Code the Stop hook agent itself can produce and ingest the review lane result. DEVNS defines the lane-result contract; it does not provide an LLM provider.",
+    "- Long tests, browser checks, and static analysis should run before the final stop attempt and write evidence/history for the stop hook to inspect.",
     "- A review lane should receive the Git diff, RFC requirements, static/dynamic lane output, and relevant history, then return structured findings rather than free-form advice.",
     sectionEnd
   ]

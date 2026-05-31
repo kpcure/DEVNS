@@ -462,7 +462,8 @@ async function validateKnowledge(cwd: string, config: DevnsConfig, inventory: Fe
     "plugins/codex/devns/prompts/code-review-lane.md",
     "plugins/codex/devns/prompts/rfc-clarification.md",
     "plugins/codex/devns/prompts/domain-knowledge-curator.md",
-    "plugins/codex/devns/prompts/stop-hook-continuation.md"
+    "plugins/codex/devns/prompts/stop-hook-continuation.md",
+    "plugins/claude-code/devns/prompts/stop-review-agent-hook.md"
   ];
   for (const file of promptFiles) {
     const present = (await exists(path.join(packageRoot, file))) || (await exists(path.join(cwd, file)));

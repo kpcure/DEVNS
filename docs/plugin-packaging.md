@@ -22,10 +22,11 @@ Important hook detail:
 - `Stop` has no matcher.
 - `hooks/hooks.json` defines the hook event.
 - Hook input is delivered on stdin.
-- `{"decision":"block","reason":"..."}` blocks stop.
-- allow-stop behavior is successful exit with no block decision.
+- Command hooks block with `{"decision":"block","reason":"..."}`.
+- Agent hooks block with `{"ok":false,"reason":"..."}` and allow with `{"ok":true}`.
 - Hooks are host lifecycle callbacks. The main agent should not call the Stop hook as its normal in-turn continuation mechanism.
-- Multiple hooks for the same lifecycle event must not be treated as a portable serial pipeline. Persist review evidence before the stop attempt when possible; if hook-run review is configured, let one DEVNS stop command run the missing read-only agent lane and then aggregate state.
+- Multiple hooks for the same lifecycle event must not be treated as a portable serial pipeline.
+- DEVNS's Claude Code plugin uses one `type: "agent"` Stop hook prompt as the orchestrator: inspect active feature state, perform/ingest missing code review evidence, then translate the final DEVNS stop decision to Claude's hook schema.
 
 DEVNS plugin path:
 

@@ -8,7 +8,7 @@ Run when the host client is about to stop after an agent turn.
 
 The hook is not just a cleanup script. It is a gate that decides whether the agent may stop, must continue the current task, should commit and move to the next task, or must hand control back to a human.
 
-The hook itself must stay bounded. It reads persisted DEVNS JSON state and concise evidence; it does not run long tests, browser automation, package installs, or arbitrary project commands. When configured, the single Stop Hook orchestrator may run missing read-only Review Agent lanes before making its final decision. Those agent lanes receive a bounded review packet and must return structured lane-result JSON.
+The hook itself must stay bounded. It reads persisted DEVNS JSON state and concise evidence; it does not run long tests, browser automation, package installs, or arbitrary project commands. When configured, the single Stop Hook orchestrator may run missing read-only Review Agent lanes before making its final decision. In Claude Code, that orchestrator can be a native `type: "agent"` Stop hook prompt that performs the code review itself, ingests lane-result evidence, and returns Claude's `ok` hook schema.
 
 ## Steps
 

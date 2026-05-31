@@ -46,7 +46,7 @@ This creates:
   policies/
 ```
 
-By default `init` uses `--host auto`: when it is run inside Codex or Claude Code it also writes the matching local host adapter. Use `--host codex`, `--host claude`, `--host both`, or `--host none` to be explicit. The Codex adapter writes `.codex/hooks.json` with an absolute hook command, installs `plugins/codex/devns/`, marks `plugins/codex/devns/scripts/devns-stop-hook.sh` executable, and prepares `.devns/adapters/code-review.codex.sh` plus `.devns/lanes/code-review.json` for read-only review-agent lanes.
+By default `init` uses `--host auto`: when it is run inside Codex or Claude Code it also writes the matching local host adapter. Use `--host codex`, `--host claude`, `--host both`, or `--host none` to be explicit. The Codex adapter writes `.codex/hooks.json` with an absolute hook command, installs `plugins/codex/devns/`, marks `plugins/codex/devns/scripts/devns-stop-hook.sh` executable, and prepares `.devns/adapters/code-review.codex.sh` plus `.devns/lanes/code-review.json` for read-only review-agent lanes. The Claude adapter writes `.claude/settings.json` as a `type: "agent"` Stop hook; its prompt reads active DEVNS state, performs/ingests missing `code-review` evidence, and returns Claude's `ok` hook schema.
 
 Then use the `devns-init` skill to scan repository context and fill `.devns/candidates.json`.
 
@@ -138,14 +138,14 @@ Copy the Claude Code template:
 cp -R templates/claude-code/.claude .claude
 ```
 
-The Stop hook calls:
+The Claude Code Stop hook uses:
 
-```sh
-npx @kpcure/devns stop
+```json
+{ "type": "agent", "prompt": "You are the single DEVNS Stop Review Agent hook..." }
 ```
 
 The Stop hook is triggered by the host when the client is about to stop. Do not use it as the normal command an agent calls to keep working.
 
-Run review/test lanes before the final stop attempt and persist evidence in `.devns/history/` and `.devns/features.json` when possible. The stop command stays bounded: it reads persisted state, may run configured missing read-only Review Agent lanes, blocks with a continuation reason when evidence is missing, allows stop when complete, or claims the next approved feature when policy requires continuation.
+Run review/test lanes before the final stop attempt and persist evidence in `.devns/history/` and `.devns/features.json` when possible. In Claude Code, the Stop hook agent may perform the missing read-only code review itself and ingest one lane result before translating the final DEVNS stop decision to `{"ok":true}` or `{"ok":false,"reason":"..."}`.
 
 DEVNS does not provide an LLM provider. Claude subagents, Codex tasks, CI jobs, local scripts, or humans can act as review workers if they produce the DEVNS lane-result contract.

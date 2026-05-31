@@ -26,6 +26,7 @@ async function runDevns(repoRoot: string, cwd: string, ...args: string[]) {
 
 async function main() {
   const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-install-dogfood-"));
+  const claudeCwd = await mkdtemp(path.join(os.tmpdir(), "devns-install-claude-"));
   const repoRoot = process.cwd();
 
   try {
@@ -37,6 +38,23 @@ async function main() {
           version: "0.0.0",
           scripts: {
             test: "echo \"Error: no test specified\" && exit 1"
+          },
+          devDependencies: {
+            devns: "file:../never-stop"
+          }
+        },
+        null,
+        2
+      )}\n`
+    );
+    await writeFile(
+      path.join(claudeCwd, "package.json"),
+      `${JSON.stringify(
+        {
+          name: "devns-install-claude",
+          version: "0.0.0",
+          scripts: {
+            build: "echo build"
           },
           devDependencies: {
             devns: "file:../never-stop"
@@ -103,9 +121,34 @@ async function main() {
       )
     );
 
+    await runDevns(
+      repoRoot,
+      claudeCwd,
+      "init",
+      "--project-name",
+      "Claude Install Dogfood",
+      "--project-description",
+      "Claude hook install entrypoint.",
+      "--host",
+      "claude"
+    );
+    const claudeSettings = JSON.parse(await readFile(path.join(claudeCwd, ".claude", "settings.json"), "utf8"));
+    const claudeHook = claudeSettings.hooks.Stop[0].hooks[0];
+    assert.equal(claudeHook.type, "agent");
+    assert.match(claudeHook.prompt, /DEVNS Stop Review Agent/);
+    assert.match(claudeHook.prompt, /DEVNS_STOP_AGENT_HOOK=claude/);
+    const claudePrompt = await readFile(path.join(claudeCwd, "plugins", "claude-code", "devns", "prompts", "stop-review-agent-hook.md"), "utf8");
+    assert.match(claudePrompt, /Return exactly one JSON object/);
+    assert.match(claudePrompt, /lanes ingest/);
+    const claudeReviewAdapter = await stat(path.join(claudeCwd, ".devns", "adapters", "code-review.claude.sh"));
+    assert.equal(Boolean(claudeReviewAdapter.mode & 0o111), true);
+    const claudeReviewLane = JSON.parse(await readFile(path.join(claudeCwd, ".devns", "lanes", "code-review.json"), "utf8"));
+    assert.equal(claudeReviewLane.type, "agent");
+    assert.equal(claudeReviewLane.command, "bash .devns/adapters/code-review.claude.sh");
+
     process.stdout.write("Install dogfood smoke passed.\n");
   } finally {
-    await rm(cwd, { recursive: true, force: true });
+    await Promise.all([cwd, claudeCwd].map((project) => rm(project, { recursive: true, force: true })));
   }
 }
 

@@ -58,6 +58,10 @@ function hasDeterministicEvidence(feature: Feature) {
 }
 
 function stopReviewAgentLanes(config: DevnsConfig, feature: Feature): LaneDefinition[] {
+  if (process.env.DEVNS_STOP_AGENT_HOOK) {
+    return [];
+  }
+
   const policy = config.hooks?.stop?.reviewAgent;
   if (policy?.mode === "off") {
     return [];

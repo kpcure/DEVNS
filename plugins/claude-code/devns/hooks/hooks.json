@@ -4,12 +4,11 @@
       {
         "hooks": [
           {
-            "type": "command",
-            "command": "npm --prefix \"$CLAUDE_PROJECT_DIR\" run harness:stop"
+            "type": "agent",
+            "prompt": "You are the single DEVNS Stop Review Agent hook. Hook input JSON is: $ARGUMENTS\n\nRead plugins/claude-code/devns/prompts/stop-review-agent-hook.md if it exists, then follow it exactly. If that file is missing, use this fallback contract: parse the hook input, use cwd from the input as the repo root, return {\"ok\":true} when stop_hook_active is true, read AGENTS.md plus .devns/devns.config.json and .devns/features.json, identify the active feature, generate and ingest lane:code-review evidence when an active feature lacks it, then run the final DEVNS stop command with DEVNS_STOP_AGENT_HOOK=claude and translate its output to Claude Code agent-hook JSON. Return exactly one JSON object: {\"ok\":true} to allow stop, or {\"ok\":false,\"reason\":\"...\"} to block with a continuation instruction. Do not edit product files, install packages, create commits, or depend on another same-event Stop hook."
           }
         ]
       }
     ]
   }
 }
-

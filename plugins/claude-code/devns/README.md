@@ -2,7 +2,7 @@
 
 This plugin installs:
 
-- a `Stop` hook that calls `npm --prefix "$CLAUDE_PROJECT_DIR" run harness:stop`
+- a `Stop` hook using Claude Code's `type: "agent"` mode
 - `devns-init` skill for initial feature discovery
 - `devns-rfc` skill for requirement clarification before implementation
 - `devns-run` skill for the feature implementation loop
@@ -27,8 +27,10 @@ Claude Code details:
 
 - `Stop` hooks do not use a matcher.
 - Hook input is provided on stdin.
-- Printing `{"decision":"block","reason":"..."}` blocks Claude Code from stopping.
+- Command hooks block by printing `{"decision":"block","reason":"..."}`.
+- Agent hooks block by returning `{"ok":false,"reason":"..."}` and allow stop with `{"ok":true}`.
 - A Stop hook must handle `stop_hook_active` to avoid recursion.
 - Stop hooks are lifecycle callbacks triggered by Claude Code, not normal commands the main agent should call mid-turn.
-- Do not depend on two same-event Stop hooks as a serial pipeline. Review lanes should persist evidence/history before the final stop attempt; the DEVNS stop command then aggregates that state.
+- Do not depend on two same-event Stop hooks as a serial pipeline.
+- The DEVNS Claude hook is one agent prompt: it reads active feature state, generates/reads a review packet, performs code review, ingests one lane-result JSON object, then translates the final DEVNS stop decision to Claude's `ok` schema.
 - DEVNS does not provide an LLM provider. Claude subagents are optional read-only workers behind the provider-neutral DEVNS lane-result contract.

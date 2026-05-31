@@ -113,7 +113,7 @@ In a target repository, this alias may not exist yet. Agents should inspect `pac
 
 `npm run devns:lanes -- run` executes configured review lanes. Command lanes capture exit code, duration, stdout/stderr digests, evidence, and a decision of `allow`, `warn`, `needs_human_review`, or `block`. Pass `--write` to append the full lane result envelope to feature history and store concise lane evidence on the active feature.
 
-Agent lanes are review-worker adapters. For a lane such as `code-review`, DEVNS writes a review packet and prompt, injects `DEVNS_REVIEW_PROMPT`, `DEVNS_REVIEW_PACKET`, `DEVNS_FEATURE_ID`, `DEVNS_DIFF_BASE`, and `DEVNS_REPO`, then executes the lane command. The command must return one `tools/schema/lane-result.schema.json` object. `devns init --host codex` installs `.devns/adapters/code-review.codex.sh` and `.devns/lanes/code-review.json` so Codex projects have a ready read-only review worker.
+Agent lanes are review-worker adapters. For a lane such as `code-review`, DEVNS writes a review packet and prompt, injects `DEVNS_REVIEW_PROMPT`, `DEVNS_REVIEW_PACKET`, `DEVNS_FEATURE_ID`, `DEVNS_DIFF_BASE`, and `DEVNS_REPO`, then executes the lane command. The command must return one `tools/schema/lane-result.schema.json` object. `devns init --host codex` installs `.devns/adapters/code-review.codex.sh` and `.devns/lanes/code-review.json` so Codex projects have a ready read-only review worker. `devns init --host claude` installs a Claude Code `type: "agent"` Stop hook prompt that can act as the review worker directly and ingest the same lane-result contract.
 
 A browser smoke check can be wired as a command lane, for example by copying `templates/devns/lanes/browser-smoke.json` into `.devns/lanes/browser-smoke.json` and changing the command to the project's Playwright/Cypress/browser script. Browser evidence should be recorded with `verificationType: "browser_smoke"`.
 
@@ -123,7 +123,7 @@ A browser smoke check can be wired as a command lane, for example by copying `te
 
 `npm run devns:eval -- run` executes DEVNS harness evaluation cases. T1 is deterministic and treats each gate as a classifier over trap/clean fixtures, reporting per-mode precision, recall, and F1. T2 and T3 are reserved for model-in-the-loop reviewer calibration and end-to-end seed repositories.
 
-For robust review automation, run deterministic static and dynamic lanes first, then run any read-only review-agent lane against the Git diff, RFC, lane output, and relevant history. The Stop hook can also run configured missing read-only agent lanes through `hooks.stop.reviewAgent.mode = "run_missing"`, but it still returns one unified decision from persisted state and should not be modeled as multiple same-event hooks.
+For robust review automation, run deterministic static and dynamic lanes first, then run any read-only review-agent lane against the Git diff, RFC, lane output, and relevant history. The Stop hook can also run configured missing read-only agent lanes through `hooks.stop.reviewAgent.mode = "run_missing"`. On Claude Code, the Stop hook may be a native agent hook prompt that performs and ingests code review itself. In every host, DEVNS still returns one unified decision from persisted state and should not be modeled as multiple same-event hooks.
 
 `evidence-quality-gate` is a built-in review lane that checks acceptance criteria and deterministic evidence coverage. It is also used by validation and completion so a feature cannot be marked done from a title plus prose-only notes.
 

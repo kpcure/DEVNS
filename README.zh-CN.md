@@ -136,7 +136,7 @@ Claude Code、Codex 等宿主负责运行 Agent；DEVNS 负责提供：
 - RFC、需求澄清、实现 handoff、history 写入等 prompt contract。
 - dashboard 和 morning review 的数据结构。
 
-Stop hook 不是 Agent 主动调用的命令，而是宿主在 Agent 自然结束一轮 query 后触发的 hook。DEVNS 的 hook 逻辑会读取结构化状态、必要时通过一个统一编排器补跑缺失的只读 Review Agent lane、检查是否可以 complete、是否继续领取下一个功能点。不要把状态检查和 review 检查拆成两个同事件 hook；宿主可能并发运行它们，导致返回结果冲突。
+Stop hook 不是 Agent 主动调用的命令，而是宿主在 Agent 自然结束一轮 query 后触发的 hook。DEVNS 的 hook 逻辑会读取结构化状态、必要时通过一个统一编排器补跑缺失的只读 Review Agent lane、检查是否可以 complete、是否继续领取下一个功能点。Claude Code 下这个编排器可以是原生 `type: "agent"` Stop hook：prompt 里先读 active feature，再生成 review packet、执行 code review、写入 lane-result evidence，最后返回 Claude 的 `{"ok":false,"reason":"..."}` 或 `{"ok":true}`。不要把状态检查和 review 检查拆成两个同事件 hook；宿主可能并发运行它们，导致返回结果冲突。
 
 ## 本地开发
 
