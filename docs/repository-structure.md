@@ -21,6 +21,9 @@ plugins/
   codex/
 examples/
   mission-migration-dashboard/
+evals/
+  cases/
+  fixtures/
 docs/
 tools/
   schema/
@@ -92,6 +95,17 @@ Contains:
 - small example projects later
 
 Must not contain this repository's active local planning state.
+
+### `evals`
+
+The harness evaluation suite.
+
+Contains:
+
+- deterministic T1 gate fixtures
+- frozen T2 review packets and gold findings later
+- T3 seed repositories and hidden-oracle metadata later
+- metrics and report helpers for precision, recall, F1, pass^k, and cost reporting
 
 ### `docs`
 

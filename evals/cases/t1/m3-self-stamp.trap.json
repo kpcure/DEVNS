@@ -1,0 +1,80 @@
+{
+  "id": "m3-self-stamp.trap",
+  "tier": "t1",
+  "mode": "M3_fake_evidence",
+  "generality_level": "domain",
+  "given": {
+    "feature": {
+      "id": "F-1",
+      "title": "Cart total review",
+      "description": "Require independent review before approving completion.",
+      "status": "in_progress",
+      "priority": "P0",
+      "milestone": "MVP",
+      "risk": "high",
+      "acceptanceCriteria": ["Cart total is correct."],
+      "reviewDecision": "approved",
+      "events": [
+        {
+          "type": "claimed",
+          "at": "2026-05-31T00:00:00.000Z",
+          "by": "agent",
+          "summary": "Implementation started."
+        }
+      ],
+      "rfc": {
+        "status": "approved",
+        "summary": "Review cart total correctness.",
+        "background": "Completion requires independent review.",
+        "featureDescription": "Cart total must be correct.",
+        "expectedOutcome": "Completion is blocked when the implementer self-approves.",
+        "goals": ["Require independent evidence"],
+        "nonGoals": ["Evaluate the cart implementation itself"],
+        "requirements": [
+          {
+            "id": "REQ-1",
+            "type": "explicit",
+            "statement": "Approved completion must rely on independent review evidence.",
+            "priority": "must"
+          }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-1",
+            "requirementIds": ["REQ-1"],
+            "statement": "Cart total is correct.",
+            "verificationType": "review_agent"
+          }
+        ],
+        "validationPlan": {
+          "dynamic": [],
+          "static": ["Evaluate the completion gate."]
+        },
+        "testCases": [],
+        "humanDecision": {
+          "status": "approved"
+        }
+      },
+      "evidence": [
+        {
+          "type": "review",
+          "verificationType": "review_agent",
+          "actor": "agent",
+          "summary": "looks good",
+          "coversAcceptanceCriteriaIds": ["AC-1"]
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "completion_independent_review",
+    "cmd": "complete",
+    "args": {
+      "review": "approved"
+    }
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "independent review"
+  }
+}

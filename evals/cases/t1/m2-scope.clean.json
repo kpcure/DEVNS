@@ -1,0 +1,26 @@
+{
+  "id": "m2-scope.clean",
+  "tier": "t1",
+  "mode": "M2_scope_creep",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "F-2",
+      "title": "Eval CLI",
+      "description": "Add a deterministic eval CLI.",
+      "status": "in_progress",
+      "priority": "P0",
+      "milestone": "MVP",
+      "risk": "medium",
+      "acceptanceCriteria": ["Eval CLI can run T1 cases."],
+      "implementationSurface": ["packages/core/src/cli/eval.ts", "evals"]
+    },
+    "changedFiles": ["packages/core/src/cli/eval.ts", "evals/runner.ts"]
+  },
+  "action": {
+    "gate": "scope_guard"
+  },
+  "expect": {
+    "decision": "allowed"
+  }
+}

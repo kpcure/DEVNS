@@ -25,14 +25,29 @@ function completeFeature(): Feature {
     priority: "P0",
     milestone: "Smoke",
     risk: "medium",
-    acceptanceCriteria: ["Completion records implementation commit"],
+    acceptanceCriteria: ["Completion records implementation commit", "Independent review evidence is recorded"],
     verification: ["npm run complete:smoke"],
     evidence: [
       { type: "lane:test", summary: "Completion smoke verification passed.", coversAcceptanceCriteriaIds: ["AC-001"], verificationType: "command" },
-      { type: "lane:review-agent", summary: "Read-only review found no blocking issues.", coversAcceptanceCriteriaIds: ["AC-001"], verificationType: "review_agent" }
+      {
+        type: "lane:review-agent",
+        summary: "Read-only review found no blocking issues.",
+        actor: "review-agent:complete-smoke",
+        artifactRefs: [".devns/reviews/packets/COMP-001.review-packet.json"],
+        coversAcceptanceCriteriaIds: ["AC-002"],
+        verificationType: "review_agent"
+      }
     ],
     changedFiles: ["src/feature.ts"],
     agentNotes: "Smoke completion notes",
+    events: [
+      {
+        type: "claimed",
+        at: "2026-05-31T00:00:00.000Z",
+        by: "agent",
+        summary: "Smoke feature claimed by implementation agent."
+      }
+    ],
     rfc: {
       status: "approved",
       summary: "Complete command records feature completion.",
@@ -42,7 +57,10 @@ function completeFeature(): Feature {
       goals: ["Record completion"],
       nonGoals: ["Do not create a git commit inside the smoke test command."],
       requirements: [{ id: "REQ-001", type: "explicit", statement: "Record implementation commit", priority: "must" }],
-      acceptanceCriteria: [{ id: "AC-001", requirementIds: ["REQ-001"], statement: "Completion records implementation commit", verificationType: "command" }],
+      acceptanceCriteria: [
+        { id: "AC-001", requirementIds: ["REQ-001"], statement: "Completion records implementation commit", verificationType: "command" },
+        { id: "AC-002", requirementIds: ["REQ-001"], statement: "Independent review evidence is recorded", verificationType: "review_agent" }
+      ],
       validationPlan: { dynamic: ["complete smoke"], static: ["schema validation"] },
       testCases: [{ id: "TC-001", acceptanceCriteriaIds: ["AC-001"], type: "integration", scenario: "Run complete", expected: "Feature done" }],
       humanDecision: { status: "approved" }

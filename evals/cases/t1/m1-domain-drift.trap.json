@@ -1,0 +1,25 @@
+{
+  "id": "m1-domain-drift.trap",
+  "tier": "t1",
+  "mode": "M1_domain_drift",
+  "generality_level": "general",
+  "given": {
+    "projectText": "DEVNS is a local-first harness for long-running coding agents.",
+    "candidates": [
+      {
+        "id": "C-1",
+        "title": "图书馆借阅提醒",
+        "description": "Add patron borrowing reminders.",
+        "status": "discovered",
+        "sources": []
+      }
+    ]
+  },
+  "action": {
+    "gate": "candidate_provenance"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "provenance"
+  }
+}

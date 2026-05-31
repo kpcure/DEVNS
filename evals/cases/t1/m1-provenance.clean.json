@@ -1,0 +1,24 @@
+{
+  "id": "m1-provenance.clean",
+  "tier": "t1",
+  "mode": "M1_domain_drift",
+  "generality_level": "general",
+  "given": {
+    "projectText": "DEVNS is a local-first harness for long-running coding agents.",
+    "candidates": [
+      {
+        "id": "C-1",
+        "title": "Evidence quality regression fixture",
+        "description": "Add a deterministic regression fixture for evidence coverage.",
+        "status": "discovered",
+        "sources": ["docs/feature-schema.md"]
+      }
+    ]
+  },
+  "action": {
+    "gate": "candidate_provenance"
+  },
+  "expect": {
+    "decision": "allowed"
+  }
+}

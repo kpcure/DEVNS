@@ -48,6 +48,17 @@
         "additionalProperties": false
       }
     },
+    "scores": {
+      "type": "object",
+      "properties": {
+        "correctness": { "type": "number", "minimum": 0, "maximum": 1 },
+        "requirementCoverage": { "type": "number", "minimum": 0, "maximum": 1 },
+        "scope": { "type": "number", "minimum": 0, "maximum": 1 },
+        "security": { "type": "number", "minimum": 0, "maximum": 1 },
+        "test": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": false
+    },
     "evidence": {
       "type": "array",
       "items": {

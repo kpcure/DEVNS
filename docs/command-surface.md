@@ -65,6 +65,7 @@ npx @kpcure/devns init --project-name "Project" --project-description "Goal"
 npx @kpcure/devns run [--json] [--no-claim]
 npx @kpcure/devns dashboard
 npx @kpcure/devns validate [--json] [--strict] [--fix]
+npx @kpcure/devns eval run --tier t1 [--mode <mode>] [--json]
 
 npm run devns:init
 npm run devns:doctor [-- --json]
@@ -75,6 +76,7 @@ npm run devns:discover [-- --json] [-- --force]
 npm run devns:lanes -- run [--feature <feature-id>] [--write] [--json]
 npm run devns:lanes -- ingest --feature <feature-id> --result <lane-result.json> [--actor review-agent:<name>] [--json]
 npm run devns:evidence -- add --feature <feature-id> --type <type> --summary <text> [--verification <kind>] [--covers-ac AC-001]
+npm run devns:eval -- run --tier t1 [--mode <mode>] [--json] [--report evals/out/report.md]
 npm run devns:review -- generate [--date YYYY-MM-DD] [--json]
 npm run devns:review -- packet [--feature <feature-id>] [--commit <sha>] [--base <sha>] [--format json|prompt] [--write] [--json]
 npm run devns:complete -- [--id <feature-id>] [--commit <sha>] [--review approved|needs_changes|follow_up] [--force --reason <text>] [--json]
@@ -110,6 +112,8 @@ A browser smoke check can be wired as a command lane, for example by copying `te
 `npm run devns:lanes -- ingest` records a lane-result JSON envelope produced by a read-only review agent or external verifier. DEVNS validates the lane-result schema before writing history and compact evidence.
 
 `npm run devns:evidence -- add` records human, browser, review-agent, command, or static-review evidence without hand-editing `.devns/features.json`. Use `--covers-ac` and `--covers-req` to explicitly link the evidence to acceptance criteria or requirements.
+
+`npm run devns:eval -- run` executes DEVNS harness evaluation cases. T1 is deterministic and treats each gate as a classifier over trap/clean fixtures, reporting per-mode precision, recall, and F1. T2 and T3 are reserved for model-in-the-loop reviewer calibration and end-to-end seed repositories.
 
 For robust review automation, run deterministic static and dynamic lanes first, then run any read-only review-agent lane against the Git diff, RFC, lane output, and relevant history. The Stop hook should only aggregate those persisted results.
 

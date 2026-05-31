@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { evaluateCompletionGate } from "../harness/completion-gate";
 import { appendExecutionHistory, buildChangedFileEvidence } from "../harness/history";
 import { evaluateEvidenceQuality } from "../harness/evidence-quality";
 import { patchFeature, readConfig, readInventory } from "../harness/state";
@@ -99,18 +100,19 @@ async function main() {
   if (evidenceQuality.decision === "block") {
     throw new Error(`${evidenceQuality.summary} Run verification lanes and record evidence before completing ${feature.id}.`);
   }
-  const hasReviewEvidence = (feature.evidence ?? []).some(
-    (item) =>
-      /review|human|manual|browser|e2e|visual/i.test(item.type) ||
-      ["review_agent", "human_review", "browser_smoke"].includes(item.verificationType ?? "")
-  );
   if (options.force && !options.reason?.trim()) {
     throw new Error("--force requires --reason so the override is auditable.");
   }
-  if (options.review === "approved" && (evidenceQuality.decision === "needs_human_review" || !hasReviewEvidence) && !options.force) {
+  const completionGate = evaluateCompletionGate(feature, {
+    review: options.review,
+    force: options.force,
+    evidenceQualityDecision: evidenceQuality.decision
+  });
+  if (completionGate.decision === "blocked") {
     throw new Error(
       [
-        `${feature.id} still needs human or read-only review evidence before approved completion.`,
+        `${feature.id} still needs independent human or read-only review evidence before approved completion.`,
+        completionGate.reason,
         evidenceQuality.summary,
         "Run `npx @kpcure/devns review packet --feature <id> --format prompt --write`, record reviewer/human evidence, or pass --force for an explicit override."
       ].join(" ")

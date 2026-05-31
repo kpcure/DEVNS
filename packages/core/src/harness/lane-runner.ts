@@ -2,6 +2,9 @@ import { exec } from "node:child_process";
 import { promisify } from "node:util";
 import type { Evidence, Feature, DevnsConfig } from "./types";
 import { runBuiltinLane, type BuiltinLaneContext } from "./builtin-lanes";
+import { writeReviewPacket, type ReviewPacket } from "./review-packet";
+import { validateSchema } from "./schema-validator";
+import laneResultSchema from "../../../../tools/schema/lane-result.schema.json";
 
 const execAsync = promisify(exec);
 
@@ -31,6 +34,13 @@ export type LaneResult = {
   summary: string;
   confidence: "low" | "medium" | "high";
   findings: LaneFinding[];
+  scores?: {
+    correctness?: number;
+    requirementCoverage?: number;
+    scope?: number;
+    security?: number;
+    test?: number;
+  };
   evidence: Array<{
     type: string;
     summary: string;
@@ -249,6 +259,7 @@ function normalizeAgentLaneResult(value: unknown, lane: LaneDefinition): LaneRes
     summary: result.summary ?? "Agent lane returned no summary.",
     confidence: result.confidence ?? "low",
     findings: result.findings ?? [],
+    scores: result.scores,
     evidence: result.evidence ?? [],
     artifacts: result.artifacts ?? [],
     recommendedActions: result.recommendedActions ?? [],
@@ -265,24 +276,116 @@ function normalizeAgentLaneResult(value: unknown, lane: LaneDefinition): LaneRes
   };
 }
 
-export async function runAgentLane(lane: LaneDefinition, cwd: string): Promise<LaneResult> {
+function diffChangedFiles(packet?: ReviewPacket) {
+  const diff = packet?.git.diff ?? "";
+  const files = new Set<string>();
+  for (const line of diff.split("\n")) {
+    const match = /^diff --git a\/(.+?) b\/(.+)$/.exec(line);
+    if (match) {
+      files.add(match[1]);
+      files.add(match[2]);
+    }
+  }
+  return files;
+}
+
+function findingGroundedInPacket(finding: LaneFinding, packet?: ReviewPacket) {
+  if (!packet) return false;
+  if (!finding.file || !finding.line) return false;
+  const files = diffChangedFiles(packet);
+  if (files.size === 0) return true;
+  return files.has(finding.file);
+}
+
+function groundFindings(findings: LaneFinding[], packet?: ReviewPacket) {
+  return findings.map((finding) => {
+    if (!findingBlocksCompletion(finding) || findingGroundedInPacket(finding, packet)) {
+      return finding;
+    }
+
+    return {
+      ...finding,
+      severity: "warning" as const,
+      confidence: "low" as const,
+      message: `Ungrounded review finding downgraded: ${finding.message}`,
+      evidence: [
+        ...(finding.evidence ?? []),
+        {
+          type: "artifact" as const,
+          summary: "Finding was not grounded in the review packet diff with file and line evidence."
+        }
+      ]
+    };
+  });
+}
+
+function hasGroundedAllowEvidence(result: LaneResult) {
+  return result.evidence.length > 0 || result.artifacts.length > 0;
+}
+
+function uniqueValues(values: string[]) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+export async function runAgentLane(
+  lane: LaneDefinition,
+  cwd: string,
+  context: Omit<BuiltinLaneContext, "cwd"> = {}
+): Promise<LaneResult> {
   if (!lane.command) {
     return skippedLane(lane);
   }
 
   const startedAt = Date.now();
   const startedAtIso = new Date(startedAt).toISOString();
+  let packetResult: Awaited<ReturnType<typeof writeReviewPacket>> | undefined;
   try {
+    if (context.feature) {
+      packetResult = await writeReviewPacket(cwd, {
+        featureId: context.feature.id,
+        format: "prompt",
+        write: true,
+        commit: context.feature.implementationCommit ?? context.feature.commit
+      });
+    }
+
     const { stdout, stderr } = await execAsync(lane.command, {
       cwd,
-      maxBuffer: 1024 * 1024 * 10
+      maxBuffer: 1024 * 1024 * 10,
+      env: {
+        ...process.env,
+        DEVNS_FEATURE_ID: context.feature?.id ?? "",
+        DEVNS_REVIEW_PACKET: packetResult?.jsonPath ?? "",
+        DEVNS_REVIEW_PROMPT: packetResult?.promptPath ?? "",
+        DEVNS_DIFF_BASE: context.feature?.implementationCommit ?? context.feature?.commit ?? "",
+        DEVNS_REPO: cwd
+      }
     });
     const parsed = JSON.parse(extractJsonObject(stdout)) as unknown;
+    const schemaResult = validateSchema(parsed, laneResultSchema);
+    if (!schemaResult.valid) {
+      throw new LaneRunnerError(`Agent lane output failed lane-result schema validation: ${schemaResult.errors[0]}`);
+    }
     const normalized = normalizeAgentLaneResult(parsed, lane);
+    const groundedFindings = groundFindings(normalized.findings, packetResult?.packet);
+    const harnessDecision = decisionForFindings(groundedFindings, lane);
+    const decision =
+      harnessDecision === "allow" && !groundedFindings.length && !hasGroundedAllowEvidence(normalized)
+        ? "needs_human_review"
+        : harnessDecision;
+    const artifacts = uniqueValues([
+      ...normalized.artifacts,
+      packetResult?.jsonPath ?? "",
+      packetResult?.promptPath ?? ""
+    ]);
     return {
       ...normalized,
       lane: lane.id,
       type: "agent",
+      decision,
+      findings: groundedFindings,
+      artifacts,
+      blocksCompletion: decision === "block" || (decision === "needs_human_review" && (lane.blocksCompletion ?? lane.required ?? false)),
       durationMs: normalized.durationMs ?? Date.now() - startedAt,
       exitCode: normalized.exitCode ?? 0,
       startedAt: normalized.startedAt ?? startedAtIso,
@@ -352,7 +455,7 @@ export async function runLane(lane: LaneDefinition, cwd: string, context: Omit<B
   }
 
   if (lane.type === "agent") {
-    return runAgentLane(lane, cwd);
+    return runAgentLane(lane, cwd, context);
   }
 
   return skippedLane(lane);
