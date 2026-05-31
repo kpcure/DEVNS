@@ -73,7 +73,11 @@
                 "items": { "type": "string" }
               },
               "statement": { "type": "string" },
-              "verification": { "type": "string" }
+              "verification": { "type": "string" },
+              "verificationType": {
+                "type": "string",
+                "enum": ["command", "static_review", "browser_smoke", "human_review", "review_agent"]
+              }
             },
             "additionalProperties": false
           }

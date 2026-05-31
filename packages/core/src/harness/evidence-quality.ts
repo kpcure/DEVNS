@@ -1,11 +1,14 @@
-import type { Evidence, Feature } from "./types";
+import type { Evidence, Feature, RfcAcceptanceCriterion, VerificationType } from "./types";
 
 export type EvidenceQualityDecision = "allow" | "warn" | "block" | "needs_human_review";
 
 export type EvidenceCoverage = {
+  criterionId: string;
   criterion: string;
   evidence: Evidence[];
   covered: boolean;
+  verificationType: VerificationType;
+  requiresHumanReview: boolean;
 };
 
 export type EvidenceQualityReport = {
@@ -27,14 +30,79 @@ function evidenceLooksDeterministic(evidence: Evidence) {
   );
 }
 
+function evidenceLooksReview(evidence: Evidence) {
+  return /review|review-agent|code-review|human/i.test(evidence.type) || evidence.verificationType === "review_agent" || evidence.verificationType === "human_review";
+}
+
 function evidenceLooksManual(evidence: Evidence) {
   return /manual|assertion|human/i.test(evidence.type) || /manual|visually checked|looked at/i.test(evidence.summary);
+}
+
+function evidenceLooksBrowser(evidence: Evidence) {
+  return /browser|e2e|playwright|selenium|visual/i.test(evidence.type) || evidence.verificationType === "browser_smoke";
+}
+
+function criterionLooksProductSemantic(value: string) {
+  return /user|screen|page|dashboard|ui|ux|label|semantic|workflow|workbench|visible|display|show|catalog|loan|member|overdue|risk|activity|业务|语义|首屏|看板|页面|用户|展示|图书|借阅|会员|逾期/i.test(value);
+}
+
+function inferCriterionVerificationType(criterion: Pick<RfcAcceptanceCriterion, "statement" | "verification" | "verificationType">): VerificationType {
+  if (criterion.verificationType) return criterion.verificationType;
+  const text = `${criterion.statement} ${criterion.verification ?? ""}`;
+  if (/review agent|code review|static review|人工审查|代码审查/i.test(text)) return "review_agent";
+  if (/browser|playwright|selenium|e2e|visual|screenshot|页面|浏览器/i.test(text)) return "browser_smoke";
+  if (/human|manual|人工|手动/i.test(text)) return "human_review";
+  if (/build|lint|test|typecheck|command|npm|pnpm|yarn|tsc|vitest|jest|schema/i.test(text)) return "command";
+  if (/static|security|scope|diff/i.test(text)) return "static_review";
+  return criterionLooksProductSemantic(text) ? "human_review" : "review_agent";
+}
+
+function acceptanceCriteriaFor(feature: Feature) {
+  if (feature.rfc?.acceptanceCriteria?.length) {
+    return feature.rfc.acceptanceCriteria.map((criterion) => ({
+      id: criterion.id,
+      statement: criterion.statement,
+      requirementIds: criterion.requirementIds ?? [],
+      verificationType: inferCriterionVerificationType(criterion)
+    }));
+  }
+
+  return (feature.acceptanceCriteria ?? []).map((criterion, index) => ({
+    id: `AC-${String(index + 1).padStart(3, "0")}`,
+    statement: criterion,
+    requirementIds: [],
+    verificationType: inferCriterionVerificationType({ statement: criterion })
+  }));
+}
+
+function evidenceDirectlyCovers(evidence: Evidence, criterion: ReturnType<typeof acceptanceCriteriaFor>[number]) {
+  if (evidence.coversAcceptanceCriteriaIds?.includes(criterion.id)) return true;
+  if (criterion.requirementIds.some((id) => evidence.coversRequirementIds?.includes(id))) return true;
+  return false;
+}
+
+function evidenceTypeCovers(evidence: Evidence, criterion: ReturnType<typeof acceptanceCriteriaFor>[number]) {
+  if (evidenceDirectlyCovers(evidence, criterion)) return true;
+  if (criterion.verificationType === "command") {
+    return evidenceLooksDeterministic(evidence) && !["git", "security-scan"].includes(evidence.type);
+  }
+  if (criterion.verificationType === "static_review") {
+    return evidenceLooksReview(evidence) || /lint|static|security|scope|typecheck|lane:/i.test(evidence.type);
+  }
+  if (criterion.verificationType === "browser_smoke") {
+    return evidenceLooksBrowser(evidence) || evidenceLooksReview(evidence) || evidenceLooksManual(evidence);
+  }
+  if (criterion.verificationType === "human_review") {
+    return evidenceLooksManual(evidence) || evidenceLooksReview(evidence) || evidenceLooksBrowser(evidence);
+  }
+  return evidenceLooksReview(evidence);
 }
 
 export function evaluateEvidenceQuality(feature: Feature): EvidenceQualityReport {
   const evidence = feature.evidence ?? [];
   const deterministic = evidence.filter(evidenceLooksDeterministic);
   const manual = evidence.filter(evidenceLooksManual);
+  const criteria = acceptanceCriteriaFor(feature);
   const findings: EvidenceQualityReport["findings"] = [];
 
   if (!evidence.length) {
@@ -57,7 +125,7 @@ export function evaluateEvidenceQuality(feature: Feature): EvidenceQualityReport
     });
   }
 
-  if (!(feature.acceptanceCriteria ?? []).length) {
+  if (!criteria.length) {
     findings.push({
       severity: "error",
       message: "Feature has no acceptance criteria to verify.",
@@ -65,24 +133,37 @@ export function evaluateEvidenceQuality(feature: Feature): EvidenceQualityReport
     });
   }
 
-  const coverage = (feature.acceptanceCriteria ?? []).map((criterion) => ({
-    criterion,
-    evidence: deterministic.length ? deterministic : evidence,
-    covered: deterministic.length > 0 || evidence.length > 0
-  }));
+  const coverage = criteria.map((criterion) => {
+    const supporting = evidence.filter((item) => evidenceTypeCovers(item, criterion));
+    return {
+      criterionId: criterion.id,
+      criterion: criterion.statement,
+      evidence: supporting,
+      covered: supporting.length > 0,
+      verificationType: criterion.verificationType,
+      requiresHumanReview: ["browser_smoke", "human_review", "review_agent"].includes(criterion.verificationType)
+    };
+  });
 
   const uncovered = coverage.filter((item) => !item.covered);
   if (uncovered.length) {
     findings.push({
-      severity: "error",
+      severity: uncovered.some((item) => item.requiresHumanReview) ? "warning" : "error",
       message: `${uncovered.length} acceptance criterion/criteria have no supporting evidence.`,
-      suggestedFix: "Record evidence that maps to the feature acceptance criteria."
+      suggestedFix: "Record evidence with coversAcceptanceCriteriaIds/coversRequirementIds or route the feature to human/review-agent inspection."
     });
   }
 
   const hasError = findings.some((finding) => finding.severity === "error");
   const hasWarning = findings.some((finding) => finding.severity === "warning");
-  const decision: EvidenceQualityDecision = hasError ? "block" : manual.length === evidence.length && evidence.length ? "needs_human_review" : hasWarning ? "warn" : "allow";
+  const uncoveredReview = uncovered.some((item) => item.requiresHumanReview);
+  const decision: EvidenceQualityDecision = hasError
+    ? "block"
+    : uncoveredReview || (manual.length === evidence.length && evidence.length)
+      ? "needs_human_review"
+      : hasWarning
+        ? "warn"
+        : "allow";
 
   return {
     featureId: feature.id,

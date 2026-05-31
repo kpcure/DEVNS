@@ -198,6 +198,7 @@ async function clarifyRfc(cwd: string, options: RfcOptions) {
   const candidates = await readCandidates(cwd, config);
   const inventory = await readInventory(cwd, config);
   const rfcDir = resolveFromCwd(cwd, config.rfcs ?? ".devns/rfcs");
+  const projectContext = await readFile(resolveFromCwd(cwd, ".devns/project.md"), "utf8").catch(() => "");
   const feature = inventory.features.find((item) => item.id === options.id);
   const candidate = findCandidate(candidates.candidates, options.id);
   const record = await readOptionalRfcRecord(rfcDir, options.id);
@@ -207,7 +208,7 @@ async function clarifyRfc(cwd: string, options: RfcOptions) {
     throw new Error(`Unable to find candidate, feature, or RFC ${options.id}`);
   }
 
-  const questions = rfc.clarificationQuestions?.length ? rfc.clarificationQuestions : createClarificationQuestions(rfc);
+  const questions = rfc.clarificationQuestions?.length ? rfc.clarificationQuestions : createClarificationQuestions(rfc, projectContext);
   const payload = {
     id: options.id,
     questions,
@@ -234,9 +235,13 @@ async function clarifyRfc(cwd: string, options: RfcOptions) {
 }
 
 function featureFromCandidate(candidate: CandidateFeature, rfc: FeatureRfc): Feature {
+  const implementationTitle =
+    /primary workflow|define mvp|verification|review evidence/i.test(candidate.title) && rfc.summary.trim()
+      ? rfc.summary.replace(/^Clarify\s+/i, "").replace(/\.$/, "")
+      : candidate.title;
   return {
     id: candidate.id,
-    title: candidate.title,
+    title: implementationTitle,
     description: candidate.description,
     status: rfc.status === "approved" && rfc.humanDecision?.status === "approved" ? "ready" : "blocked",
     priority: candidate.suggestedPriority ?? ("P2" satisfies FeaturePriority),

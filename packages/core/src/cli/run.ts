@@ -46,14 +46,22 @@ async function exists(filePath: string) {
 }
 
 function workerHandoff(config: DevnsConfig, feature: Feature) {
+  const inferredChangedFilePlan = feature.changedFiles?.length
+    ? feature.changedFiles
+    : feature.context?.length
+      ? feature.context
+      : ["src/App.tsx", "src/App.css", "src/index.css"];
   return {
     strategy: "prefer_isolated_worker",
     scope: "exactly_one_feature",
     featureId: feature.id,
+    implementationTitle: feature.rfc?.summary ?? feature.title,
+    expectedOutcome: feature.rfc?.expectedOutcome ?? feature.description,
+    domainConstraints: [...(feature.rfc?.goals ?? []), ...(feature.rfc?.nonGoals ?? []).map((item) => `Non-goal: ${item}`)],
     rfc: feature.rfc ?? null,
     historyPath: feature.history?.historyPath ?? historyPathForFeature(process.cwd(), config, feature.id),
     context: feature.context ?? [],
-    changedFilePlan: feature.changedFiles ?? [],
+    changedFilePlan: inferredChangedFilePlan,
     validationPlan: feature.rfc?.validationPlan ?? null,
     requiredLanes: (config.reviewLanes ?? [])
       .filter((lane) => lane.required || lane.blocksCompletion)
@@ -75,6 +83,7 @@ function workerHandoff(config: DevnsConfig, feature: Feature) {
 
 function featurePrompt(feature: Feature, verb: "Continue" | "Implement") {
   return [
+    `Expected outcome: ${feature.rfc?.expectedOutcome ?? feature.description}.`,
     `${verb} feature ${feature.id}: ${feature.title}.`,
     "Read its approved RFC, context files, and latest evidence before editing.",
     "After RFC clarification, prefer an isolated worker/subagent or fresh context for this single feature when the host supports it.",

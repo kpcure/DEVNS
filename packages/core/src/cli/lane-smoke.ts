@@ -84,7 +84,7 @@ async function main() {
       risk: "high",
       context: ["pass.mjs"],
       acceptanceCriteria: ["Lanes produce evidence"],
-      evidence: [{ type: "lane:test", summary: "Lanes produce deterministic evidence." }],
+      evidence: [{ type: "lane:test", summary: "Lanes produce deterministic evidence.", coversAcceptanceCriteriaIds: ["AC-001"], verificationType: "command" }],
       changedFiles: ["pass.mjs"],
       agentNotes: "Smoke notes"
     };

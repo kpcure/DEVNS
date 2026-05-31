@@ -190,16 +190,29 @@ export function createRfcScaffold(input: Pick<CandidateFeature, "id" | "title" |
   };
 }
 
-export function createClarificationQuestions(rfc: Pick<FeatureRfc, "background" | "expectedOutcome" | "nonGoals" | "validationPlan">): RfcClarificationQuestion[] {
+function domainHints(text = "") {
+  const hints = [...text.matchAll(/图书|目录|借阅|会员|逾期|馆员|工作台|catalog|loan|member|overdue|risk|activity|workbench|library|librarian/gi)].map((item) => item[0]);
+  return [...new Set(hints)].slice(0, 8);
+}
+
+export function createClarificationQuestions(
+  rfc: Pick<FeatureRfc, "background" | "expectedOutcome" | "nonGoals" | "validationPlan">,
+  context = ""
+): RfcClarificationQuestion[] {
   const questions: RfcClarificationQuestion[] = [];
+  const hints = domainHints(context);
 
   if (isBlank(rfc.background)) {
     questions.push({
       id: "Q-INTENT-001",
-      question: "What project or user problem should this feature solve?",
-      recommended: "Define the concrete user/project problem before implementation.",
+      question: hints.length ? `Which domain problem should this feature solve around ${hints.join(", ")}?` : "What project or user problem should this feature solve?",
+      recommended: hints.length
+        ? `Use the provided project domain signals (${hints.join(", ")}) to define the first concrete user problem.`
+        : "Define the concrete user/project problem before implementation.",
       options: [
-        "Define the concrete user/project problem before implementation.",
+        hints.length
+          ? `Define the first user-visible slice using ${hints.slice(0, 4).join(", ")}.`
+          : "Define the concrete user/project problem before implementation.",
         "Treat this as a technical maintenance task with no direct user-facing problem.",
         "Defer this feature until the problem statement is clearer."
       ],

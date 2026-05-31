@@ -109,7 +109,7 @@ For robust review automation, run deterministic static and dynamic lanes first, 
 
 `npm run devns:review -- packet` creates a bounded review-agent packet for one feature. Use `--format prompt --write` when handing the packet to a read-only review agent. The packet includes RFC context, Git status and diff, evidence quality, feature evidence, durable history, and project rules.
 
-`npm run devns:complete` marks one feature done after verification evidence exists. It records the implementation commit in `implementationCommit` and preserves `commit` as a compatibility alias. If the DEVNS metadata update is committed separately, pass its hash later as `metadataCommit`; the implementation commit does not need to contain the hash of the metadata commit that follows it.
+`npm run devns:complete` marks one feature done after verification evidence exists. It records the implementation commit in `implementationCommit` and preserves `commit` as a compatibility alias. If the DEVNS metadata update is committed separately, pass its hash later as `metadataCommit`; the implementation commit does not need to contain the hash of the metadata commit that follows it. Approved completion requires human, browser, or read-only review evidence when evidence quality says the feature still needs review; `--force` is reserved for explicit human override.
 
 Completion should normally follow this order:
 

@@ -13,11 +13,12 @@ type Options = {
   review: ReviewDecision;
   commit?: string;
   metadataCommit?: string;
+  force: boolean;
   output: "text" | "json";
 };
 
 function parseArgs(argv: string[]): Options {
-  const options: Options = { review: "approved", output: "text" };
+  const options: Options = { review: "approved", force: false, output: "text" };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--id") {
@@ -32,6 +33,8 @@ function parseArgs(argv: string[]): Options {
     } else if (arg === "--metadata-commit") {
       options.metadataCommit = argv[index + 1];
       index += 1;
+    } else if (arg === "--force") {
+      options.force = true;
     } else if (arg === "--json") {
       options.output = "json";
     }
@@ -64,6 +67,12 @@ function findFeature(features: Feature[], id?: string) {
   return id ? features.find((feature) => feature.id === id) : features.find((feature) => feature.status === "in_progress");
 }
 
+function splitChangedFiles(files: string[]) {
+  const stateFiles = files.filter((file) => file.startsWith(".devns/"));
+  const implementationFiles = files.filter((file) => !file.startsWith(".devns/"));
+  return { implementationFiles, stateFiles };
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const cwd = process.cwd();
@@ -77,6 +86,7 @@ async function main() {
 
   const implementationCommit = await resolveCommit(cwd, options.commit);
   const changedFiles = feature.changedFiles?.length ? feature.changedFiles : await filesForCommit(cwd, implementationCommit);
+  const { implementationFiles, stateFiles } = splitChangedFiles(changedFiles);
   const evidenceQuality = evaluateEvidenceQuality({
     ...feature,
     changedFiles,
@@ -84,6 +94,16 @@ async function main() {
   });
   if (evidenceQuality.decision === "block") {
     throw new Error(`${evidenceQuality.summary} Run verification lanes and record evidence before completing ${feature.id}.`);
+  }
+  const hasReviewEvidence = (feature.evidence ?? []).some((item) => /review|human|manual|browser|e2e|visual/i.test(item.type));
+  if (options.review === "approved" && (evidenceQuality.decision === "needs_human_review" || !hasReviewEvidence) && !options.force) {
+    throw new Error(
+      [
+        `${feature.id} still needs human or read-only review evidence before approved completion.`,
+        evidenceQuality.summary,
+        "Run `npx devns review packet --feature <id> --format prompt --write`, record reviewer/human evidence, or pass --force for an explicit override."
+      ].join(" ")
+    );
   }
   const evidence: Evidence[] = [
     ...(feature.evidence ?? []),
@@ -121,6 +141,8 @@ async function main() {
     commit: implementationCommit,
     implementationCommit,
     changedFiles,
+    implementationFiles,
+    stateFiles,
     evidence,
     history: history.summary,
     events: [

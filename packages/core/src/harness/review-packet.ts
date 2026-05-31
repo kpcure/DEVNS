@@ -22,6 +22,8 @@ export type ReviewPacket = {
     | "risk"
     | "acceptanceCriteria"
     | "changedFiles"
+    | "implementationFiles"
+    | "stateFiles"
     | "commit"
     | "implementationCommit"
     | "metadataCommit"
@@ -125,6 +127,8 @@ export async function buildReviewPacket(cwd: string, config: DevnsConfig, featur
       risk: feature.risk,
       acceptanceCriteria: feature.acceptanceCriteria,
       changedFiles: feature.changedFiles,
+      implementationFiles: feature.implementationFiles ?? feature.changedFiles?.filter((file) => !file.startsWith(".devns/")),
+      stateFiles: feature.stateFiles ?? feature.changedFiles?.filter((file) => file.startsWith(".devns/")),
       commit: feature.commit,
       implementationCommit: feature.implementationCommit,
       metadataCommit: feature.metadataCommit,

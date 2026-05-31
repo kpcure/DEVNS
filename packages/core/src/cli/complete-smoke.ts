@@ -28,8 +28,8 @@ function completeFeature(): Feature {
     acceptanceCriteria: ["Completion records implementation commit"],
     verification: ["npm run complete:smoke"],
     evidence: [
-      { type: "lane:test", summary: "Completion smoke verification passed." },
-      { type: "command", summary: "Deterministic command evidence exists." }
+      { type: "lane:test", summary: "Completion smoke verification passed.", coversAcceptanceCriteriaIds: ["AC-001"], verificationType: "command" },
+      { type: "lane:review-agent", summary: "Read-only review found no blocking issues.", coversAcceptanceCriteriaIds: ["AC-001"], verificationType: "review_agent" }
     ],
     changedFiles: ["src/feature.ts"],
     agentNotes: "Smoke completion notes",
@@ -42,7 +42,7 @@ function completeFeature(): Feature {
       goals: ["Record completion"],
       nonGoals: ["Do not create a git commit inside the smoke test command."],
       requirements: [{ id: "REQ-001", type: "explicit", statement: "Record implementation commit", priority: "must" }],
-      acceptanceCriteria: [{ id: "AC-001", requirementIds: ["REQ-001"], statement: "Completion records implementation commit" }],
+      acceptanceCriteria: [{ id: "AC-001", requirementIds: ["REQ-001"], statement: "Completion records implementation commit", verificationType: "command" }],
       validationPlan: { dynamic: ["complete smoke"], static: ["schema validation"] },
       testCases: [{ id: "TC-001", acceptanceCriteriaIds: ["AC-001"], type: "integration", scenario: "Run complete", expected: "Feature done" }],
       humanDecision: { status: "approved" }

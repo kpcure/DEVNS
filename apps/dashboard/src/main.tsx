@@ -162,6 +162,8 @@ type ReviewPacket = {
   implementationCommit?: string;
   metadataCommit?: string;
   changedFiles: string[];
+  implementationFiles?: string[];
+  stateFiles?: string[];
   diff?: {
     base?: string;
     filesChanged: number;
@@ -171,6 +173,11 @@ type ReviewPacket = {
     patch: string;
     truncated: boolean;
   };
+  evidenceQuality?: {
+    decision: "allow" | "warn" | "block" | "needs_human_review";
+    summary: string;
+  };
+  reviewStatus?: "review_completed" | "review_packet_ready" | "missing";
   evidence: string[];
   acceptanceCoverage?: Array<{
     criterion: string;
@@ -882,6 +889,7 @@ function MorningReview({ report }: { report?: MorningReviewReport }) {
                 <span>{packet.implementationCommit ?? packet.commit ?? "No commit"}</span>
                 <span>{packet.diff?.filesChanged ?? packet.changedFiles.length} files</span>
                 <span>+{packet.diff?.insertions ?? 0} / -{packet.diff?.deletions ?? 0}</span>
+                <span>{packet.reviewStatus?.replace("_", " ") ?? "review unknown"}</span>
                 <span>{packet.evidence.length} evidence</span>
               </div>
               {[...packet.pitfalls, ...packet.errors, ...packet.lessons].slice(0, 2).map((item) => (
@@ -944,6 +952,9 @@ function ReviewPacketDialog({
         <div className="review-modal-toolbar">
           <Pill tone={actionTone[packet.suggestedAction]}>{packet.suggestedAction.replace("_", " ")}</Pill>
           <Pill tone={toneForRisk(packet.risk ?? "low")}>{packet.risk ?? "low"}</Pill>
+          <Pill tone={packet.evidenceQuality?.decision === "allow" ? "good" : packet.evidenceQuality?.decision === "block" ? "bad" : "warn"}>
+            {packet.evidenceQuality?.decision.replace("_", " ") ?? "evidence unknown"}
+          </Pill>
           <span>{packet.implementationCommit ?? packet.commit ?? "No commit"}</span>
           <span>{packet.historyPath ?? "No history path"}</span>
         </div>
@@ -963,8 +974,12 @@ function ReviewPacketDialog({
 
           <div className="review-side-stack">
             <section className="review-modal-section">
-              <h3>Changed Files</h3>
-              <ReviewList items={packet.changedFiles} empty="No changed files recorded." />
+              <h3>Implementation Files</h3>
+              <ReviewList items={packet.implementationFiles?.length ? packet.implementationFiles : packet.changedFiles} empty="No implementation files recorded." />
+            </section>
+            <section className="review-modal-section">
+              <h3>State Files</h3>
+              <ReviewList items={packet.stateFiles ?? []} empty="No DEVNS state files recorded." />
             </section>
             <section className="review-modal-section">
               <h3>Review Agent Notes</h3>

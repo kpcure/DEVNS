@@ -6,11 +6,15 @@ export type RfcStatus = "draft" | "needs_human_review" | "approved" | "needs_cha
 export type RequirementType = "explicit" | "implicit";
 export type RequirementPriority = "must" | "should" | "could";
 export type TestTarget = "unit" | "integration" | "e2e" | "static" | "manual";
+export type VerificationType = "command" | "static_review" | "browser_smoke" | "human_review" | "review_agent";
 
 export type Evidence = {
   type: string;
   summary: string;
   url?: string;
+  coversAcceptanceCriteriaIds?: string[];
+  coversRequirementIds?: string[];
+  verificationType?: VerificationType;
 };
 
 export type CheckRecord = {
@@ -119,6 +123,7 @@ export type RfcAcceptanceCriterion = {
   requirementIds?: string[];
   statement: string;
   verification?: string;
+  verificationType?: VerificationType;
 };
 
 export type RfcTestCase = {
@@ -185,6 +190,8 @@ export type Feature = {
   evidence?: Evidence[];
   artifactRefs?: FeatureArtifactRefs;
   changedFiles?: string[];
+  implementationFiles?: string[];
+  stateFiles?: string[];
   history?: FeatureHistorySummary;
   commit?: string;
   implementationCommit?: string;
@@ -211,6 +218,8 @@ export type FeaturePatch = Partial<
     | "evidence"
     | "artifactRefs"
     | "changedFiles"
+    | "implementationFiles"
+    | "stateFiles"
     | "history"
     | "commit"
     | "implementationCommit"

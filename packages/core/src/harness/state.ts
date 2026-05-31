@@ -16,6 +16,8 @@ const editableFeatureFields = new Set([
   "evidence",
   "artifactRefs",
   "changedFiles",
+  "implementationFiles",
+  "stateFiles",
   "history",
   "commit",
   "implementationCommit",

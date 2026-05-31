@@ -167,7 +167,7 @@ async function validateWorkspace(
   );
 }
 
-async function validateState(cwd: string, config: DevnsConfig, inventory: FeatureInventory, checks: ValidationCheck[]) {
+async function validateState(cwd: string, config: DevnsConfig, inventory: FeatureInventory, checks: ValidationCheck[], strict = false) {
   const ids = new Set<string>();
   const duplicates: string[] = [];
   for (const feature of inventory.features) {
@@ -219,7 +219,7 @@ async function validateState(cwd: string, config: DevnsConfig, inventory: Featur
         checks,
         "state",
         `state.evidence_quality.${feature.id}`,
-        evidenceQuality.decision === "block" ? "fail" : evidenceQuality.decision === "allow" ? "pass" : "warn",
+        evidenceQuality.decision === "block" && strict ? "fail" : evidenceQuality.decision === "allow" ? "pass" : "warn",
         evidenceQuality.summary,
         evidenceQuality.findings.map((finding) => finding.message)
       );
@@ -535,7 +535,7 @@ export async function runHarnessValidation(cwd = process.cwd(), options: Harness
   const inventory = await readInventory(cwd, config);
 
   await validateWorkspace(cwd, config, options, fixed, checks);
-  await validateState(cwd, config, inventory, checks);
+  await validateState(cwd, config, inventory, checks, strict);
   await validateLanes(cwd, config, inventory, checks);
   await validateHooks(cwd, config, checks);
   await validateKnowledge(cwd, config, inventory, checks);

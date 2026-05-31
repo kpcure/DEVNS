@@ -60,7 +60,19 @@
               "properties": {
                 "type": { "type": "string" },
                 "summary": { "type": "string" },
-                "url": { "type": "string" }
+                "url": { "type": "string" },
+                "coversAcceptanceCriteriaIds": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "coversRequirementIds": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
+                "verificationType": {
+                  "type": "string",
+                  "enum": ["command", "static_review", "browser_smoke", "human_review", "review_agent"]
+                }
               },
               "additionalProperties": false
             }
@@ -77,6 +89,14 @@
             "additionalProperties": false
           },
           "changedFiles": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "implementationFiles": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "stateFiles": {
             "type": "array",
             "items": { "type": "string" }
           },
@@ -204,7 +224,11 @@
                       "items": { "type": "string" }
                     },
                     "statement": { "type": "string" },
-                    "verification": { "type": "string" }
+                    "verification": { "type": "string" },
+                    "verificationType": {
+                      "type": "string",
+                      "enum": ["command", "static_review", "browser_smoke", "human_review", "review_agent"]
+                    }
                   },
                   "additionalProperties": false
                 }

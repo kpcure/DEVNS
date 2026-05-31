@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import { evaluateEvidenceQuality, type EvidenceQualityReport } from "./evidence-quality";
 import { historyPathForFeature, readExecutionHistoryRecords } from "./history";
 import { readConfig, readInventory, resolveFromCwd } from "./state";
 import type { DevnsConfig, ExecutionHistoryRecord, Feature, FeatureInventory } from "./types";
@@ -9,6 +10,7 @@ import type { DevnsConfig, ExecutionHistoryRecord, Feature, FeatureInventory } f
 const execFileAsync = promisify(execFile);
 
 export type HumanAction = "approve" | "inspect_diff" | "needs_fix" | "follow_up";
+export type ReviewCompletionStatus = "review_completed" | "review_packet_ready" | "missing";
 
 export type ReviewDiffSummary = {
   base?: string;
@@ -31,7 +33,11 @@ export type FeatureReviewPacket = {
   implementationCommit?: string;
   metadataCommit?: string;
   changedFiles: string[];
+  implementationFiles: string[];
+  stateFiles: string[];
   diff?: ReviewDiffSummary;
+  evidenceQuality: EvidenceQualityReport;
+  reviewStatus: ReviewCompletionStatus;
   evidence: string[];
   acceptanceCoverage: Array<{
     criterion: string;
@@ -152,9 +158,15 @@ function flattenHistory(records: ExecutionHistoryRecord[]) {
   };
 }
 
-function suggestedAction(feature: Feature, history: ReturnType<typeof flattenHistory>): HumanAction {
+function hasReviewEvidence(feature: Feature) {
+  return (feature.evidence ?? []).some((item) => /review|review-agent|code-review|human|manual|browser|e2e|visual/i.test(item.type));
+}
+
+function suggestedAction(feature: Feature, history: ReturnType<typeof flattenHistory>, evidenceQuality: EvidenceQualityReport): HumanAction {
   if (feature.reviewDecision === "needs_changes" || history.errors.length > 0) return "needs_fix";
   if (feature.reviewDecision === "follow_up" || history.risks.length > 0) return "follow_up";
+  if (evidenceQuality.decision !== "allow") return "inspect_diff";
+  if (!hasReviewEvidence(feature)) return "inspect_diff";
   if (feature.risk === "high" || !feature.commit) return "inspect_diff";
   return "approve";
 }
@@ -168,22 +180,28 @@ export async function buildFeatureReviewPacket(
   const flattened = flattenHistory(history.records);
   const evidence = evidenceSummaries(feature);
   const diff = await diffForFeature(cwd, feature);
+  const evidenceQuality = evaluateEvidenceQuality(feature);
+  const reviewStatus: ReviewCompletionStatus = hasReviewEvidence(feature) ? "review_completed" : diff ? "review_packet_ready" : "missing";
   return {
     featureId: feature.id,
     title: feature.title,
     status: feature.status,
     risk: feature.risk,
-    suggestedAction: suggestedAction(feature, flattened),
+    suggestedAction: suggestedAction(feature, flattened, evidenceQuality),
     rfcIntent: feature.rfc?.summary,
     commit: feature.commit,
     implementationCommit: feature.implementationCommit,
     metadataCommit: feature.metadataCommit,
     changedFiles: feature.changedFiles ?? [],
+    implementationFiles: feature.implementationFiles ?? (feature.changedFiles ?? []).filter((file) => !file.startsWith(".devns/")),
+    stateFiles: feature.stateFiles ?? (feature.changedFiles ?? []).filter((file) => file.startsWith(".devns/")),
     diff,
+    evidenceQuality,
+    reviewStatus,
     evidence,
-    acceptanceCoverage: (feature.acceptanceCriteria ?? []).map((criterion) => ({
-      criterion,
-      evidence: evidence.filter((item) => item.toLowerCase().includes("lane") || item.toLowerCase().includes("git"))
+    acceptanceCoverage: evidenceQuality.coverage.map((item) => ({
+      criterion: item.criterion,
+      evidence: item.evidence.map((evidenceItem) => `${evidenceItem.type}: ${evidenceItem.summary}`)
     })),
     ...flattened,
     historyPath: path.relative(cwd, history.filePath)

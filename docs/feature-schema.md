@@ -130,7 +130,19 @@ Use `npm run devns:complete -- --id <feature-id>` after deterministic evidence e
 
 Evidence should be deterministic where possible: command lanes, tests, build, lint, browser checks, static review, dynamic checks, security scans, or Git evidence. Manual evidence is allowed, but if it is the only evidence DEVNS routes the feature to human review instead of treating it as fully verified.
 
-The built-in `evidence-quality-gate` checks that each feature has acceptance criteria and supporting evidence before completion. Detailed matrices belong in history or review packets; the feature inventory keeps only compact evidence summaries.
+The built-in `evidence-quality-gate` checks that each feature has acceptance criteria and supporting evidence before completion. Evidence may explicitly declare `coversAcceptanceCriteriaIds`, `coversRequirementIds`, and `verificationType`. Build, lint, and security evidence do not automatically cover product semantics, UI labels, browser behavior, or human-review criteria.
+
+Acceptance criteria may also declare `verificationType`:
+
+- `command`
+- `static_review`
+- `browser_smoke`
+- `human_review`
+- `review_agent`
+
+Product/UX/domain criteria should use `browser_smoke`, `human_review`, or `review_agent` unless a deterministic test truly verifies the semantic behavior. Detailed matrices belong in history or review packets; the feature inventory keeps only compact evidence summaries.
+
+Changed files can be split into `implementationFiles` and `stateFiles` when completion records both product code and DEVNS metadata. Review surfaces should prioritize implementation files and show state files separately.
 
 ## Execution History
 
