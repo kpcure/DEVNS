@@ -2,6 +2,7 @@ import type { ClaudeStopHookInput, Feature, DevnsConfig, StopHookDecision } from
 import { canClaimFeature, describeRfcBlock } from "./rfc";
 import { claimFeature } from "./task-queue";
 import { gitStatus } from "./git";
+import { stopHookWorkerContinuation } from "./worker-handoff";
 import {
   findBlockedReadyFeature,
   findNextReadyFeature,
@@ -199,10 +200,6 @@ export async function evaluateClaudeStopHook(input: ClaudeStopHookInput): Promis
 
   return {
     decision: "block",
-    reason: [
-      `Claimed next feature ${result.feature.id}: ${result.feature.title}.`,
-      "Do not stop yet.",
-      "Read its context, run requirement analysis before coding, then implement and verify this feature."
-    ].join(" ")
+    reason: stopHookWorkerContinuation(config, result.feature, cwd)
   };
 }

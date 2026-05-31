@@ -55,9 +55,10 @@ Use when no feature is active and a ready feature has an approved RFC.
 
 ```text
 Claimed next feature <feature-id>: <title>.
-Read its RFC, context, and relevant history before editing.
-Run requirement analysis before coding.
-Implement one feature only, verify, write evidence/history, and commit.
+Do not implement this feature in the stop-hook orchestration context.
+Start a Sub Agent, isolated worker, or fresh implementation context for exactly this one feature.
+Pass the worker handoff fields from the Stop hook reason: feature id, RFC intent, history path, context sources, changed-file plan, validation plan, required lanes, and expected output.
+Keep the main context responsible for queue orchestration, evidence aggregation, and stop-hook decisions.
 ```
 
 ### Stop For Human Review

@@ -1,20 +1,24 @@
 #!/usr/bin/env node
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, copyFile, cp, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeAgentsIndex } from "../harness/agents-index";
+
+type HostAdapter = "auto" | "codex" | "claude" | "both" | "none";
 
 export type InitOptions = {
   force: boolean;
   projectName: string;
   projectDescription: string;
+  host?: HostAdapter;
 };
 
 function parseArgs(argv: string[]): InitOptions {
   const options: InitOptions = {
     force: false,
     projectName: "DEVNS Project",
-    projectDescription: "Describe the project background, migration goal, and constraints."
+    projectDescription: "Describe the project background, migration goal, and constraints.",
+    host: "auto"
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -27,6 +31,14 @@ function parseArgs(argv: string[]): InitOptions {
     } else if (arg === "--project-description") {
       options.projectDescription = argv[index + 1] || options.projectDescription;
       index += 1;
+    } else if (arg === "--host") {
+      const host = argv[index + 1] as HostAdapter | undefined;
+      if (host && ["auto", "codex", "claude", "both", "none"].includes(host)) {
+        options.host = host;
+      }
+      index += 1;
+    } else if (arg === "--no-host-adapter") {
+      options.host = "none";
     }
   }
 
@@ -50,6 +62,52 @@ function json(value: unknown) {
 }
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
+
+function hostAdaptersFor(host: HostAdapter) {
+  if (host === "none") return [];
+  if (host === "both") return ["codex", "claude"] as const;
+  if (host === "codex" || host === "claude") return [host] as const;
+
+  const adapters: Array<"codex" | "claude"> = [];
+  if (process.env.CODEX_SHELL || process.env.CODEX_PROJECT_DIR || process.env.CODEX_THREAD_ID) {
+    adapters.push("codex");
+  }
+  if (process.env.CLAUDE_PROJECT_DIR || process.env.CLAUDECODE || process.env.CLAUDE_CODE) {
+    adapters.push("claude");
+  }
+  return adapters;
+}
+
+async function copyNewFile(sourcePath: string, destinationPath: string, force: boolean) {
+  await mkdir(path.dirname(destinationPath), { recursive: true });
+  try {
+    await copyFile(sourcePath, destinationPath, force ? 0 : 1);
+    return true;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "EEXIST") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function copyNewDirectory(sourcePath: string, destinationPath: string, force: boolean) {
+  await mkdir(path.dirname(destinationPath), { recursive: true });
+  try {
+    await cp(sourcePath, destinationPath, {
+      recursive: true,
+      force,
+      errorOnExist: !force
+    });
+    return true;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "EEXIST" || code === "ERR_FS_CP_EEXIST") {
+      return false;
+    }
+    throw error;
+  }
+}
 
 async function readPackageScripts(cwd: string) {
   try {
@@ -105,6 +163,7 @@ function recommendedReviewLanes(scripts: Record<string, string>) {
 export async function main(inputOptions?: InitOptions) {
   const cwd = process.cwd();
   const options = inputOptions ?? parseArgs(process.argv.slice(2));
+  const host = options.host ?? "auto";
   const devnsDir = path.join(cwd, ".devns");
   const scripts = await readPackageScripts(cwd);
 
@@ -271,14 +330,40 @@ export async function main(inputOptions?: InitOptions) {
     (didWrite ? written : skipped).push(path.relative(cwd, file.path));
   }
 
-  try {
-    await copyFile(workbenchTemplatePath, workbenchOutputPath, options.force ? 0 : 1);
-    written.push(path.relative(cwd, workbenchOutputPath));
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "EEXIST") {
-      skipped.push(path.relative(cwd, workbenchOutputPath));
-    } else {
-      throw error;
+  const didCopyWorkbench = await copyNewFile(workbenchTemplatePath, workbenchOutputPath, options.force);
+  (didCopyWorkbench ? written : skipped).push(path.relative(cwd, workbenchOutputPath));
+
+  for (const adapter of hostAdaptersFor(host)) {
+    if (adapter === "codex") {
+      const didCopyPlugin = await copyNewDirectory(
+        path.join(packageRoot, "plugins", "codex", "devns"),
+        path.join(cwd, "plugins", "codex", "devns"),
+        options.force
+      );
+      (didCopyPlugin ? written : skipped).push("plugins/codex/devns");
+
+      const didCopyHook = await copyNewFile(
+        path.join(packageRoot, "templates", "codex", "hooks.json"),
+        path.join(cwd, ".codex", "hooks.json"),
+        options.force
+      );
+      (didCopyHook ? written : skipped).push(".codex/hooks.json");
+
+      await chmod(path.join(cwd, "plugins", "codex", "devns", "scripts", "devns-stop-hook.sh"), 0o755);
+    } else if (adapter === "claude") {
+      const didCopyPlugin = await copyNewDirectory(
+        path.join(packageRoot, "plugins", "claude-code", "devns"),
+        path.join(cwd, "plugins", "claude-code", "devns"),
+        options.force
+      );
+      (didCopyPlugin ? written : skipped).push("plugins/claude-code/devns");
+
+      const didCopySettings = await copyNewFile(
+        path.join(packageRoot, "templates", "claude-code", ".claude", "settings.json"),
+        path.join(cwd, ".claude", "settings.json"),
+        options.force
+      );
+      (didCopySettings ? written : skipped).push(".claude/settings.json");
     }
   }
 

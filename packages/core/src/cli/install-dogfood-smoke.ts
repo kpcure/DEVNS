@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -50,10 +50,24 @@ async function main() {
     const bootstrap = JSON.parse(await runDevns(repoRoot, cwd, "doctor", "--json"));
     assert.equal(bootstrap.mode, "bootstrap_required");
 
-    await runDevns(repoRoot, cwd, "init", "--project-name", "Install Dogfood", "--project-description", "Dogfood install entrypoint.");
+    await runDevns(
+      repoRoot,
+      cwd,
+      "init",
+      "--project-name",
+      "Install Dogfood",
+      "--project-description",
+      "Dogfood install entrypoint.",
+      "--host",
+      "codex"
+    );
 
     const config = JSON.parse(await readFile(path.join(cwd, ".devns", "devns.config.json"), "utf8"));
     assert.equal(config.reviewLanes.some((lane: { id: string }) => lane.id === "test"), false);
+    const codexHooks = JSON.parse(await readFile(path.join(cwd, ".codex", "hooks.json"), "utf8"));
+    assert.match(codexHooks.hooks.Stop[0].hooks[0].command, /plugins\/codex\/devns\/scripts\/devns-stop-hook\.sh/);
+    const stopHook = await stat(path.join(cwd, "plugins", "codex", "devns", "scripts", "devns-stop-hook.sh"));
+    assert.equal(Boolean(stopHook.mode & 0o111), true);
 
     const emptyRfc = JSON.parse(await runDevns(repoRoot, cwd, "rfc", "check", "--all", "--json"));
     assert.deepEqual(emptyRfc, { results: [], ready: true });

@@ -46,6 +46,8 @@ This creates:
   policies/
 ```
 
+By default `init` uses `--host auto`: when it is run inside Codex or Claude Code it also writes the matching local host adapter. Use `--host codex`, `--host claude`, `--host both`, or `--host none` to be explicit. The Codex adapter writes `.codex/hooks.json`, installs `plugins/codex/devns/`, and marks `plugins/codex/devns/scripts/devns-stop-hook.sh` executable.
+
 Then use the `devns-init` skill to scan repository context and fill `.devns/candidates.json`.
 
 The first queue is intentionally candidates, not implementation-ready features. A candidate becomes executable only after `devns-rfc` turns it into an approved RFC and the item is promoted into `.devns/features.json`.

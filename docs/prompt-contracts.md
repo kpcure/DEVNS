@@ -12,6 +12,7 @@ The continuation packet should include:
 - feature id and title
 - blocking reason, with the exact missing gate when possible
 - next command or document to read
+- for claim-next, a worker handoff that tells the host to start a Sub Agent, isolated worker, or fresh implementation context before editing
 - required evidence to write before the next stop attempt
 
 It must not ask the agent to run broad discovery, long tests, browser checks, package installs, or LLM review inside the hook. Those are lanes that must finish before the stop attempt.
@@ -36,7 +37,7 @@ Worker output:
 - blockers or human-review questions
 - suggested commit message
 
-The main context should keep queue orchestration, evidence aggregation, and Stop hook decisions. The worker should implement exactly one feature.
+The Stop hook claim-next prompt should not ask the current orchestration context to implement directly. It should instruct the host to start a Sub Agent, isolated worker, or fresh implementation context with the worker handoff. The main context should keep queue orchestration, evidence aggregation, and Stop hook decisions. The worker should implement exactly one feature.
 
 ## Code Review Lane
 

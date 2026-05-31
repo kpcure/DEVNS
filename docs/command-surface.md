@@ -61,7 +61,7 @@ The current repository also exposes thin npm-backed internal development command
 
 ```sh
 npx @kpcure/devns doctor [--json]
-npx @kpcure/devns init --project-name "Project" --project-description "Goal"
+npx @kpcure/devns init --project-name "Project" --project-description "Goal" [--host auto|codex|claude|both|none]
 npx @kpcure/devns run [--json] [--no-claim]
 npx @kpcure/devns dashboard
 npx @kpcure/devns validate [--json] [--strict] [--fix]
@@ -91,7 +91,7 @@ npm run harness:validate [-- --json] [-- --strict] [-- --fix]
 npm run harness:stop
 ```
 
-`npm run devns:init` creates `.devns/` with the files that skills, hooks, the dashboard, and agents share. It is the deterministic substrate under the `devns-init` skill.
+`npm run devns:init` creates `.devns/` with the files that skills, hooks, the dashboard, and agents share. It is the deterministic substrate under the `devns-init` skill. Host adapters can be installed at the same time with `--host codex`, `--host claude`, or `--host both`; the default `--host auto` detects Codex or Claude environment variables and installs the matching adapter.
 
 `npm run devns:doctor` is the first command to run after install. It checks whether the workspace exists, validates that the feature inventory can load, reports the current mode, and prints the next action.
 

@@ -219,6 +219,9 @@ async function main() {
     assert.ok(claim, "Claim-project hook should block with JSON output.");
     assert.equal(claim.decision, "block");
     assert.match(claim.reason, /Claimed next feature SMOKE-002/);
+    assert.match(claim.reason, /Start a Sub Agent, isolated worker, or fresh implementation context/);
+    assert.match(claim.reason, /"strategy":"prefer_isolated_worker"/);
+    assert.match(claim.reason, /"featureId":"SMOKE-002"/);
 
     const complete = await runHook(completeProject, JSON.stringify({ cwd: completeProject }));
     assert.equal(complete.trim(), "");

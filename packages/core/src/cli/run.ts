@@ -1,10 +1,9 @@
 #!/usr/bin/env node
 import { access } from "node:fs/promises";
 import { evaluateRfcReadiness } from "../harness/rfc";
-import { historyPathForFeature } from "../harness/history";
 import { activeFeature, blockedReadyFeature, claimFeature, nextFeature, TaskQueueError } from "../harness/task-queue";
 import { readConfig, readInventory } from "../harness/state";
-import type { DevnsConfig, Feature } from "../harness/types";
+import { featureWorkerPrompt, workerHandoff } from "../harness/worker-handoff";
 
 type RunMode = "bootstrap_required" | "continue_active" | "claim_next" | "blocked_ready" | "empty_queue";
 
@@ -45,59 +44,6 @@ async function exists(filePath: string) {
   }
 }
 
-function workerHandoff(config: DevnsConfig, feature: Feature) {
-  const inferredChangedFilePlan = feature.implementationSurface?.length
-    ? feature.implementationSurface
-    : feature.changedFiles?.length
-      ? feature.changedFiles
-      : [];
-  return {
-    strategy: "prefer_isolated_worker",
-    scope: "exactly_one_feature",
-    featureId: feature.id,
-    implementationTitle: feature.rfc?.summary ?? feature.title,
-    expectedOutcome: feature.rfc?.expectedOutcome ?? feature.description,
-    domainConstraints: [...(feature.rfc?.goals ?? []), ...(feature.rfc?.nonGoals ?? []).map((item) => `Non-goal: ${item}`)],
-    rfc: feature.rfc ?? null,
-    historyPath: feature.history?.historyPath ?? historyPathForFeature(process.cwd(), config, feature.id),
-    context: feature.context ?? [],
-    contextSources: feature.context ?? [],
-    changedFilePlan: inferredChangedFilePlan,
-    implementationPlanning: inferredChangedFilePlan.length
-      ? "Use the listed files as the expected implementation surface, then adjust only if repository evidence proves the plan is wrong."
-      : "No implementation file plan is known yet. First inspect the repository and RFC, produce a short implementation file plan, then edit only files justified by that plan.",
-    validationPlan: feature.rfc?.validationPlan ?? null,
-    contextBudget: config.completionPolicy?.contextBudget ?? null,
-    requiredLanes: (config.reviewLanes ?? [])
-      .filter((lane) => lane.required || lane.blocksCompletion)
-      .map((lane) => lane.id),
-    promptContracts: [
-      "docs/prompt-contracts.md",
-      "plugins/codex/devns/prompts/code-review-lane.md",
-      "plugins/codex/devns/prompts/domain-knowledge-curator.md"
-    ],
-    expectedOutput: [
-      "changed files and diff summary",
-      "commands run and lane evidence",
-      "decisions, rejected alternatives, pitfalls, errors, fixes, and lessons",
-      "blockers or human-review questions",
-      "suggested commit message"
-    ]
-  };
-}
-
-function featurePrompt(feature: Feature, verb: "Continue" | "Implement") {
-  return [
-    `Expected outcome: ${feature.rfc?.expectedOutcome ?? feature.description}.`,
-    `${verb} feature ${feature.id}: ${feature.title}.`,
-    "Read its approved RFC, context files, and latest evidence before editing.",
-    "After RFC clarification, prefer an isolated worker/subagent or fresh context for this single feature when the host supports it.",
-    "Keep the main context responsible for orchestration, evidence aggregation, and stop-hook decisions.",
-    "Do technical implementation analysis inside the feature loop.",
-    "Implement the smallest coherent change, run verification, update evidence/history, then commit exactly this feature."
-  ].join(" ");
-}
-
 function writeJson(value: unknown) {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }
@@ -127,8 +73,8 @@ async function main() {
     const payload = {
       mode: "continue_active" as const,
       feature: active,
-      workerHandoff: workerHandoff(config, active),
-      prompt: featurePrompt(active, "Continue")
+      workerHandoff: workerHandoff(config, active, cwd),
+      prompt: featureWorkerPrompt(active, "Continue")
     };
     options.output === "json" ? writeJson(payload) : writeText(payload.mode, payload.prompt);
     return;
@@ -147,8 +93,8 @@ async function main() {
       mode: "claim_next" as const,
       claimed: Boolean(result),
       feature,
-      workerHandoff: workerHandoff(config, feature),
-      prompt: featurePrompt(feature, "Implement")
+      workerHandoff: workerHandoff(config, feature, cwd),
+      prompt: featureWorkerPrompt(feature, "Implement")
     };
     options.output === "json" ? writeJson(payload) : writeText(payload.mode, payload.prompt);
     return;
