@@ -1,4 +1,4 @@
-import type { CandidateFeature, Feature, FeatureRfc } from "./types";
+import type { CandidateFeature, Feature, FeatureRfc, RfcClarificationQuestion } from "./types";
 
 export type RfcReadiness =
   | {
@@ -18,6 +18,18 @@ function hasAnyValidationPlan(rfc: FeatureRfc) {
   return hasItems(rfc.validationPlan.dynamic) || hasItems(rfc.validationPlan.static);
 }
 
+function isBlank(value: string | undefined) {
+  return !value || !value.trim();
+}
+
+function hasRequirementCoverage(rfc: FeatureRfc, requirementId: string) {
+  return rfc.acceptanceCriteria.some((criterion) => criterion.requirementIds?.includes(requirementId));
+}
+
+function hasAcceptanceCoverage(rfc: FeatureRfc, criterionId: string) {
+  return rfc.testCases.some((testCase) => testCase.acceptanceCriteriaIds?.includes(criterionId));
+}
+
 export function evaluateRfcReadiness(feature: Feature): RfcReadiness {
   const reasons: string[] = [];
   const { rfc } = feature;
@@ -33,23 +45,23 @@ export function evaluateRfcReadiness(feature: Feature): RfcReadiness {
     reasons.push(`RFC status is ${rfc.status}, not approved.`);
   }
 
-  if (rfc.humanDecision?.status && rfc.humanDecision.status !== "approved") {
-    reasons.push(`Human RFC decision is ${rfc.humanDecision.status}, not approved.`);
+  if (rfc.humanDecision?.status !== "approved") {
+    reasons.push(`Human RFC decision is ${rfc.humanDecision?.status ?? "missing"}, not approved.`);
   }
 
-  if (!rfc.summary.trim()) {
+  if (isBlank(rfc.summary)) {
     reasons.push("RFC summary is empty.");
   }
 
-  if (!rfc.background.trim()) {
+  if (isBlank(rfc.background)) {
     reasons.push("RFC background is empty.");
   }
 
-  if (!rfc.featureDescription.trim()) {
+  if (isBlank(rfc.featureDescription)) {
     reasons.push("RFC feature description is empty.");
   }
 
-  if (!rfc.expectedOutcome.trim()) {
+  if (isBlank(rfc.expectedOutcome)) {
     reasons.push("RFC expected outcome is empty.");
   }
 
@@ -59,6 +71,10 @@ export function evaluateRfcReadiness(feature: Feature): RfcReadiness {
 
   if (!hasItems(rfc.requirements)) {
     reasons.push("RFC requirements are missing.");
+  }
+
+  if (!hasItems(rfc.nonGoals)) {
+    reasons.push("RFC non-goals are missing.");
   }
 
   if (!hasItems(rfc.acceptanceCriteria)) {
@@ -76,6 +92,18 @@ export function evaluateRfcReadiness(feature: Feature): RfcReadiness {
   const blockingUnknowns = rfc.unknowns?.filter((unknown) => unknown.severity === "blocking") ?? [];
   if (blockingUnknowns.length > 0) {
     reasons.push(`RFC has ${blockingUnknowns.length} blocking unknown(s).`);
+  }
+
+  for (const requirement of rfc.requirements.filter((item) => item.priority === "must")) {
+    if (!hasRequirementCoverage(rfc, requirement.id)) {
+      reasons.push(`Must requirement ${requirement.id} is not covered by acceptance criteria.`);
+    }
+  }
+
+  for (const criterion of rfc.acceptanceCriteria) {
+    if (!hasAcceptanceCoverage(rfc, criterion.id) && isBlank(criterion.verification)) {
+      reasons.push(`Acceptance criterion ${criterion.id} has no test case or verification target.`);
+    }
   }
 
   return reasons.length ? { ready: false, reasons } : { ready: true, reasons: [] };
@@ -146,9 +174,84 @@ export function createRfcScaffold(input: Pick<CandidateFeature, "id" | "title" |
       }
     ],
     unknowns: [],
+    clarificationQuestions: createClarificationQuestions({
+      background: "",
+      expectedOutcome: "",
+      nonGoals: [],
+      validationPlan: {
+        dynamic: [],
+        static: []
+      }
+    }),
     risks: [],
     humanDecision: {
       status: "pending"
     }
   };
+}
+
+export function createClarificationQuestions(rfc: Pick<FeatureRfc, "background" | "expectedOutcome" | "nonGoals" | "validationPlan">): RfcClarificationQuestion[] {
+  const questions: RfcClarificationQuestion[] = [];
+
+  if (isBlank(rfc.background)) {
+    questions.push({
+      id: "Q-INTENT-001",
+      question: "What project or user problem should this feature solve?",
+      recommended: "Define the concrete user/project problem before implementation.",
+      options: [
+        "Define the concrete user/project problem before implementation.",
+        "Treat this as a technical maintenance task with no direct user-facing problem.",
+        "Defer this feature until the problem statement is clearer."
+      ],
+      blocking: true,
+      owner: "human"
+    });
+  }
+
+  if (!hasItems(rfc.nonGoals)) {
+    questions.push({
+      id: "Q-SCOPE-001",
+      question: "Which tempting but out-of-scope behavior should this feature explicitly avoid?",
+      recommended: "Record at least one non-goal so the implementation does not expand silently.",
+      options: [
+        "Record at least one non-goal so the implementation does not expand silently.",
+        "This feature is small enough that no non-goal is needed.",
+        "Split the feature because the boundary is not clear."
+      ],
+      blocking: true,
+      owner: "human"
+    });
+  }
+
+  if (isBlank(rfc.expectedOutcome)) {
+    questions.push({
+      id: "Q-OUTCOME-001",
+      question: "What observable outcome proves this feature is complete?",
+      recommended: "Define a user-visible or state-visible outcome that can become an acceptance criterion.",
+      options: [
+        "Define a user-visible or state-visible outcome that can become an acceptance criterion.",
+        "Define a developer-visible outcome such as command output, schema validation, or generated artifact.",
+        "Defer until success can be observed."
+      ],
+      blocking: true,
+      owner: "human"
+    });
+  }
+
+  if (!hasAnyValidationPlan(rfc as FeatureRfc)) {
+    questions.push({
+      id: "Q-VERIFY-001",
+      question: "Which verification path should block completion?",
+      recommended: "Use the narrowest deterministic command or inspection that proves the acceptance criteria.",
+      options: [
+        "Use the narrowest deterministic command or inspection that proves the acceptance criteria.",
+        "Use static review only for this feature.",
+        "Require manual review because deterministic validation is not available yet."
+      ],
+      blocking: true,
+      owner: "agent"
+    });
+  }
+
+  return questions.slice(0, 5);
 }

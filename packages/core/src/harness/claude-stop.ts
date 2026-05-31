@@ -1,15 +1,72 @@
 import type { ClaudeStopHookInput, Feature, DevnsConfig, StopHookDecision } from "./types";
 import { canClaimFeature, describeRfcBlock } from "./rfc";
 import { claimFeature } from "./task-queue";
+import { gitStatus } from "./git";
 import {
-  findActiveFeature,
   findBlockedReadyFeature,
   findNextReadyFeature,
   readConfig,
   readInventory
 } from "./state";
 
-function completionReasons(feature: Feature, config: DevnsConfig) {
+function laneEvidenceDecision(summary: string) {
+  const match = summary.match(/Decision:\s*(allow|warn|block|needs_human_review)/i);
+  return match?.[1]?.toLowerCase();
+}
+
+function laneEvidenceFor(feature: Feature, laneId: string) {
+  return (feature.evidence ?? []).filter((item) => item.type === `lane:${laneId}`);
+}
+
+function laneCompletionReasons(feature: Feature, config: DevnsConfig) {
+  const reasons: string[] = [];
+  for (const lane of config.reviewLanes ?? []) {
+    const required = lane.required || lane.blocksCompletion;
+    if (!required) {
+      continue;
+    }
+
+    const evidence = laneEvidenceFor(feature, lane.id);
+    if (!evidence.length) {
+      reasons.push(`Required lane evidence is missing: ${lane.id}.`);
+      continue;
+    }
+
+    const blocking = evidence.find((item) => {
+      const decision = laneEvidenceDecision(item.summary);
+      return decision === "block" || decision === "needs_human_review";
+    });
+    if (blocking) {
+      reasons.push(`Required lane ${lane.id} is not clear to pass: ${blocking.summary}`);
+    }
+  }
+  return reasons;
+}
+
+async function cleanWorktreeReasons(cwd: string, feature: Feature, config: DevnsConfig) {
+  if (!config.completionPolicy?.requireCleanWorktree) {
+    return [];
+  }
+
+  try {
+    const dirty = await gitStatus(cwd);
+    if (!dirty.length) {
+      return [];
+    }
+
+    const declared = new Set([...(feature.changedFiles ?? []), ...(feature.context ?? [])]);
+    const paths = dirty.map((entry) => entry.path);
+    const undeclared = paths.filter((file) => !declared.has(file));
+    if (undeclared.length) {
+      return [`Git worktree has undeclared dirty files: ${undeclared.slice(0, 6).join(", ")}.`];
+    }
+    return [`Git worktree is dirty: ${paths.slice(0, 6).join(", ")}.`];
+  } catch (error) {
+    return [`Unable to inspect git worktree cleanliness: ${error instanceof Error ? error.message : "unknown error"}.`];
+  }
+}
+
+async function completionReasons(cwd: string, feature: Feature, config: DevnsConfig) {
   const policy = config.completionPolicy ?? {};
   const reasons: string[] = [];
   const rfcReadiness = canClaimFeature({ ...feature, status: "ready" });
@@ -22,6 +79,10 @@ function completionReasons(feature: Feature, config: DevnsConfig) {
     reasons.push("No verification evidence is recorded yet.");
   }
 
+  if (config.hooks?.stop?.blockOn?.skippedRequiredVerification !== false) {
+    reasons.push(...laneCompletionReasons(feature, config));
+  }
+
   if (policy.requireReviewDecision !== false && (!feature.reviewDecision || feature.reviewDecision === "pending")) {
     reasons.push("Review decision is still pending.");
   }
@@ -31,7 +92,7 @@ function completionReasons(feature: Feature, config: DevnsConfig) {
   }
 
   if (policy.requireCleanWorktree && !(feature.evidence ?? []).some((item) => item.type === "git-clean")) {
-    reasons.push("Clean worktree evidence is missing.");
+    reasons.push(...(await cleanWorktreeReasons(cwd, feature, config)));
   }
 
   return reasons;
@@ -57,10 +118,23 @@ export async function evaluateClaudeStopHook(input: ClaudeStopHookInput): Promis
 
   const config = await readConfig(cwd);
   const inventory = await readInventory(cwd, config);
-  const activeFeature = findActiveFeature(inventory.features);
+  const activeFeatures = inventory.features.filter((feature) => feature.status === "in_progress");
+
+  if (activeFeatures.length > 1) {
+    return {
+      decision: "block",
+      reason: [
+        "DEVNS invalid queue state: multiple features are in_progress.",
+        `Active features: ${activeFeatures.map((feature) => feature.id).join(", ")}.`,
+        "Resolve to exactly one active feature before continuing; DEVNS 0.2 is single-feature serial by default."
+      ].join(" ")
+    };
+  }
+
+  const activeFeature = activeFeatures[0];
 
   if (activeFeature) {
-    const reasons = completionReasons(activeFeature, config);
+    const reasons = await completionReasons(cwd, activeFeature, config);
 
     if (reasons.length) {
       return {

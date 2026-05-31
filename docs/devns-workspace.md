@@ -15,6 +15,7 @@ This directory is ignored by Git by default because it is runtime state for a ta
   features.json
   rfcs/
   history/
+  reviews/
   skills/
   policies/
 ```
@@ -25,9 +26,30 @@ This directory is ignored by Git by default because it is runtime state for a ta
 - `candidates.json`: discovered candidate features that are not executable yet.
 - `features.json`: implementation queue. Items are claimable only after an approved RFC.
 - `rfcs/`: RFC records for candidates and features.
-- `history/`: execution summaries, changed-file evidence, verification results, and impact notes.
+- `history/`: curated execution knowledge, including decisions, alternatives, pitfalls, errors, fixes, lessons, and verification summaries.
+- `reviews/`: feature-centered morning review packets for humans and future agent handoff.
 - `skills/`: project-local skill overrides or extra workflow notes.
 - `policies/`: project-local harness rules.
+
+## Agent Reading Order
+
+Start small and expand only when needed:
+
+1. Read `AGENTS.md` and `.devns/index.md`.
+2. Run `npm run devns:doctor -- --json` or `npm run devns:status -- --json`.
+3. If a feature is active, read its approved RFC, `changedFiles`, evidence, and latest history record.
+4. Before editing related files, scan history for decisions, rejected alternatives, pitfalls, errors, fixes, and lessons.
+5. If reviewing completed overnight work, start from `.devns/reviews/<date>.md` or `/api/reviews/latest` instead of clicking commits one by one.
+
+## Completion Duties
+
+Before a feature can be considered complete:
+
+- run configured lanes with `npm run devns:lanes -- run --write --json`
+- keep `features.json` to status, evidence summaries, changed files, review decision, and commit metadata
+- put detailed lane output and reusable project knowledge in `.devns/history/`
+- generate or refresh morning review packets when handing work back to a human
+- commit exactly one feature, with explicit files only
 
 ## JSON Contracts
 

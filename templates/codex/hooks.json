@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash plugins/codex/devns/scripts/devns-stop-hook.sh",
+            "statusMessage": "DEVNS stop hook"
+          }
+        ]
+      }
+    ]
+  }
+}

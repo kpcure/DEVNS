@@ -20,6 +20,10 @@ The adapter:
 
 The stop command reads hook input JSON from stdin when the host provides it and evaluates the DEVNS feature inventory.
 
+The adapter is a lifecycle target, not the primary way an agent should continue work during a normal turn. The host calls it when the client is about to stop.
+
+Do not wire DEVNS as two same-event Stop hooks where the first hook runs review and the second hook immediately reads that result. Hosts may execute matching hooks independently or in parallel. Run review lanes before the final stop attempt, persist their JSON evidence/history, then let the DEVNS stop command aggregate that state.
+
 To wire it manually in a host that supports lifecycle hooks, point the host's stop event at:
 
 ```sh

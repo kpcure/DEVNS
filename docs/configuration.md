@@ -72,6 +72,14 @@ Supported lane types planned for the core:
 - `agent`
 - `builtin`
 
+Command lanes produce a structured result envelope with command, exit code, duration, stdout/stderr digests, findings, evidence, and a decision. Required blocking failures return `block`; nonblocking failures return `warn` so legacy lint or low-confidence security findings can be reviewed without pretending they are absolute proof.
+
+`devns:init` seeds lanes from detected package scripts:
+
+- `test`, `typecheck`, and `build` are required blocking command lanes when present.
+- `lint` is nonblocking by default because existing projects often carry legacy lint debt.
+- `security_basic` is a builtin lightweight secret/config-change scanner and starts as nonblocking risk evidence.
+
 The config schema is fixed in:
 
 ```text

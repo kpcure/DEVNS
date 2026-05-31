@@ -2,8 +2,9 @@ import { exec } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import { evaluateEvidenceQuality } from "./evidence-quality";
 import type { Feature } from "./types";
-import type { LaneDefinition, LaneFinding, LaneResult } from "./lane-runner";
+import { decisionForFindings, findingBlocksCompletion, type LaneDefinition, type LaneFinding, type LaneResult } from "./lane-runner";
 
 const execAsync = promisify(exec);
 
@@ -43,26 +44,35 @@ function resultFor(
     confidence?: LaneResult["confidence"];
   } = {}
 ): LaneResult {
+  const decision = status === "pass" || status === "fail" ? decisionForFindings(findings, lane) : "needs_human_review";
+  const blocksCompletion = options.blocksCompletion ?? decision === "block";
+
   return {
     lane: lane.id,
     type: "builtin",
     status,
+    decision,
     summary,
     confidence: options.confidence ?? "high",
     findings,
     evidence: options.evidence ?? [],
+    artifacts: [],
     recommendedActions: options.recommendedActions ?? [],
-    blocksCompletion: options.blocksCompletion ?? false,
+    blocksCompletion,
     required: lane.required ?? false
   };
 }
 
 async function listChangedFiles(cwd: string) {
-  const { stdout } = await execAsync("git diff --name-only HEAD --", { cwd });
-  return stdout
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+  try {
+    const { stdout } = await execAsync("git diff --name-only HEAD --", { cwd });
+    return stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
 }
 
 export async function resolveChangedFiles(context: BuiltinLaneContext) {
@@ -94,14 +104,27 @@ export async function runScopeGuard(lane: LaneDefinition, context: BuiltinLaneCo
   const findings: LaneFinding[] = [
     ...outOfScope.map((file) => ({
       severity: "error" as const,
-      message: `Changed file is outside declared feature surface: ${file}`
+      message: `Changed file is outside declared feature surface: ${file}`,
+      category: "scope" as const,
+      confidence: "high" as const,
+      file,
+      evidence: [
+        {
+          type: "diff" as const,
+          summary: `${file} appears in the working diff but is not declared in feature context or changedFiles.`
+        }
+      ],
+      suggestedFix: "Add the file to the feature impact surface or split unrelated work into another feature."
     })),
     ...sensitiveChanges.map((file) => ({
       severity: "warning" as const,
-      message: `Sensitive or configuration-adjacent file changed: ${file}`
+      message: `Sensitive or configuration-adjacent file changed: ${file}`,
+      category: "security" as const,
+      confidence: "medium" as const,
+      file
     }))
   ];
-  const blocksCompletion = outOfScope.length > 0 && (lane.blocksCompletion ?? true);
+  const blocksCompletion = findings.some(findingBlocksCompletion) && (lane.blocksCompletion ?? true);
 
   return resultFor(
     lane,
@@ -133,20 +156,34 @@ export async function runReviewabilityGate(lane: LaneDefinition, context: Builti
     findings.push({ severity: "error", message: "No active feature was provided to reviewability gate." });
   } else {
     if (!feature.acceptanceCriteria?.length) {
-      findings.push({ severity: "error", message: "Feature has no acceptance criteria." });
+      findings.push({
+        severity: "error",
+        message: "Feature has no acceptance criteria.",
+        category: "reviewability",
+        confidence: "high",
+        evidence: [{ type: "requirement", summary: "Feature acceptanceCriteria is empty." }],
+        suggestedFix: "Add acceptance criteria before implementation can be reviewed."
+      });
     }
     if (!feature.evidence?.length) {
-      findings.push({ severity: "error", message: "Feature has no evidence." });
+      findings.push({
+        severity: "error",
+        message: "Feature has no evidence.",
+        category: "reviewability",
+        confidence: "high",
+        evidence: [{ type: "artifact", summary: "Feature evidence array is empty." }],
+        suggestedFix: "Run verification and record evidence before completion."
+      });
     }
     if (!feature.agentNotes?.trim()) {
-      findings.push({ severity: "warning", message: "Feature has no agent notes." });
+      findings.push({ severity: "warning", message: "Feature has no agent notes.", category: "reviewability", confidence: "medium" });
     }
     if (!feature.changedFiles?.length) {
-      findings.push({ severity: "warning", message: "Feature has no changedFiles evidence." });
+      findings.push({ severity: "warning", message: "Feature has no changedFiles evidence.", category: "reviewability", confidence: "medium" });
     }
   }
 
-  const blocking = findings.some((finding) => finding.severity === "error") && (lane.blocksCompletion ?? true);
+  const blocking = findings.some(findingBlocksCompletion) && (lane.blocksCompletion ?? true);
   return resultFor(
     lane,
     blocking ? "fail" : "pass",
@@ -190,7 +227,12 @@ export async function runSecurityScan(lane: LaneDefinition, context: BuiltinLane
       if (pattern.test(item.content)) {
         findings.push({
           severity: "error",
-          message: `Potential secret detected in ${item.file}.`
+          message: `Potential secret detected in ${item.file}.`,
+          category: "security",
+          confidence: "high",
+          file: item.file,
+          evidence: [{ type: "source", summary: `Secret-like pattern matched in ${item.file}.` }],
+          suggestedFix: "Remove the suspected secret and rotate the credential if it was real."
         });
         break;
       }
@@ -201,16 +243,24 @@ export async function runSecurityScan(lane: LaneDefinition, context: BuiltinLane
     if (sensitivePathPatterns.some((pattern) => pattern.test(file))) {
       findings.push({
         severity: "warning",
-        message: `Security-sensitive or configuration-adjacent file changed: ${file}.`
+        message: `Security-sensitive or configuration-adjacent file changed: ${file}.`,
+        category: "security",
+        confidence: "medium",
+        file
       });
     }
   }
 
-  const blocksCompletion = findings.some((finding) => finding.severity === "error") && (lane.blocksCompletion ?? true);
+  const hasError = findings.some((finding) => finding.severity === "error");
+  const blocksCompletion = hasError && (lane.blocksCompletion ?? true);
   return resultFor(
     lane,
-    blocksCompletion ? "fail" : "pass",
-    blocksCompletion ? "Security scan found blocking findings." : "Security scan found no blocking findings.",
+    hasError ? "fail" : "pass",
+    blocksCompletion
+      ? "Security scan found blocking findings."
+      : hasError
+        ? "Security scan found nonblocking findings."
+        : "Security scan found no blocking findings.",
     findings,
     {
       blocksCompletion,
@@ -225,9 +275,65 @@ export async function runSecurityScan(lane: LaneDefinition, context: BuiltinLane
   );
 }
 
+export async function runEvidenceQualityGate(lane: LaneDefinition, context: BuiltinLaneContext) {
+  const feature = context.feature;
+  if (!feature) {
+    return resultFor(
+      lane,
+      "fail",
+      "Evidence quality gate needs an active or selected feature.",
+      [
+        {
+          severity: "error",
+          message: "No feature was provided to the evidence quality gate.",
+          category: "reviewability",
+          confidence: "high",
+          evidence: [{ type: "requirement", summary: "Evidence quality is feature-scoped." }],
+          suggestedFix: "Run the lane with an active feature or pass --feature <id>."
+        }
+      ],
+      {
+        blocksCompletion: lane.blocksCompletion ?? true,
+        recommendedActions: ["Run `npx devns lanes run --feature <id> --write` after verification evidence exists."]
+      }
+    );
+  }
+
+  const report = evaluateEvidenceQuality(feature);
+  const findings: LaneFinding[] = report.findings.map((finding) => ({
+    severity: finding.severity === "error" ? "error" : finding.severity === "warning" ? "warning" : "info",
+    message: finding.message,
+    category: "reviewability",
+    confidence: finding.severity === "error" ? "high" : "medium",
+    evidence: [{ type: "artifact", summary: `Evidence quality decision: ${report.decision}.` }],
+    suggestedFix: finding.suggestedFix
+  }));
+  const blocksCompletion = report.decision === "block" && (lane.blocksCompletion ?? true);
+
+  return resultFor(
+    lane,
+    blocksCompletion ? "fail" : "pass",
+    report.summary,
+    findings,
+    {
+      blocksCompletion,
+      evidence: [
+        {
+          type: "evidence-quality",
+          summary: `${report.coverage.filter((item) => item.covered).length}/${report.coverage.length} acceptance criteria covered. Decision: ${report.decision}.`
+        }
+      ],
+      recommendedActions: report.findings.flatMap((finding) => (finding.suggestedFix ? [finding.suggestedFix] : []))
+    }
+  );
+}
+
 const handlers: Record<string, BuiltinLaneHandler> = {
   "scope-guard": runScopeGuard,
   "reviewability-gate": runReviewabilityGate,
+  "evidence-quality-gate": runEvidenceQualityGate,
+  "evidence_quality": runEvidenceQualityGate,
+  security_basic: runSecurityScan,
   "security-scan": runSecurityScan,
   "security-sensor": runSecurityScan
 };

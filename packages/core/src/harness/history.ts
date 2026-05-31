@@ -3,7 +3,16 @@ import path from "node:path";
 import type { ChangedFileEvidence, CheckRecord, ExecutionHistoryRecord, Feature, HumanChangeNote, DevnsConfig } from "./types";
 import type { LaneResult } from "./lane-runner";
 
-export type AppendHistoryInput = Omit<ExecutionHistoryRecord, "id" | "attempt" | "createdAt"> & {
+type CuratedHistoryFields =
+  | "decisions"
+  | "alternativesRejected"
+  | "pitfalls"
+  | "errors"
+  | "fixes"
+  | "lessons";
+
+export type AppendHistoryInput = Omit<ExecutionHistoryRecord, "id" | "attempt" | "createdAt" | CuratedHistoryFields> &
+  Partial<Pick<ExecutionHistoryRecord, CuratedHistoryFields>> & {
   id?: string;
   createdAt?: string;
   attempt?: number;
@@ -19,7 +28,7 @@ export function historyPathForFeature(cwd: string, config: DevnsConfig, featureI
   return path.join(resolvedHistoryDir, `${safeFeatureId(featureId)}.jsonl`);
 }
 
-async function readHistoryRecords(filePath: string): Promise<ExecutionHistoryRecord[]> {
+export async function readExecutionHistoryRecords(filePath: string): Promise<ExecutionHistoryRecord[]> {
   try {
     const raw = await readFile(filePath, "utf8");
     return raw
@@ -35,14 +44,20 @@ async function readHistoryRecords(filePath: string): Promise<ExecutionHistoryRec
 export async function appendExecutionHistory(cwd: string, config: DevnsConfig, input: AppendHistoryInput) {
   const filePath = historyPathForFeature(cwd, config, input.featureId);
   await mkdir(path.dirname(filePath), { recursive: true });
-  const previous = await readHistoryRecords(filePath);
+  const previous = await readExecutionHistoryRecords(filePath);
   const attempt = input.attempt ?? previous.length + 1;
   const createdAt = input.createdAt ?? new Date().toISOString();
   const record: ExecutionHistoryRecord = {
     ...input,
     id: input.id ?? `${input.featureId}-${attempt}`,
     attempt,
-    createdAt
+    createdAt,
+    decisions: input.decisions ?? [],
+    alternativesRejected: input.alternativesRejected ?? [],
+    pitfalls: input.pitfalls ?? [],
+    errors: input.errors ?? [],
+    fixes: input.fixes ?? [],
+    lessons: input.lessons ?? []
   };
   await writeFile(filePath, `${JSON.stringify(record)}\n`, { flag: "a" });
   return {
@@ -64,7 +79,7 @@ export function laneResultsToChecks(results: LaneResult[]) {
     const check: CheckRecord = {
       type: result.type === "command" ? "dynamic" : "static",
       name: result.lane,
-      status: result.status === "pass" ? "passed" : result.status === "fail" ? "failed" : "skipped",
+      status: result.status === "pass" ? "passed" : result.status === "skipped" ? "skipped" : "failed",
       summary: result.summary,
       exitCode: result.exitCode
     };

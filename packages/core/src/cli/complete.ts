@@ -1,0 +1,161 @@
+#!/usr/bin/env node
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { appendExecutionHistory, buildChangedFileEvidence } from "../harness/history";
+import { evaluateEvidenceQuality } from "../harness/evidence-quality";
+import { patchFeature, readConfig, readInventory } from "../harness/state";
+import type { Evidence, Feature, FeaturePatch, ReviewDecision } from "../harness/types";
+
+const execFileAsync = promisify(execFile);
+
+type Options = {
+  id?: string;
+  review: ReviewDecision;
+  commit?: string;
+  metadataCommit?: string;
+  output: "text" | "json";
+};
+
+function parseArgs(argv: string[]): Options {
+  const options: Options = { review: "approved", output: "text" };
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === "--id") {
+      options.id = argv[index + 1];
+      index += 1;
+    } else if (arg === "--review") {
+      options.review = (argv[index + 1] as ReviewDecision | undefined) ?? options.review;
+      index += 1;
+    } else if (arg === "--commit") {
+      options.commit = argv[index + 1];
+      index += 1;
+    } else if (arg === "--metadata-commit") {
+      options.metadataCommit = argv[index + 1];
+      index += 1;
+    } else if (arg === "--json") {
+      options.output = "json";
+    }
+  }
+  return options;
+}
+
+async function git(cwd: string, args: string[]) {
+  const { stdout } = await execFileAsync("git", args, { cwd, maxBuffer: 10 * 1024 * 1024 });
+  return stdout.trim();
+}
+
+async function resolveCommit(cwd: string, value?: string) {
+  return git(cwd, ["rev-parse", value ?? "HEAD"]);
+}
+
+async function filesForCommit(cwd: string, commit: string) {
+  try {
+    const stdout = await git(cwd, ["show", "--name-only", "--format=", commit]);
+    return stdout
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function findFeature(features: Feature[], id?: string) {
+  return id ? features.find((feature) => feature.id === id) : features.find((feature) => feature.status === "in_progress");
+}
+
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  const cwd = process.cwd();
+  const config = await readConfig(cwd);
+  const inventory = await readInventory(cwd, config);
+  const feature = findFeature(inventory.features, options.id);
+
+  if (!feature) {
+    throw new Error(options.id ? `Feature ${options.id} not found.` : "No active feature found.");
+  }
+
+  const implementationCommit = await resolveCommit(cwd, options.commit);
+  const changedFiles = feature.changedFiles?.length ? feature.changedFiles : await filesForCommit(cwd, implementationCommit);
+  const evidenceQuality = evaluateEvidenceQuality({
+    ...feature,
+    changedFiles,
+    evidence: [...(feature.evidence ?? []), { type: "git", summary: `Implementation commit ${implementationCommit} is ready to record.` }]
+  });
+  if (evidenceQuality.decision === "block") {
+    throw new Error(`${evidenceQuality.summary} Run verification lanes and record evidence before completing ${feature.id}.`);
+  }
+  const evidence: Evidence[] = [
+    ...(feature.evidence ?? []),
+    {
+      type: "git",
+      summary: `Implementation commit ${implementationCommit} recorded for ${feature.id}.`
+    }
+  ];
+
+  const history = await appendExecutionHistory(cwd, config, {
+    featureId: feature.id,
+    actor: "agent",
+    summary: `Completed ${feature.id} with implementation commit ${implementationCommit}.`,
+    decisions: ["Record implementation commit separately from optional DEVNS metadata commit."],
+    alternativesRejected: ["Do not require a feature commit to contain its own final metadata commit hash."],
+    changedFiles: buildChangedFileEvidence({ ...feature, changedFiles }),
+    impact: [`Feature ${feature.id} marked done through devns complete.`],
+    pitfalls: [
+      {
+        summary: "A feature commit cannot know the hash of a later metadata commit.",
+        prevention: "Use implementationCommit for code changes and metadataCommit for a later state-only update when needed."
+      }
+    ],
+    errors: [],
+    fixes: [],
+    lessons: ["Use `npx devns complete` instead of hand-editing feature completion fields."],
+    risks: [],
+    dynamicChecks: [],
+    staticChecks: []
+  });
+
+  const patch: FeaturePatch = {
+    status: "done",
+    reviewDecision: options.review,
+    commit: implementationCommit,
+    implementationCommit,
+    changedFiles,
+    evidence,
+    history: history.summary,
+    events: [
+      ...(feature.events ?? []),
+      {
+        type: "completed",
+        at: new Date().toISOString(),
+        by: "devns-complete",
+        summary: `Completed with implementation commit ${implementationCommit}.`
+      }
+    ]
+  };
+  if (options.metadataCommit) {
+    patch.metadataCommit = options.metadataCommit;
+  }
+
+  const result = await patchFeature(cwd, config, feature.id, patch);
+
+  const payload = {
+    feature: result.feature,
+    implementationCommit,
+    metadataCommit: options.metadataCommit,
+    changedFiles,
+    history: history.summary
+  };
+
+  if (options.output === "json") {
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    return;
+  }
+
+  process.stdout.write(`Completed ${feature.id} with implementation commit ${implementationCommit}\n`);
+}
+
+main().catch((error) => {
+  process.stderr.write(`${error instanceof Error ? error.message : "Unknown complete command error"}\n`);
+  process.exitCode = 1;
+});

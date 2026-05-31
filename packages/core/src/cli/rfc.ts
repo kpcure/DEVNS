@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { createRfcScaffold, evaluateRfcReadiness } from "../harness/rfc";
+import { createClarificationQuestions, createRfcScaffold, evaluateRfcReadiness } from "../harness/rfc";
 import { readCandidates, readConfig, readInventory, resolveFromCwd, writeInventory, writeJsonFile } from "../harness/state";
 import type { CandidateFeature, CandidateInventory, Feature, FeatureInventory, FeaturePriority, FeatureRfc } from "../harness/types";
 
-type RfcCommand = "scaffold" | "check" | "apply";
+type RfcCommand = "scaffold" | "check" | "apply" | "clarify";
 
 type RfcOptions = {
   command?: RfcCommand;
@@ -48,6 +48,7 @@ function printUsage() {
       "  npm run devns:rfc -- scaffold --all [--force] [--json]",
       "  npm run devns:rfc -- check --id <feature-id> [--json]",
       "  npm run devns:rfc -- check --all [--json]",
+      "  npm run devns:rfc -- clarify --id <candidate-or-feature-id> [--json]",
       "  npm run devns:rfc -- apply --id <candidate-or-feature-id> [--json]",
       "  npm run devns:rfc -- apply --all [--json]"
     ].join("\n") + "\n"
@@ -144,6 +145,14 @@ async function checkRfc(cwd: string, options: RfcOptions) {
   const features = options.all ? inventory.features : inventory.features.filter((item) => item.id === options.id);
 
   if (!features.length) {
+    if (options.all) {
+      if (options.output === "json") {
+        process.stdout.write(`${JSON.stringify({ results: [], ready: true }, null, 2)}\n`);
+        return;
+      }
+      process.stdout.write("No features to check.\n");
+      return;
+    }
     throw new Error(`Unable to find feature ${options.id}`);
   }
 
@@ -167,6 +176,61 @@ async function checkRfc(cwd: string, options: RfcOptions) {
 async function readRfcRecord(rfcDir: string, id: string) {
   const raw = await readFile(path.join(rfcDir, `${id}.json`), "utf8");
   return JSON.parse(raw) as { id: string; title: string; rfc: FeatureRfc };
+}
+
+async function readOptionalRfcRecord(rfcDir: string, id: string) {
+  try {
+    return await readRfcRecord(rfcDir, id);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+async function clarifyRfc(cwd: string, options: RfcOptions) {
+  if (!options.id) {
+    throw new Error("Missing --id <candidate-or-feature-id>.");
+  }
+
+  const config = await readConfig(cwd);
+  const candidates = await readCandidates(cwd, config);
+  const inventory = await readInventory(cwd, config);
+  const rfcDir = resolveFromCwd(cwd, config.rfcs ?? ".devns/rfcs");
+  const feature = inventory.features.find((item) => item.id === options.id);
+  const candidate = findCandidate(candidates.candidates, options.id);
+  const record = await readOptionalRfcRecord(rfcDir, options.id);
+  const rfc = feature?.rfc ?? record?.rfc ?? (candidate ? createRfcScaffold(candidate) : undefined);
+
+  if (!rfc) {
+    throw new Error(`Unable to find candidate, feature, or RFC ${options.id}`);
+  }
+
+  const questions = rfc.clarificationQuestions?.length ? rfc.clarificationQuestions : createClarificationQuestions(rfc);
+  const payload = {
+    id: options.id,
+    questions,
+    blocking: questions.filter((question) => question.blocking)
+  };
+
+  if (options.output === "json") {
+    process.stdout.write(`${JSON.stringify(payload, null, 2)}\n`);
+    return;
+  }
+
+  process.stdout.write(
+    [
+      `Clarification questions for ${options.id}:`,
+      ...questions.map((question) =>
+        [
+          `- ${question.id}: ${question.question}`,
+          `  Recommended: ${question.recommended}`,
+          ...question.options.map((option, index) => `  ${index + 1}. ${option}`)
+        ].join("\n")
+      )
+    ].join("\n") + "\n"
+  );
 }
 
 function featureFromCandidate(candidate: CandidateFeature, rfc: FeatureRfc): Feature {
@@ -242,7 +306,7 @@ async function main() {
   const options = parseArgs(process.argv.slice(2));
   const cwd = process.cwd();
 
-  if (!options.command || !["scaffold", "check", "apply"].includes(options.command) || (!options.id && !options.all)) {
+  if (!options.command || !["scaffold", "check", "apply", "clarify"].includes(options.command) || (!options.id && !options.all)) {
     printUsage();
     process.exitCode = 1;
     return;
@@ -255,6 +319,11 @@ async function main() {
 
   if (options.command === "check") {
     await checkRfc(cwd, options);
+    return;
+  }
+
+  if (options.command === "clarify") {
+    await clarifyRfc(cwd, options);
     return;
   }
 

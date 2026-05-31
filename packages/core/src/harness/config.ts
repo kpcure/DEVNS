@@ -37,7 +37,7 @@ export const defaultConfig: DevnsConfig = {
   policies: ".devns/policies",
   review: {
     mode: "html",
-    outputDir: ".devns/workbench"
+    outputDir: ".devns/reviews"
   },
   completionPolicy: {
     mode: "queue",

@@ -18,7 +18,7 @@ const approvedRfc: FeatureRfc = {
   featureDescription: "Smoke test feature",
   expectedOutcome: "Feature can be claimed through CLI",
   goals: ["Verify CLI claim"],
-  nonGoals: [],
+  nonGoals: ["Do not exercise unrelated queue behavior."],
   requirements: [
     {
       id: "REQ-001",

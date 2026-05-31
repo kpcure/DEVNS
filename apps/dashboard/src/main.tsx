@@ -7,6 +7,7 @@ import {
   CircleDot,
   ClipboardCheck,
   Code2,
+  FileDiff,
   GitBranch,
   FileJson2,
   Filter,
@@ -17,7 +18,8 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
-  TestTube2
+  TestTube2,
+  X
 } from "lucide-react";
 import {
   ColumnDef,
@@ -104,6 +106,8 @@ type Feature = {
   evidence: Evidence[];
   changedFiles: string[];
   commit: string;
+  implementationCommit?: string;
+  metadataCommit?: string;
   review: {
     confidence: "low" | "medium" | "high";
     summary: string;
@@ -129,19 +133,78 @@ type Source = {
   takeaway: string;
 };
 
+type Candidate = {
+  id: string;
+  title: string;
+  description: string;
+  status?: "discovered" | "needs_rfc" | "rejected" | "promoted";
+  sources?: string[];
+  confidence?: "low" | "medium" | "high";
+  suggestedPriority?: Priority;
+  suggestedRisk?: Risk;
+  suggestedMilestone?: string;
+};
+
 type ExtensionPoint = {
   name: string;
   kind: "core" | "edge";
   description: string;
 };
 
+type ReviewPacket = {
+  featureId: string;
+  title: string;
+  status?: Status;
+  risk?: Risk;
+  suggestedAction: "approve" | "inspect_diff" | "needs_fix" | "follow_up";
+  rfcIntent?: string;
+  commit?: string;
+  implementationCommit?: string;
+  metadataCommit?: string;
+  changedFiles: string[];
+  diff?: {
+    base?: string;
+    filesChanged: number;
+    insertions: number;
+    deletions: number;
+    stat: string;
+    patch: string;
+    truncated: boolean;
+  };
+  evidence: string[];
+  acceptanceCoverage?: Array<{
+    criterion: string;
+    evidence: string[];
+  }>;
+  decisions?: string[];
+  pitfalls: string[];
+  errors: string[];
+  fixes?: string[];
+  lessons: string[];
+  risks?: string[];
+  historyPath?: string;
+};
+
+type MorningReviewReport = {
+  date: string;
+  summary: {
+    featureCount: number;
+    needsHumanReview: number;
+    highRisk: number;
+  };
+  packets: ReviewPacket[];
+  crossFeatureRisks: string[];
+};
+
 type Roadmap = {
+  revision?: string;
   project: {
     name: string;
     description: string;
     repository: string;
   };
   features: Feature[];
+  candidates?: Candidate[];
   openQuestions: OpenQuestion[];
   researchSources: Source[];
 };
@@ -184,8 +247,14 @@ const rfcStatusLabel: Record<RfcStatus, string> = {
 const statusOptions: Status[] = ["ready", "in_progress", "done", "blocked", "failed"];
 const priorityOptions: Priority[] = ["P0", "P1", "P2", "P3"];
 const decisionOptions: Feature["reviewDecision"][] = ["pending", "approved", "needs_changes", "follow_up"];
+const rfcHumanDecisionOptions: NonNullable<FeatureRfc["humanDecision"]>["status"][] = [
+  "pending",
+  "approved",
+  "needs_changes",
+  "rejected"
+];
 
-type FeaturePatch = Partial<Pick<Feature, "status" | "priority" | "reviewDecision" | "agentNotes">>;
+type FeaturePatch = Partial<Pick<Feature, "status" | "priority" | "reviewDecision" | "agentNotes" | "rfc">>;
 
 async function loadRoadmap() {
   const response = await fetch("/api/roadmap");
@@ -195,13 +264,21 @@ async function loadRoadmap() {
   return (await response.json()) as Roadmap;
 }
 
-async function patchFeature(featureId: string, patch: FeaturePatch) {
+async function loadLatestReview() {
+  const response = await fetch("/api/reviews/latest");
+  if (!response.ok) {
+    throw new Error(`Failed to load latest review: ${response.status}`);
+  }
+  return ((await response.json()) as { report?: MorningReviewReport }).report;
+}
+
+async function patchFeature(featureId: string, patch: FeaturePatch, expectedRevision?: string) {
   const response = await fetch(`/api/features/${encodeURIComponent(featureId)}`, {
     method: "PATCH",
     headers: {
       "content-type": "application/json"
     },
-    body: JSON.stringify(patch)
+    body: JSON.stringify({ patch, expectedRevision })
   });
 
   if (!response.ok) {
@@ -209,7 +286,7 @@ async function patchFeature(featureId: string, patch: FeaturePatch) {
     throw new Error(body.error || `Failed to save ${featureId}`);
   }
 
-  return (await response.json()) as { feature: Feature };
+  return (await response.json()) as { feature: Feature; revision?: string };
 }
 
 function cx(...classes: Array<string | false | undefined>) {
@@ -306,7 +383,51 @@ function MissionSummary({ features }: { features: Feature[] }) {
   );
 }
 
-function DecisionRail({ sources }: { sources: Source[] }) {
+function NextAction({ features }: { features: Feature[] }) {
+  const active = features.find((feature) => feature.status === "in_progress");
+  const nextReady = features.find((feature) => feature.status === "ready" && feature.rfc?.status === "approved");
+  const blockedReady = features.find((feature) => feature.status === "ready" && feature.rfc?.status !== "approved");
+
+  let tone: "good" | "warn" | "info" | "neutral" = "neutral";
+  let title = "No Claimable Work";
+  let detail = "The queue is empty. Add candidates, clarify RFCs, or stop safely.";
+  let command = "npm run devns:doctor";
+
+  if (active) {
+    tone = "info";
+    title = `Continue ${active.id}`;
+    detail = "An active feature is already claimed. Finish verification, update evidence/history, and commit exactly this feature before switching tasks.";
+    command = "npm run devns:run -- --json";
+  } else if (nextReady) {
+    tone = "good";
+    title = `Claim ${nextReady.id}`;
+    detail = "A feature with an approved RFC is ready. Claim one feature, read its RFC, and keep the implementation scoped to that feature.";
+    command = "npm run devns:run -- --json";
+  } else if (blockedReady) {
+    tone = "warn";
+    title = `Clarify ${blockedReady.id}`;
+    detail = "A ready item is blocked by RFC readiness. Use the RFC skill or ask the human to approve/update the RFC before implementation.";
+    command = `npm run devns:rfc -- check --id ${blockedReady.id}`;
+  }
+
+  return (
+    <section className="panel next-action">
+      <div className="section-heading">
+        <div>
+          <h2>Next Action</h2>
+          <p>{detail}</p>
+        </div>
+        <Pill tone={tone}>{title}</Pill>
+      </div>
+      <div className="command-strip">
+        <Code2 size={15} aria-hidden="true" />
+        <code>{command}</code>
+      </div>
+    </section>
+  );
+}
+
+function DecisionRail({ sources = [] }: { sources?: Source[] }) {
   return (
     <section className="panel">
       <div className="section-heading">
@@ -317,16 +438,66 @@ function DecisionRail({ sources }: { sources: Source[] }) {
         <Pill tone="info">researched</Pill>
       </div>
       <div className="decision-list">
-        {sources.map((source) => (
-          <a className="decision-item" href={source.url} key={source.title} target="_blank" rel="noreferrer">
-            <div>
-              <strong>{source.title}</strong>
-              <p>{source.takeaway}</p>
-            </div>
-            <ChevronDown className="external-icon" size={16} aria-hidden="true" />
-          </a>
-        ))}
+        {sources.length === 0 ? (
+          <p className="empty-copy">No research decisions recorded yet.</p>
+        ) : (
+          sources.map((source) => (
+            <a className="decision-item" href={source.url} key={source.title} target="_blank" rel="noreferrer">
+              <div>
+                <strong>{source.title}</strong>
+                <p>{source.takeaway}</p>
+              </div>
+              <ChevronDown className="external-icon" size={16} aria-hidden="true" />
+            </a>
+          ))
+        )}
       </div>
+    </section>
+  );
+}
+
+function CandidatePanel({ candidates = [] }: { candidates?: Candidate[] }) {
+  const visibleCandidates = candidates.filter((candidate) => candidate.status !== "promoted").slice(0, 8);
+
+  return (
+    <section className="panel">
+      <div className="section-heading">
+        <div>
+          <h2>Candidate Intake</h2>
+          <p>Discovered work stays here until an RFC promotes it into the executable queue.</p>
+        </div>
+        <Pill tone={visibleCandidates.length ? "warn" : "good"}>{visibleCandidates.length} open</Pill>
+      </div>
+      {visibleCandidates.length === 0 ? (
+        <p className="empty-copy">No unpromoted candidates. Run discovery when project context changes.</p>
+      ) : (
+        <div className="candidate-list">
+          {visibleCandidates.map((candidate) => (
+            <article className="candidate-item" key={candidate.id}>
+              <div className="candidate-head">
+                <div>
+                  <span className="mono">{candidate.id}</span>
+                  <strong>{candidate.title}</strong>
+                </div>
+                <Pill tone={candidate.confidence === "high" ? "good" : "warn"}>{candidate.confidence ?? "unknown"}</Pill>
+              </div>
+              <p>{candidate.description}</p>
+              <div className="candidate-meta">
+                <span>{candidate.status ?? "discovered"}</span>
+                <span>{candidate.suggestedPriority ?? "P?"}</span>
+                <span>{candidate.suggestedRisk ?? "risk?"}</span>
+              </div>
+              {candidate.sources && candidate.sources.length > 0 && (
+                <div className="source-list" aria-label={`Sources for ${candidate.id}`}>
+                  {candidate.sources.slice(0, 3).map((source) => (
+                    <code key={source}>{source}</code>
+                  ))}
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -531,7 +702,43 @@ function FeatureTable({
   );
 }
 
-function FeatureReview({ features }: { features: Feature[] }) {
+function FeatureReview({
+  features,
+  onPatchFeature
+}: {
+  features: Feature[];
+  onPatchFeature: (featureId: string, patch: FeaturePatch) => Promise<void>;
+}) {
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function saveRfc(feature: Feature, rfc: FeatureRfc) {
+    setSavingId(feature.id);
+    setError(null);
+    try {
+      await onPatchFeature(feature.id, { rfc });
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Unable to save RFC decision");
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  function patchHumanDecision(feature: Feature, patch: Partial<NonNullable<FeatureRfc["humanDecision"]>>) {
+    if (!feature.rfc) return;
+    const nextDecision = {
+      status: "pending",
+      ...feature.rfc.humanDecision,
+      ...patch,
+      decidedBy: patch.status ? "human-dashboard" : feature.rfc.humanDecision?.decidedBy,
+      decidedAt: patch.status ? new Date().toISOString() : feature.rfc.humanDecision?.decidedAt
+    } satisfies NonNullable<FeatureRfc["humanDecision"]>;
+    void saveRfc(feature, {
+      ...feature.rfc,
+      humanDecision: nextDecision
+    });
+  }
+
   return (
     <section className="panel">
       <div className="section-heading">
@@ -541,6 +748,7 @@ function FeatureReview({ features }: { features: Feature[] }) {
         </div>
         <Pill tone="neutral">one feature per commit</Pill>
       </div>
+      {error && <div className="sync-note sync-note-error">{error}</div>}
       <div className="cards-grid">
         {features.map((feature) => (
           <article className="feature-card" key={feature.id}>
@@ -567,6 +775,42 @@ function FeatureReview({ features }: { features: Feature[] }) {
                   <span>{feature.rfc.acceptanceCriteria.length} ACs</span>
                   <span>{feature.rfc.testCases.length} cases</span>
                 </div>
+                <div className="rfc-controls">
+                  <label>
+                    <span>Human decision</span>
+                    <select
+                      className="inline-select"
+                      aria-label={`RFC human decision for ${feature.id}`}
+                      disabled={savingId === feature.id}
+                      value={feature.rfc.humanDecision?.status ?? "pending"}
+                      onChange={(event) =>
+                        patchHumanDecision(feature, {
+                          status: event.target.value as NonNullable<FeatureRfc["humanDecision"]>["status"]
+                        })
+                      }
+                    >
+                      {rfcHumanDecisionOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option.replace("_", " ")}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Decision notes</span>
+                    <textarea
+                      className="rfc-note"
+                      aria-label={`RFC decision notes for ${feature.id}`}
+                      defaultValue={feature.rfc.humanDecision?.notes ?? ""}
+                      disabled={savingId === feature.id}
+                      onBlur={(event) => {
+                        if (event.target.value !== (feature.rfc?.humanDecision?.notes ?? "")) {
+                          patchHumanDecision(feature, { notes: event.target.value });
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
             )}
             <div className="mini-section">
@@ -584,7 +828,7 @@ function FeatureReview({ features }: { features: Feature[] }) {
               </div>
               <div>
                 <GitCommitHorizontal size={15} />
-                {feature.commit || "No commit yet"}
+                {feature.implementationCommit || feature.commit || "No commit yet"}
               </div>
             </div>
           </article>
@@ -594,7 +838,195 @@ function FeatureReview({ features }: { features: Feature[] }) {
   );
 }
 
-function OpenQuestions({ questions }: { questions: OpenQuestion[] }) {
+function MorningReview({ report }: { report?: MorningReviewReport }) {
+  const packets = report?.packets ?? [];
+  const [selectedPacket, setSelectedPacket] = useState<ReviewPacket | undefined>();
+  const actionTone: Record<ReviewPacket["suggestedAction"], "good" | "warn" | "bad" | "info"> = {
+    approve: "good",
+    inspect_diff: "warn",
+    needs_fix: "bad",
+    follow_up: "info"
+  };
+
+  return (
+    <section className="panel">
+      <div className="section-heading">
+        <div>
+          <h2>Morning Review</h2>
+          <p>Feature packets ordered by human attention need.</p>
+        </div>
+        <Pill tone={report ? "info" : "neutral"}>{report?.date ?? "no report"}</Pill>
+      </div>
+      {!report ? (
+        <div className="sync-note">Generate one with `npm run devns:review -- generate`.</div>
+      ) : (
+        <div className="review-packet-list">
+          <div className="review-summary-row">
+            <span>{report.summary.featureCount} features</span>
+            <span>{report.summary.needsHumanReview} need review</span>
+            <span>{report.summary.highRisk} high risk</span>
+          </div>
+          {packets.slice(0, 6).map((packet) => (
+            <button className="review-packet" key={packet.featureId} type="button" onClick={() => setSelectedPacket(packet)}>
+              <div className="review-packet-head">
+                <div>
+                  <span className="mono">{packet.featureId}</span>
+                  <h3>{packet.title}</h3>
+                </div>
+                <div className="pill-row">
+                  <Pill tone={actionTone[packet.suggestedAction]}>{packet.suggestedAction.replace("_", " ")}</Pill>
+                  <Pill tone={toneForRisk(packet.risk ?? "low")}>{packet.risk ?? "low"}</Pill>
+                </div>
+              </div>
+              <div className="review-packet-meta">
+                <span>{packet.implementationCommit ?? packet.commit ?? "No commit"}</span>
+                <span>{packet.diff?.filesChanged ?? packet.changedFiles.length} files</span>
+                <span>+{packet.diff?.insertions ?? 0} / -{packet.diff?.deletions ?? 0}</span>
+                <span>{packet.evidence.length} evidence</span>
+              </div>
+              {[...packet.pitfalls, ...packet.errors, ...packet.lessons].slice(0, 2).map((item) => (
+                <p className="review-packet-note" key={item}>
+                  {item}
+                </p>
+              ))}
+              <div className="review-open-row">
+                <FileDiff size={15} />
+                Open review packet
+              </div>
+            </button>
+          ))}
+          {report.crossFeatureRisks.length > 0 && (
+            <div className="mini-section">
+              <strong>Cross-feature risks</strong>
+              <ul>
+                {report.crossFeatureRisks.slice(0, 3).map((risk) => (
+                  <li key={risk}>{risk}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {selectedPacket && (
+            <ReviewPacketDialog packet={selectedPacket} actionTone={actionTone} onClose={() => setSelectedPacket(undefined)} />
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ReviewPacketDialog({
+  packet,
+  actionTone,
+  onClose
+}: {
+  packet: ReviewPacket;
+  actionTone: Record<ReviewPacket["suggestedAction"], "good" | "warn" | "bad" | "info">;
+  onClose: () => void;
+}) {
+  const agentReview = [...(packet.errors ?? []), ...(packet.pitfalls ?? []), ...(packet.risks ?? [])];
+  const knowledge = [...(packet.decisions ?? []), ...(packet.lessons ?? []), ...(packet.fixes ?? [])];
+  const coverage = packet.acceptanceCoverage ?? [];
+
+  return (
+    <div className="review-modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <div className="review-modal" role="dialog" aria-modal="true" aria-labelledby="review-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+        <div className="review-modal-header">
+          <div>
+            <span className="mono">{packet.featureId}</span>
+            <h2 id="review-modal-title">{packet.title}</h2>
+            <p>{packet.rfcIntent ?? "No RFC intent recorded."}</p>
+          </div>
+          <button className="icon-button" type="button" aria-label="Close review packet" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="review-modal-toolbar">
+          <Pill tone={actionTone[packet.suggestedAction]}>{packet.suggestedAction.replace("_", " ")}</Pill>
+          <Pill tone={toneForRisk(packet.risk ?? "low")}>{packet.risk ?? "low"}</Pill>
+          <span>{packet.implementationCommit ?? packet.commit ?? "No commit"}</span>
+          <span>{packet.historyPath ?? "No history path"}</span>
+        </div>
+
+        <div className="review-modal-grid">
+          <section className="review-modal-section diff-section">
+            <div className="modal-section-head">
+              <h3>Code Diff</h3>
+              <span>
+                {packet.diff ? `${packet.diff.filesChanged} files, +${packet.diff.insertions} / -${packet.diff.deletions}` : "No diff"}
+              </span>
+            </div>
+            {packet.diff?.stat && <pre className="diff-stat">{packet.diff.stat}</pre>}
+            <pre className="diff-block">{packet.diff?.patch || "No diff recorded. Regenerate morning review after completion metadata includes a commit."}</pre>
+            {packet.diff?.truncated && <p className="review-warning">Diff was truncated for review packet size.</p>}
+          </section>
+
+          <div className="review-side-stack">
+            <section className="review-modal-section">
+              <h3>Changed Files</h3>
+              <ReviewList items={packet.changedFiles} empty="No changed files recorded." />
+            </section>
+            <section className="review-modal-section">
+              <h3>Review Agent Notes</h3>
+              <ReviewList items={agentReview} empty="No review-agent findings recorded." />
+            </section>
+            <section className="review-modal-section">
+              <h3>Human Review Checklist</h3>
+              <ReviewList
+                items={[
+                  "Confirm the diff matches the RFC intent.",
+                  "Check changed files for unrelated scope drift.",
+                  "Verify evidence covers each acceptance criterion.",
+                  "Approve, request changes, or mark follow-up in the feature review card."
+                ]}
+              />
+            </section>
+            <section className="review-modal-section">
+              <h3>Evidence</h3>
+              <ReviewList items={packet.evidence} empty="No evidence recorded." />
+            </section>
+          </div>
+        </div>
+
+        <div className="review-modal-grid lower">
+          <section className="review-modal-section">
+            <h3>Acceptance Coverage</h3>
+            {coverage.length ? (
+              <div className="coverage-list">
+                {coverage.map((item) => (
+                  <div className="coverage-item" key={item.criterion}>
+                    <strong>{item.criterion}</strong>
+                    <ReviewList items={item.evidence} empty="No direct evidence mapped." />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="empty-copy">No acceptance coverage recorded.</p>
+            )}
+          </section>
+          <section className="review-modal-section">
+            <h3>Design Decisions And Lessons</h3>
+            <ReviewList items={knowledge} empty="No durable history notes recorded." />
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewList({ items, empty = "None" }: { items: string[]; empty?: string }) {
+  return items.length ? (
+    <ul className="review-list">
+      {items.slice(0, 10).map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  ) : (
+    <p className="empty-copy">{empty}</p>
+  );
+}
+
+function OpenQuestions({ questions = [] }: { questions?: OpenQuestion[] }) {
   return (
     <section className="panel">
       <div className="section-heading">
@@ -627,6 +1059,40 @@ function OpenQuestions({ questions }: { questions: OpenQuestion[] }) {
       </div>
     </section>
   );
+}
+
+class DashboardErrorBoundary extends React.Component<{ children: React.ReactNode }, { error?: string }> {
+  state: { error?: string } = {};
+
+  static getDerivedStateFromError(error: unknown) {
+    return { error: error instanceof Error ? error.message : "Dashboard render failed." };
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="app">
+          <main className="main error-screen">
+            <section className="panel">
+              <div className="section-heading">
+                <div>
+                  <h1>Dashboard State Error</h1>
+                  <p>{this.state.error}</p>
+                </div>
+                <Pill tone="warn">recoverable</Pill>
+              </div>
+              <div className="command-strip">
+                <Code2 size={15} aria-hidden="true" />
+                <code>npx devns validate --fix --json</code>
+              </div>
+            </section>
+          </main>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 
 function ExtensionPoints() {
@@ -786,13 +1252,15 @@ function Milestones({ features }: { features: Feature[] }) {
 function App() {
   const [view, setView] = useState<"review" | "backlog" | "extensions" | "questions">("review");
   const [data, setData] = useState<Roadmap>(fallbackData);
+  const [morningReview, setMorningReview] = useState<MorningReviewReport | undefined>();
   const [loadError, setLoadError] = useState<string | null>(null);
   const features = data.features;
 
   useEffect(() => {
-    loadRoadmap()
-      .then((roadmap) => {
+    Promise.all([loadRoadmap(), loadLatestReview()])
+      .then(([roadmap, report]) => {
         setData(roadmap);
+        setMorningReview(report);
         setLoadError(null);
       })
       .catch((error) => {
@@ -801,9 +1269,10 @@ function App() {
   }, []);
 
   async function updateFeature(featureId: string, patch: FeaturePatch) {
-    const { feature } = await patchFeature(featureId, patch);
+    const { feature, revision } = await patchFeature(featureId, patch, data.revision);
     setData((current) => ({
       ...current,
+      revision: revision ?? current.revision,
       features: current.features.map((item) => (item.id === featureId ? feature : item))
     }));
   }
@@ -855,18 +1324,24 @@ function App() {
             <a href="/api/roadmap" target="_blank" rel="noreferrer">
               Feature JSON
             </a>
+            <a href="/api/reviews/latest" target="_blank" rel="noreferrer">
+              Latest review
+            </a>
           </div>
         </header>
 
         <MissionSummary features={features} />
+        <NextAction features={features} />
 
         {view === "review" && (
           <div className="layout-two">
             <div className="stack">
               <HarnessMap />
-              <FeatureReview features={features} />
+              <FeatureReview features={features} onPatchFeature={updateFeature} />
             </div>
             <div className="stack">
+              <CandidatePanel candidates={data.candidates} />
+              <MorningReview report={morningReview} />
               <Milestones features={features} />
               <DecisionRail sources={data.researchSources} />
             </div>
@@ -877,7 +1352,10 @@ function App() {
         {view === "extensions" && (
           <div className="stack">
             <ExtensionPoints />
-            <FeatureReview features={features.filter((feature) => feature.id === "NS-007" || feature.id === "NS-006" || feature.id === "NS-002")} />
+            <FeatureReview
+              features={features.filter((feature) => feature.id === "NS-007" || feature.id === "NS-006" || feature.id === "NS-002")}
+              onPatchFeature={updateFeature}
+            />
           </div>
         )}
         {view === "questions" && <OpenQuestions questions={data.openQuestions} />}
@@ -888,6 +1366,8 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <DashboardErrorBoundary>
+      <App />
+    </DashboardErrorBoundary>
   </React.StrictMode>
 );

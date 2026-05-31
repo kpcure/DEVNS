@@ -12,7 +12,8 @@ async function main() {
   try {
     await writeFile(path.join(cwd, "pass.mjs"), "process.stdout.write('ok')\n");
     await writeFile(path.join(cwd, "fail.mjs"), "process.stderr.write('bad'); process.exit(7)\n");
-    await writeFile(path.join(cwd, "secret.txt"), "api_key = '12345678901234567890'\n");
+    await writeFile(path.join(cwd, "warn.mjs"), "process.stderr.write('legacy lint debt'); process.exit(3)\n");
+    await writeFile(path.join(cwd, "secret.txt"), `${"api_" + "key"} = '12345678901234567890'\n`);
 
     const config: DevnsConfig = {
       version: 1,
@@ -33,6 +34,13 @@ async function main() {
           blocksCompletion: true
         },
         {
+          id: "warn-command",
+          type: "command",
+          command: "node warn.mjs",
+          required: false,
+          blocksCompletion: false
+        },
+        {
           id: "agent-schema-only",
           type: "agent",
           agent: "codeReviewer",
@@ -47,6 +55,12 @@ async function main() {
         },
         {
           id: "reviewability-gate",
+          type: "builtin",
+          required: true,
+          blocksCompletion: true
+        },
+        {
+          id: "evidence-quality-gate",
           type: "builtin",
           required: true,
           blocksCompletion: true
@@ -70,7 +84,7 @@ async function main() {
       risk: "high",
       context: ["pass.mjs"],
       acceptanceCriteria: ["Lanes produce evidence"],
-      evidence: [{ type: "smoke", summary: "Evidence is present." }],
+      evidence: [{ type: "lane:test", summary: "Lanes produce deterministic evidence." }],
       changedFiles: ["pass.mjs"],
       agentNotes: "Smoke notes"
     };
@@ -79,22 +93,31 @@ async function main() {
       feature,
       changedFiles: ["pass.mjs", "secret.txt"]
     });
-    assert.equal(summary.results.length, 6);
+    assert.equal(summary.results.length, 8);
     assert.equal(summary.results[0]?.status, "pass");
+    assert.equal(summary.results[0]?.decision, "allow");
     assert.equal(summary.results[0]?.exitCode, 0);
+    assert.match(summary.results[0]?.stdoutDigest ?? "", /ok/);
     assert.equal(summary.results[1]?.status, "fail");
+    assert.equal(summary.results[1]?.decision, "block");
     assert.equal(summary.results[1]?.exitCode, 7);
     assert.equal(summary.results[1]?.blocksCompletion, true);
-    assert.equal(summary.results[2]?.status, "skipped");
+    assert.equal(summary.results[2]?.status, "fail");
+    assert.equal(summary.results[2]?.decision, "warn");
     assert.equal(summary.results[2]?.blocksCompletion, false);
-    assert.equal(summary.results[3]?.status, "fail");
-    assert.match(summary.results[3]?.summary ?? "", /outside declared feature surface/);
-    assert.equal(summary.results[4]?.status, "pass");
-    assert.equal(summary.results[5]?.status, "fail");
-    assert.match(summary.results[5]?.summary ?? "", /Security scan/);
+    assert.equal(summary.results[3]?.status, "skipped");
+    assert.equal(summary.results[3]?.decision, "needs_human_review");
+    assert.equal(summary.results[3]?.blocksCompletion, false);
+    assert.equal(summary.results[4]?.status, "fail");
+    assert.match(summary.results[4]?.summary ?? "", /outside declared feature surface/);
+    assert.equal(summary.results[5]?.status, "pass");
+    assert.equal(summary.results[6]?.status, "pass");
+    assert.equal(summary.results[7]?.status, "fail");
+    assert.match(summary.results[7]?.summary ?? "", /Security scan/);
     assert.equal(summary.blocksCompletion, true);
     assert.match(summary.continuationReason ?? "", /fail-command/);
-    assert.equal(laneResultsToEvidence(summary.results).length, 6);
+    assert.match(laneResultsToEvidence(summary.results)[2]?.summary ?? "", /Decision: warn/);
+    assert.equal(laneResultsToEvidence(summary.results).length, 8);
 
     process.stdout.write("Lane runner smoke passed.\n");
   } finally {

@@ -47,21 +47,78 @@ This keeps host adapters thin and avoids duplicating harness behavior in each pl
 
 ## Available Development Commands
 
-The current repository currently exposes thin npm-backed development commands:
+The user-facing entrypoint is:
 
 ```sh
+npx devns <command>
+```
+
+The command argument is intentionally small and prompt-friendly: `doctor`, `init`, `run`, `dashboard`, `validate`, `discover`, `rfc`, `queue`, `lanes`, `review`, `complete`, or `stop`. Skills and hooks may call more specific internal scripts, but humans and general agents should start with this single entrypoint. In this source checkout, `npm run devns -- <command>` is the local development equivalent.
+
+The current repository also exposes thin npm-backed internal development commands:
+
+```sh
+npx devns doctor [--json]
+npx devns init --project-name "Project" --project-description "Goal"
+npx devns run [--json] [--no-claim]
+npx devns dashboard
+npx devns validate [--json] [--strict] [--fix]
+
 npm run devns:init
+npm run devns:doctor [-- --json]
+npm run devns:status [-- --json]
+npm run devns:dashboard
+npm run devns:run [-- --json] [-- --no-claim]
+npm run devns:discover [-- --json] [-- --force]
+npm run devns:lanes -- run [--feature <feature-id>] [--write] [--json]
+npm run devns:review -- generate [--date YYYY-MM-DD] [--json]
+npm run devns:review -- packet [--feature <feature-id>] [--format json|prompt] [--write] [--json]
+npm run devns:complete -- [--id <feature-id>] [--commit <sha>] [--review approved|needs_changes|follow_up] [--json]
 npm run devns:queue -- status [--json]
 npm run devns:queue -- next [--json]
 npm run devns:queue -- claim [--id <feature-id>] [--json]
 npm run devns:rfc -- scaffold --id <candidate-or-feature-id>
+npm run devns:rfc -- clarify --id <candidate-or-feature-id>
 npm run devns:rfc -- check --id <feature-id>
 npm run devns:stop
-npm run harness:validate
+npm run harness:validate [-- --json] [-- --strict] [-- --fix]
 npm run harness:stop
 ```
 
 `npm run devns:init` creates `.devns/` with the files that skills, hooks, the dashboard, and agents share. It is the deterministic substrate under the `devns-init` skill.
+
+`npm run devns:doctor` is the first command to run after install. It checks whether the workspace exists, validates that the feature inventory can load, reports the current mode, and prints the next action.
+
+In a target repository, this alias may not exist yet. Agents should inspect `package.json` and fall back to the available DEVNS status surface, usually `npm run devns:status -- --json` or `npm run devns:queue -- status --json`, before declaring the workflow blocked.
+
+`npm run devns:status` is a short alias for queue status. It is useful for dashboard debugging and human inspection.
+
+`npm run devns:dashboard` starts the local human control plane at `http://127.0.0.1:5173/`.
+
+`npm run devns:run` is the agent-facing loop entry. It detects bootstrap, active, claimable, blocked, and empty-queue modes. By default it claims the next approved feature when no feature is active; pass `--no-claim` to inspect without mutating state. When a feature is active or claimed, JSON output includes `workerHandoff`, a compact contract for running that one feature in an isolated worker/subagent or fresh implementation context when the host supports it.
+
+`npm run devns:discover` is the deterministic substrate under the `devns-init` skill. It reads a conservative set of project signals and writes candidate features to `.devns/candidates.json`. It never creates claimable features.
+
+`npm run devns:lanes -- run` executes configured review lanes. Command lanes capture exit code, duration, stdout/stderr digests, evidence, and a decision of `allow`, `warn`, `needs_human_review`, or `block`. Pass `--write` to append the full lane result envelope to feature history and store concise lane evidence on the active feature.
+
+For robust review automation, run deterministic static and dynamic lanes first, then run any read-only review-agent lane against the Git diff, RFC, lane output, and relevant history. The Stop hook should only aggregate those persisted results.
+
+`evidence-quality-gate` is a built-in review lane that checks acceptance criteria and deterministic evidence coverage. It is also used by validation and completion so a feature cannot be marked done from a title plus prose-only notes.
+
+`npm run devns:review -- generate` creates `.devns/reviews/<date>.json` and `.md`. The report groups completed work by feature, includes RFC intent, commits, changed files, lane evidence, history decisions/pitfalls/lessons, cross-feature risks, and suggested human actions.
+
+`npm run devns:review -- packet` creates a bounded review-agent packet for one feature. Use `--format prompt --write` when handing the packet to a read-only review agent. The packet includes RFC context, Git status and diff, evidence quality, feature evidence, durable history, and project rules.
+
+`npm run devns:complete` marks one feature done after verification evidence exists. It records the implementation commit in `implementationCommit` and preserves `commit` as a compatibility alias. If the DEVNS metadata update is committed separately, pass its hash later as `metadataCommit`; the implementation commit does not need to contain the hash of the metadata commit that follows it.
+
+Completion should normally follow this order:
+
+1. Implement and commit the feature code.
+2. Run static, dynamic, and optional read-only review-agent lanes with `--write`.
+3. Run `devns complete` to record completion metadata and history.
+4. Commit the DEVNS metadata update separately when the project wants exact state provenance.
+
+This two-commit model avoids the hash paradox where a feature commit would need to know the hash of a later metadata-only commit.
 
 `npm run devns:queue` wraps Task Queue core behavior:
 
@@ -72,9 +129,12 @@ npm run harness:stop
 `npm run devns:rfc` provides deterministic RFC helpers for skills:
 
 - `scaffold` creates a structured RFC draft under the configured RFC directory.
+- `clarify` emits bounded recommendation-first questions for missing intent, scope, outcome, or verification detail.
 - `check` evaluates whether a feature's attached RFC satisfies the claim gate.
 
 `npm run devns:stop` is the host-neutral stop-hook command. Host adapters such as Claude Code or Codex should call this command instead of reimplementing stop behavior.
+
+`npm run harness:validate` validates the local harness workspace, feature state, RFC/candidate schemas, lane configuration and evidence, Stop hook adapter boundaries, prompt-contract files, and durable history quality. By default, legacy migration gaps are warnings so the project can continue running. Pass `--strict` for a hard audit where warnings fail, `--json` for hook/CI consumption, and `--fix` to create missing DEVNS directories.
 
 ## Planned Stable Commands
 

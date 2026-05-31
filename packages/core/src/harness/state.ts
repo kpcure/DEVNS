@@ -14,8 +14,12 @@ const editableFeatureFields = new Set([
   "reviewDecision",
   "agentNotes",
   "evidence",
+  "artifactRefs",
   "changedFiles",
+  "history",
   "commit",
+  "implementationCommit",
+  "metadataCommit",
   "review",
   "rfc",
   "events"

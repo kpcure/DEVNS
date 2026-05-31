@@ -134,6 +134,29 @@
             "additionalProperties": false
           }
         },
+        "clarificationQuestions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "question", "recommended", "options", "blocking"],
+            "properties": {
+              "id": { "type": "string" },
+              "question": { "type": "string" },
+              "recommended": { "type": "string" },
+              "options": {
+                "type": "array",
+                "items": { "type": "string" },
+                "minItems": 2
+              },
+              "blocking": { "type": "boolean" },
+              "owner": {
+                "type": "string",
+                "enum": ["human", "agent"]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
         "risks": {
           "type": "array",
           "items": { "type": "string" }

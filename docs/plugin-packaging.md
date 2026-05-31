@@ -24,6 +24,8 @@ Important hook detail:
 - Hook input is delivered on stdin.
 - `{"decision":"block","reason":"..."}` blocks stop.
 - allow-stop behavior is successful exit with no block decision.
+- Hooks are host lifecycle callbacks. The main agent should not call the Stop hook as its normal in-turn continuation mechanism.
+- Multiple hooks for the same lifecycle event must not be treated as a portable serial pipeline. Persist review evidence before the stop attempt, then let one DEVNS stop command aggregate state.
 
 DEVNS plugin path:
 
@@ -83,3 +85,5 @@ packages/core/
 ```
 
 Host plugins should only wire host-specific lifecycle events, skills, and agent surfaces into the same core runner.
+
+DEVNS does not package an LLM provider. Provider-specific agents, subagents, CI jobs, and scripts are replaceable workers that produce or consume DEVNS JSON contracts.

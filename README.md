@@ -4,8 +4,9 @@ DEVNS is an extension-first harness for long-running agent work where agents kee
 
 The core idea is simple:
 
-- Markdown and JSON remain the agent-readable source of truth.
-- HTML becomes the human review surface.
+- JSON is the fast, agent-readable source of truth.
+- Markdown records the project knowledge that should survive across sessions.
+- HTML becomes the human review and control surface.
 - Every agent run claims one feature, implements it, verifies it, commits it, records evidence, and loops.
 - The next morning review is not a raw commit list. It is a structured mission report grouped by milestone, risk, behavior, evidence, and diff.
 - The core is generic, but the edges are designed for second development: skills, hooks, review agents, test agents, sensors, and UI panels can be replaced by each project.
@@ -31,24 +32,62 @@ Generic workflows are rarely adopted unchanged by serious engineering teams. Eac
 
 DEVNS therefore provides a stable harness core with editable edges. Use the defaults to start, then replace the parts that do not fit your project.
 
+## First Run
+
+After installing DEVNS in a target project, start with the doctor:
+
+```sh
+npx devns doctor
+```
+
+When developing this repository locally, the same entrypoint is available through npm:
+
+```sh
+npm run devns -- doctor
+```
+
+The doctor reports the current DEVNS mode and the next action. It tells you whether to initialize the workspace, continue an active feature, claim the next approved feature, clarify an RFC, or stop because the queue is empty.
+
+For a new project, initialize the DEVNS workspace first:
+
+```sh
+npm run devns -- init --project-name "Example Project" --project-description "Describe the migration or feature goal."
+```
+
+Then use the `devns-init` skill to discover candidate features. Candidates are not executable work yet. A candidate must go through the `devns-rfc` skill and receive human approval before it can become a ready feature.
+
+For an existing DEVNS workspace, ask the agent to use the `devns-run` skill or run:
+
+```sh
+npm run devns -- run --json
+```
+
+Humans can open the dashboard with:
+
+```sh
+npm run devns -- dashboard
+```
+
 ## Local Runtime, Not A CLI-First Product
 
-DEVNS includes command-line entrypoints, but the CLI is not the primary product experience.
+DEVNS exposes one user-facing command, `devns`, but the CLI is not the primary product experience.
 
-The CLI is the local runtime surface used by hooks, skills, plugins, the dashboard, local automation, and CI. It gives those integrations one stable way to call the harness core instead of depending on internal TypeScript files or reimplementing behavior per host.
+The command is the local runtime surface used by hooks, skills, plugins, the dashboard, local automation, and CI. It gives those integrations one stable way to call the harness core instead of depending on internal TypeScript files or reimplementing behavior per host.
 
-This matters because Claude Code, Codex, Cursor, and future hosts expose different plugin and hook models. The command surface is the shared base where DEVNS can control default prompts, skills, hooks, lanes, policies, state transitions, and evidence writing while still letting projects override those pieces through configuration.
+This matters because Claude Code, Codex, Cursor, and future hosts expose different plugin and hook models. The command surface is the shared base where DEVNS can control default prompts, skills, hooks, lanes, policies, state transitions, and evidence writing while still letting projects override those pieces through configuration. Internal `devns:*` and `harness:*` scripts are development and adapter details; general users should start from `npx devns ...` or the host skill.
 
 Humans should usually interact with the HTML dashboard and reports. Agents should usually interact through `AGENTS.md`, skills, hooks, and structured JSON. The command surface is the portable substrate underneath those interfaces.
 
 ## Workflow
 
-1. A human or discovery agent writes feature inventory into JSON.
-2. Background Markdown files capture context, constraints, implementation notes, and tests.
-3. An agent reads `AGENTS.md`, claims the next task, implements it, verifies it, and commits exactly one feature.
-4. A stop hook triggers review and validation agents.
-5. If verification passes, the hook updates task state and asks the agent to claim the next task.
-6. A static HTML dashboard renders both agent-facing task state and human-facing milestone review.
+1. A human starts with `npm run devns -- doctor`, the dashboard, or a DEVNS skill.
+2. Discovery writes candidate features into JSON.
+3. The RFC skill clarifies requirements, validation, and unknowns before work becomes ready.
+4. An agent reads `AGENTS.md`, claims one approved feature, implements it, verifies it, and commits exactly one feature.
+5. Review lanes and the evidence-quality gate persist static, dynamic, and optional read-only review-agent evidence.
+6. `devns complete` records implementation commit metadata and durable history for that feature.
+7. A stop hook gates unfinished active work, reads structured evidence, then claims the next approved feature when policy allows.
+8. The dashboard and reports render human-facing review by feature, risk, evidence, and diff.
 
 ## Repository Shape
 
@@ -74,6 +113,10 @@ Humans should usually interact with the HTML dashboard and reports. Agents shoul
 - `apps/dashboard/`: local HTML review plane.
 - `.workbench/`: ignored local state and intermediate artifacts for developing this repository.
 
+## License
+
+DEVNS is licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTICE`.
+
 ## Current Status
 
 This is the first public skeleton: documentation, schema, example data, a static dashboard prototype, plugin packages, and a thin local command surface for initialization, validation, and hook execution. The next milestone is to harden that command surface so plugins, skills, hooks, and reports can call the same core behavior.
@@ -84,14 +127,16 @@ Initialize a local DEVNS workspace:
 
 ```sh
 npm install
-npm run devns:init -- --project-name "Example Project" --project-description "Describe the migration or feature goal."
-open .devns/workbench/index.html
+npx devns doctor
+npm run devns -- doctor
+npm run devns -- init --project-name "Example Project" --project-description "Describe the migration or feature goal."
+npm run devns -- doctor
 ```
 
 Run the development dashboard:
 
 ```sh
-npm run dev
+npm run devns -- dashboard
 ```
 
 Then open `http://127.0.0.1:5173/`.
@@ -106,5 +151,5 @@ Claude Code Stop hook setup:
 
 ```sh
 cp -R templates/claude-code/.claude .claude
-npm run harness:validate
+npm run devns -- validate
 ```

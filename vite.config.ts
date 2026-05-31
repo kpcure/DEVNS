@@ -3,15 +3,23 @@ import react from "@vitejs/plugin-react";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { FeatureStoreError, patchFeature } from "./packages/core/src/harness/state";
+import { readLatestMorningReview } from "./packages/core/src/harness/morning-review";
 import type { FeaturePatch, DevnsConfig } from "./packages/core/src/harness/types";
 
+const projectRoot = process.env.DEVNS_PROJECT_DIR ?? __dirname;
 const inventoryPath = process.env.DEVNS_FEATURES_PATH ?? ".devns/features.json";
-const roadmapPath = path.resolve(__dirname, inventoryPath);
+const candidatesPath = process.env.DEVNS_CANDIDATES_PATH ?? ".devns/candidates.json";
+const roadmapPath = path.resolve(projectRoot, inventoryPath);
+const candidatesRoadmapPath = path.resolve(projectRoot, candidatesPath);
 const dashboardConfig: DevnsConfig = {
   version: 1,
-  features: inventoryPath
+  features: inventoryPath,
+  candidates: candidatesPath,
+  review: {
+    outputDir: ".devns/reviews"
+  }
 };
-const editableFeatureFields = new Set(["status", "priority", "reviewDecision", "agentNotes"]);
+const editableFeatureFields = new Set(["status", "priority", "reviewDecision", "agentNotes", "rfc"]);
 
 async function readJsonBody(req: import("node:http").IncomingMessage) {
   const chunks: Buffer[] = [];
@@ -27,6 +35,35 @@ function sendJson(res: import("node:http").ServerResponse, status: number, paylo
   res.end(JSON.stringify(payload));
 }
 
+function normalizeRoadmapPayload(value: Record<string, unknown>, candidates: unknown[]) {
+  const project = (value.project && typeof value.project === "object" ? value.project : {}) as Record<string, unknown>;
+  return {
+    ...value,
+    project: {
+      name: typeof project.name === "string" ? project.name : "DEVNS Project",
+      description: typeof project.description === "string" ? project.description : "",
+      repository: typeof project.repository === "string" ? project.repository : ""
+    },
+    features: Array.isArray(value.features) ? value.features : [],
+    candidates,
+    openQuestions: Array.isArray(value.openQuestions) ? value.openQuestions : [],
+    researchSources: Array.isArray(value.researchSources) ? value.researchSources : []
+  };
+}
+
+async function readCandidatesPayload() {
+  try {
+    const raw = await readFile(candidatesRoadmapPath, "utf8");
+    const parsed = JSON.parse(raw) as { candidates?: unknown[] };
+    return Array.isArray(parsed.candidates) ? parsed.candidates : [];
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      return [];
+    }
+    throw error;
+  }
+}
+
 function roadmapApiPlugin() {
   return {
     name: "devns-roadmap-api",
@@ -40,26 +77,40 @@ function roadmapApiPlugin() {
 
           if (req.method === "GET" && req.url === "/api/roadmap") {
             const raw = await readFile(roadmapPath, "utf8");
-            sendJson(res, 200, JSON.parse(raw));
+            sendJson(res, 200, normalizeRoadmapPayload(JSON.parse(raw), await readCandidatesPayload()));
+            return;
+          }
+
+          if (req.method === "GET" && req.url === "/api/reviews/latest") {
+            sendJson(res, 200, {
+              report: await readLatestMorningReview(projectRoot, dashboardConfig)
+            });
             return;
           }
 
           const featureMatch = req.url.match(/^\/api\/features\/([^/?#]+)$/);
           if (req.method === "PATCH" && featureMatch) {
             const featureId = decodeURIComponent(featureMatch[1]);
-            const patch = await readJsonBody(req);
+            const body = await readJsonBody(req);
+            const patch = "patch" in body ? body.patch : body;
+            const expectedRevision = "expectedRevision" in body ? body.expectedRevision : undefined;
             const cleanPatch = Object.fromEntries(
               Object.entries(patch).filter(([key]) => editableFeatureFields.has(key))
             ) as FeaturePatch;
 
-            const result = await patchFeature(__dirname, dashboardConfig, featureId, cleanPatch);
+            const result = await patchFeature(projectRoot, dashboardConfig, featureId, cleanPatch, { expectedRevision });
             sendJson(res, 200, { feature: result.feature, revision: result.revision });
             return;
           }
 
           sendJson(res, 404, { error: "Unknown API route" });
         } catch (error) {
-          const status = error instanceof FeatureStoreError && error.code === "FEATURE_NOT_FOUND" ? 404 : 500;
+          const status =
+            error instanceof FeatureStoreError && error.code === "FEATURE_NOT_FOUND"
+              ? 404
+              : error instanceof FeatureStoreError && error.code === "REVISION_CONFLICT"
+                ? 409
+                : 500;
           sendJson(res, status, { error: error instanceof Error ? error.message : "Unknown error" });
         }
       });

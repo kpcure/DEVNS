@@ -65,6 +65,17 @@
               "additionalProperties": false
             }
           },
+          "artifactRefs": {
+            "type": "object",
+            "description": "Links from the compact feature inventory to detailed per-feature artifacts.",
+            "properties": {
+              "rfc": { "type": "string" },
+              "evidence": { "type": "string" },
+              "history": { "type": "string" },
+              "review": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
           "changedFiles": {
             "type": "array",
             "items": { "type": "string" }
@@ -80,6 +91,14 @@
             "additionalProperties": false
           },
           "commit": { "type": "string" },
+          "implementationCommit": {
+            "type": "string",
+            "description": "Commit that contains the feature implementation. `commit` remains a backwards-compatible alias."
+          },
+          "metadataCommit": {
+            "type": "string",
+            "description": "Optional later commit that records DEVNS metadata changes after the implementation commit."
+          },
           "review": {
             "type": "object",
             "properties": {
@@ -238,6 +257,29 @@
                       "type": "string",
                       "enum": ["blocking", "non_blocking"]
                     },
+                    "owner": {
+                      "type": "string",
+                      "enum": ["human", "agent"]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "clarificationQuestions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["id", "question", "recommended", "options", "blocking"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "question": { "type": "string" },
+                    "recommended": { "type": "string" },
+                    "options": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "minItems": 2
+                    },
+                    "blocking": { "type": "boolean" },
                     "owner": {
                       "type": "string",
                       "enum": ["human", "agent"]

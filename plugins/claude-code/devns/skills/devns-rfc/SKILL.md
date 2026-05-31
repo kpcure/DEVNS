@@ -40,16 +40,34 @@ For every RFC, actively check whether the feature implies any hidden requirement
 
 If any apply, add them as implicit requirements, acceptance criteria, or unknowns. Do not rely only on the feature title.
 
+## Clarification Prompt
+
+Use `prompts/rfc-clarification.md` as the detailed prompt contract. In short, clarify:
+
+- intent: actor, problem, expected outcome
+- scope: goals, non-goals, explicit boundaries
+- domain model: entities, invariants, ownership, lifecycle states
+- behavior: happy path, edge cases, invalid inputs, failure modes
+- interfaces: CLI, API, UI, JSON schema, file path, hook, lane, plugin, or agent contract
+- compatibility: migrations, existing data, backward compatibility, rollback
+- operations: concurrency, stale reads, retries, idempotency, long-running work
+- validation: dynamic commands, static checks, manual review, evidence artifacts
+- review: what a human must see, what a review agent must verify
+- knowledge: decisions, pitfalls, errors, fixes, and domain lessons that should be recorded
+
+Questions must be recommendation-first and bounded. Ask at most five, each with one recommended answer, alternatives, owner, and blocking flag.
+
 ## Workflow
 
 1. Read the candidate feature or existing feature.
 2. If no RFC file exists, create the deterministic scaffold:
 
 ```sh
-npm run devns:rfc -- scaffold --id <candidate-or-feature-id>
+npx devns rfc scaffold --id <candidate-or-feature-id>
 ```
 
 1. Read `AGENTS.md`, project rules, `.devns/project.md`, `.devns/index.md`, and the configured feature/candidate inventory.
+   If a documented npm alias is missing, inspect `package.json` and use the closest available DEVNS command instead of stopping.
 2. Inspect source references attached to the candidate.
 3. Search nearby routes, APIs, schemas, tests, docs, fixtures, and legacy implementation hints.
 4. Extract explicit and implicit requirements.
@@ -57,11 +75,17 @@ npm run devns:rfc -- scaffold --id <candidate-or-feature-id>
 6. Convert acceptance criteria into test case candidates and test targets.
 7. Mark test cases that can become unit tests as `type: "unit"`.
 8. Record unknowns. Ask at most 3-5 high-impact clarification questions.
+   To generate bounded recommended-option questions from the current RFC state, run:
+
+```sh
+npx devns rfc clarify --id <candidate-or-feature-id> --json
+```
+
 9. Update the RFC object with `status: "needs_human_review"` unless blocking unknowns make it `blocked`.
 10. If the RFC is already attached to a feature, check gate readiness:
 
 ```sh
-npm run devns:rfc -- check --id <feature-id>
+npx devns rfc check --id <feature-id>
 ```
 
 ## Output Shape
