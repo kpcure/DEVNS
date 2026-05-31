@@ -31,6 +31,10 @@
             "type": "string",
             "enum": ["P0", "P1", "P2", "P3"]
           },
+          "suggestedRisk": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          },
           "suggestedMilestone": { "type": "string" },
           "unknowns": {
             "type": "array"

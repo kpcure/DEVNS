@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { access } from "node:fs/promises";
 import { evaluateRfcReadiness } from "../harness/rfc";
+import { historyPathForFeature } from "../harness/history";
 import { activeFeature, blockedReadyFeature, claimFeature, nextFeature, TaskQueueError } from "../harness/task-queue";
 import { readConfig, readInventory } from "../harness/state";
-import type { Feature } from "../harness/types";
+import type { DevnsConfig, Feature } from "../harness/types";
 
 type RunMode = "bootstrap_required" | "continue_active" | "claim_next" | "blocked_ready" | "empty_queue";
 
@@ -44,10 +45,40 @@ async function exists(filePath: string) {
   }
 }
 
+function workerHandoff(config: DevnsConfig, feature: Feature) {
+  return {
+    strategy: "prefer_isolated_worker",
+    scope: "exactly_one_feature",
+    featureId: feature.id,
+    rfc: feature.rfc ?? null,
+    historyPath: feature.history?.historyPath ?? historyPathForFeature(process.cwd(), config, feature.id),
+    context: feature.context ?? [],
+    changedFilePlan: feature.changedFiles ?? [],
+    validationPlan: feature.rfc?.validationPlan ?? null,
+    requiredLanes: (config.reviewLanes ?? [])
+      .filter((lane) => lane.required || lane.blocksCompletion)
+      .map((lane) => lane.id),
+    promptContracts: [
+      "docs/prompt-contracts.md",
+      "plugins/codex/devns/prompts/code-review-lane.md",
+      "plugins/codex/devns/prompts/domain-knowledge-curator.md"
+    ],
+    expectedOutput: [
+      "changed files and diff summary",
+      "commands run and lane evidence",
+      "decisions, rejected alternatives, pitfalls, errors, fixes, and lessons",
+      "blockers or human-review questions",
+      "suggested commit message"
+    ]
+  };
+}
+
 function featurePrompt(feature: Feature, verb: "Continue" | "Implement") {
   return [
     `${verb} feature ${feature.id}: ${feature.title}.`,
     "Read its approved RFC, context files, and latest evidence before editing.",
+    "After RFC clarification, prefer an isolated worker/subagent or fresh context for this single feature when the host supports it.",
+    "Keep the main context responsible for orchestration, evidence aggregation, and stop-hook decisions.",
     "Do technical implementation analysis inside the feature loop.",
     "Implement the smallest coherent change, run verification, update evidence/history, then commit exactly this feature."
   ].join(" ");
@@ -82,6 +113,7 @@ async function main() {
     const payload = {
       mode: "continue_active" as const,
       feature: active,
+      workerHandoff: workerHandoff(config, active),
       prompt: featurePrompt(active, "Continue")
     };
     options.output === "json" ? writeJson(payload) : writeText(payload.mode, payload.prompt);
@@ -101,6 +133,7 @@ async function main() {
       mode: "claim_next" as const,
       claimed: Boolean(result),
       feature,
+      workerHandoff: workerHandoff(config, feature),
       prompt: featurePrompt(feature, "Implement")
     };
     options.output === "json" ? writeJson(payload) : writeText(payload.mode, payload.prompt);

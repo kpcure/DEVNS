@@ -52,6 +52,14 @@ It falls back to `npm run harness:stop --silent` for current development checkou
 DEVNS_STOP_COMMAND="npm run devns:stop --silent"
 ```
 
+For dogfood or manual local wiring, copy or adapt:
+
+```text
+templates/codex/hooks.json
+```
+
+In this repository, `.codex/hooks.json` is intentionally ignored as a local host configuration file. The tracked template is the reusable version; the local file points the current Codex client at the same adapter.
+
 ## Validation
 
 From this repository:

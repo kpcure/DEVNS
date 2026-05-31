@@ -41,7 +41,7 @@ const approvedRfc: FeatureRfc = {
   featureDescription: "Smoke feature",
   expectedOutcome: "Smoke outcome",
   goals: ["Verify stop hook behavior"],
-  nonGoals: [],
+  nonGoals: ["Do not test unrelated hook hosts"],
   requirements: [
     {
       id: "REQ-001",
@@ -98,6 +98,7 @@ function feature(id: string, status: Feature["status"], patch: Partial<Feature> 
 
 async function makeProject(features: Feature[]) {
   const root = process.cwd();
+  const tsxBin = path.join(root, "node_modules", ".bin", "tsx");
   const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-stop-smoke-"));
   await mkdir(path.join(cwd, ".devns"), { recursive: true });
   await mkdir(path.join(cwd, "plugins", "codex", "devns", "scripts"), { recursive: true });
@@ -107,7 +108,7 @@ async function makeProject(features: Feature[]) {
       {
         type: "module",
         scripts: {
-          "devns:stop": `tsx ${path.join(root, "packages/core/src/cli/stop-hook.ts")}`
+          "devns:stop": `${tsxBin} ${path.join(root, "packages/core/src/cli/stop-hook.ts")}`
         },
         dependencies: {}
       },
@@ -117,7 +118,7 @@ async function makeProject(features: Feature[]) {
   );
   await writeFile(
     path.join(cwd, "plugins", "codex", "devns", "scripts", "devns-stop-hook.sh"),
-    `#!/usr/bin/env bash\nDEVNS_STOP_COMMAND=\"tsx ${path.join(root, "packages/core/src/cli/stop-hook.ts")}\" bash ${path.join(root, "plugins/codex/devns/scripts/devns-stop-hook.sh")}\n`
+    `#!/usr/bin/env bash\nDEVNS_STOP_COMMAND=\"${tsxBin} ${path.join(root, "packages/core/src/cli/stop-hook.ts")}\" bash ${path.join(root, "plugins/codex/devns/scripts/devns-stop-hook.sh")}\n`
   );
   await writeFile(
     path.join(cwd, ".devns", "devns.config.json"),
@@ -135,7 +136,24 @@ async function makeProject(features: Feature[]) {
           requireCleanWorktree: false,
           requireCommit: true,
           allowEmptyOutputWhenComplete: true
-        }
+        },
+        hooks: {
+          stop: {
+            mode: "gate",
+            blockOn: {
+              skippedRequiredVerification: true
+            }
+          }
+        },
+        reviewLanes: [
+          {
+            id: "smoke-lane",
+            type: "command",
+            command: "npm run smoke",
+            required: true,
+            blocksCompletion: true
+          }
+        ]
       } satisfies DevnsConfig,
       null,
       2
@@ -167,23 +185,38 @@ async function main() {
   const claimProject = await makeProject([feature("SMOKE-002", "ready")]);
   const completeProject = await makeProject([
     feature("SMOKE-003", "in_progress", {
-      evidence: [{ type: "verification", summary: "Smoke evidence" }],
+      evidence: [
+        { type: "verification", summary: "Smoke evidence" },
+        { type: "lane:smoke-lane", summary: "Lane smoke-lane passed. Decision: allow." }
+      ],
       reviewDecision: "approved",
       commit: "abc123"
     })
   ]);
   const emptyProject = await makeProject([feature("SMOKE-004", "done")]);
+  const multiActiveProject = await makeProject([
+    feature("SMOKE-005", "in_progress"),
+    feature("SMOKE-006", "in_progress")
+  ]);
 
   try {
     const recursive = await runHook(activeProject, JSON.stringify({ cwd: activeProject, stop_hook_active: true }));
     assert.equal(recursive.trim(), "");
 
     const active = parseMaybeJson(await runHook(activeProject, JSON.stringify({ cwd: activeProject })));
+    assert.ok(active, "Active-project hook should block with JSON output.");
     assert.equal(active.decision, "block");
     assert.match(active.reason, /No verification evidence/);
+    assert.match(active.reason, /Required lane evidence is missing: smoke-lane/);
     assert.match(active.reason, /No feature commit/);
 
+    const multiActive = parseMaybeJson(await runHook(multiActiveProject, JSON.stringify({ cwd: multiActiveProject })));
+    assert.ok(multiActive, "Multi-active hook should block with JSON output.");
+    assert.equal(multiActive.decision, "block");
+    assert.match(multiActive.reason, /multiple features are in_progress/);
+
     const claim = parseMaybeJson(await runHook(claimProject, JSON.stringify({ cwd: claimProject })));
+    assert.ok(claim, "Claim-project hook should block with JSON output.");
     assert.equal(claim.decision, "block");
     assert.match(claim.reason, /Claimed next feature SMOKE-002/);
 
@@ -193,7 +226,7 @@ async function main() {
     const empty = await runHook(emptyProject, JSON.stringify({ cwd: emptyProject }));
     assert.equal(empty.trim(), "");
   } finally {
-    await Promise.all([activeProject, claimProject, completeProject, emptyProject].map((project) => rm(project, { recursive: true, force: true })));
+    await Promise.all([activeProject, claimProject, completeProject, emptyProject, multiActiveProject].map((project) => rm(project, { recursive: true, force: true })));
   }
 
   process.stdout.write("Codex stop hook smoke passed.\n");

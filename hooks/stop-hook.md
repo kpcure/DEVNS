@@ -4,17 +4,19 @@ This is a reference behavior for a coding-agent stop hook, inspired by Claude Co
 
 ## Trigger
 
-Run when the agent finishes an implementation attempt.
+Run when the host client is about to stop after an agent turn.
 
 The hook is not just a cleanup script. It is a gate that decides whether the agent may stop, must continue the current task, should commit and move to the next task, or must hand control back to a human.
+
+The hook itself must stay lightweight. It reads persisted DEVNS JSON state and concise evidence; it does not run long tests, browser automation, package installs, or LLM review. Those jobs must run before the final stop attempt and write lane evidence/history for the hook to inspect.
 
 ## Steps
 
 1. Read `AGENTS.md`.
 2. Read the active task from the feature inventory.
 3. Confirm that requirement analysis has been completed when required by policy.
-4. Run the configured review and test lanes.
-5. Persist lane evidence into the feature record.
+4. Read existing lane evidence and execution history.
+5. Optionally inspect lightweight git state when policy requires a clean worktree.
 6. Evaluate the result with the hook decision model below.
 
 ## Decision Model
@@ -126,7 +128,7 @@ A task may be completed only when all required gates pass:
 Projects can configure thresholds, but the default should be conservative:
 
 - high-severity review finding blocks completion
-- skipped required verification blocks completion
+- missing, skipped, blocking, or human-review required lane evidence blocks completion
 - low review confidence blocks completion for P0/P1 or high-risk tasks
 - changed files outside the declared affected surfaces require human review
 

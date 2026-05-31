@@ -37,6 +37,17 @@ async function main() {
     assert.equal(updated.features[0]?.status, "in_progress");
     assert.ok(updated.revision);
 
+    await patchFeature(cwd, config, "SMOKE-001", {
+      artifactRefs: {
+        rfc: ".devns/rfcs/SMOKE-001.json",
+        evidence: ".devns/evidence/SMOKE-001",
+        history: ".devns/history/SMOKE-001.md",
+        review: ".devns/reviews/SMOKE-001.md"
+      }
+    });
+    const withArtifactRefs = await readInventory(cwd, config);
+    assert.equal(withArtifactRefs.features[0]?.artifactRefs?.rfc, ".devns/rfcs/SMOKE-001.json");
+
     await assert.rejects(
       () =>
         patchFeature(

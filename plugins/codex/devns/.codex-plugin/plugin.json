@@ -11,7 +11,7 @@
     "longDescription": "DevNS helps agents claim one feature, analyze requirements, verify work, record evidence, and continue through a local harness while humans review progress in HTML.",
     "developerName": "DevNS",
     "category": "Productivity",
-    "defaultPrompt": "Use the DevNS workflow: initialize candidate features when needed, clarify each feature into an RFC before implementation, only claim features with approved RFCs, verify work, record evidence, and commit exactly one feature.",
+    "defaultPrompt": "Use the DevNS workflow. Start uncertain sessions with `npm run devns:doctor -- --json`; initialize candidate features when needed, clarify each feature into an RFC before implementation, only claim features with approved RFCs, verify work, record evidence, and commit exactly one feature.",
     "capabilities": [
       "skills",
       "hooks",

@@ -97,6 +97,39 @@ requirement -> acceptance criterion -> test case -> test target
 
 This lets agents and review lanes reason from the original requirement to dynamic tests, static checks, and execution evidence.
 
+## Detail Artifacts
+
+The feature inventory should stay compact enough for agents and dashboards to scan quickly. Detailed per-feature artifacts can live in separate files or directories and be linked from the feature record:
+
+```json
+{
+  "id": "EX-001",
+  "artifactRefs": {
+    "rfc": ".devns/rfcs/EX-001.json",
+    "evidence": ".devns/evidence/EX-001",
+    "history": ".devns/history/EX-001.md",
+    "review": ".devns/reviews/EX-001.md"
+  }
+}
+```
+
+Use the inventory for queue status, summaries, and links. Use artifact files for full RFC records, lane evidence, execution history, and review packets.
+
+## Execution History
+
+History records are JSONL artifacts under `.devns/history/<feature-id>.jsonl`. They are not terminal transcripts. A useful record should preserve the knowledge a future agent needs before touching the same area again:
+
+- `decisions`: why the implementation or verification shape was chosen
+- `alternativesRejected`: options considered but not taken, with the reason
+- `pitfalls`: reusable warnings, with cause, fix, or prevention when known
+- `errors`: concrete mistakes encountered during implementation or validation
+- `fixes`: changes that repaired those mistakes
+- `lessons`: short guidance future agents should read before continuing
+- `dynamicChecks` and `staticChecks`: concise verification summaries
+- `laneResults`: optional full structured lane envelopes
+
+The feature inventory should keep only summary/link metadata in `history`. Detailed records stay in the history artifact so dashboard and agent prompts can load them on demand.
+
 ## Status Values
 
 - `ready`
@@ -133,4 +166,4 @@ tools/schema/rfc.schema.json
 tools/schema/devns-config.schema.json
 ```
 
-These schemas are the field contract for agents, the dashboard, hooks, and CLI commands. Unknown fields are intentionally rejected in v0.1 unless a specific extension point is added to the schema.
+These schemas are the field contract for agents, the dashboard, hooks, and CLI commands. Unknown fields are intentionally rejected unless a specific extension point is added to the schema.

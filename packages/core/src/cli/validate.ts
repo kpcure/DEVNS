@@ -1,49 +1,70 @@
 #!/usr/bin/env node
-import { readConfig, readInventory } from "../harness/state";
-import { evaluateRfcReadiness } from "../harness/rfc";
+import { runHarnessValidation, type ValidationCheck } from "../harness/validate";
 
-async function main() {
-  const cwd = process.cwd();
-  const config = await readConfig(cwd);
-  const inventory = await readInventory(cwd, config);
+type Options = {
+  output: "text" | "json";
+  strict: boolean;
+  fix: boolean;
+};
 
-  if (!inventory.project?.name) {
-    throw new Error("Feature inventory is missing project.name");
-  }
+function parseArgs(argv: string[]): Options {
+  const options: Options = {
+    output: "text",
+    strict: false,
+    fix: false
+  };
 
-  if (!Array.isArray(inventory.features)) {
-    throw new Error("Feature inventory is missing features[]");
-  }
-
-  for (const feature of inventory.features) {
-    if (!feature.id || !feature.title || !feature.status || !feature.priority) {
-      throw new Error(`Invalid feature record: ${JSON.stringify(feature)}`);
+  for (const arg of argv) {
+    if (arg === "--json") {
+      options.output = "json";
+    } else if (arg === "--strict") {
+      options.strict = true;
+    } else if (arg === "--fix") {
+      options.fix = true;
     }
   }
 
-  const rfcReady = inventory.features.filter((feature) => evaluateRfcReadiness(feature).ready).length;
-  const claimable = inventory.features.filter(
-    (feature) => feature.status === "ready" && evaluateRfcReadiness(feature).ready
-  ).length;
-  const blockedReady = inventory.features.filter(
-    (feature) => feature.status === "ready" && !evaluateRfcReadiness(feature).ready
-  );
+  return options;
+}
 
-  process.stdout.write(
-    [
-      `Validated ${inventory.features.length} features for ${inventory.project.name}`,
-      `RFC-ready features: ${rfcReady}`,
-      `Claimable ready features: ${claimable}`
-    ].join("\n") + "\n"
-  );
+function icon(status: ValidationCheck["status"]) {
+  if (status === "pass") return "PASS";
+  if (status === "warn") return "WARN";
+  return "FAIL";
+}
 
-  if (blockedReady.length > 0) {
+async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  const report = await runHarnessValidation(process.cwd(), options);
+
+  if (options.output === "json") {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  } else {
     process.stdout.write(
       [
-        `Ready features blocked by RFC gate: ${blockedReady.length}`,
-        ...blockedReady.slice(0, 5).map((feature) => `- ${feature.id}: ${evaluateRfcReadiness(feature).reasons[0]}`)
-      ].join("\n") + "\n"
+        `Harness validation: ${report.status}`,
+        `Checks: ${report.summary.pass} pass, ${report.summary.warn} warn, ${report.summary.fail} fail`,
+        report.fixed.length ? `Fixed: ${report.fixed.join(", ")}` : "",
+        "",
+        ...report.checks
+          .filter((check) => check.status !== "pass")
+          .map((check) =>
+            [
+              `${icon(check.status)} ${check.id}: ${check.summary}`,
+              ...(check.details?.length ? check.details.map((detail) => `  - ${detail}`) : []),
+              check.suggestedFix ? `  Fix: ${check.suggestedFix}` : ""
+            ]
+              .filter(Boolean)
+              .join("\n")
+          )
+      ]
+        .filter(Boolean)
+        .join("\n") + "\n"
     );
+  }
+
+  if (report.status === "fail") {
+    process.exitCode = 1;
   }
 }
 

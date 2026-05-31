@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { copyFile, mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeAgentsIndex } from "../harness/agents-index";
@@ -51,13 +51,66 @@ function json(value: unknown) {
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 
+async function readPackageScripts(cwd: string) {
+  try {
+    const raw = await readFile(path.join(cwd, "package.json"), "utf8");
+    const parsed = JSON.parse(raw) as { scripts?: Record<string, string> };
+    return parsed.scripts ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function isDefaultNpmFailingTest(script: string) {
+  return /Error:\s*no test specified/.test(script) && /exit\s+1/.test(script);
+}
+
+function recommendedReviewLanes(scripts: Record<string, string>) {
+  const lanes = [];
+  for (const script of ["test", "typecheck", "build"]) {
+    if (script === "test" && isDefaultNpmFailingTest(scripts[script] ?? "")) {
+      continue;
+    }
+    if (scripts[script]) {
+      lanes.push({
+        id: script,
+        type: "command",
+        command: `npm run ${script} --silent`,
+        required: true,
+        blocksCompletion: true
+      });
+    }
+  }
+
+  if (scripts.lint) {
+    lanes.push({
+      id: "lint",
+      type: "command",
+      command: "npm run lint --silent",
+      required: false,
+      blocksCompletion: false
+    });
+  }
+
+  lanes.push({
+    id: "security_basic",
+    type: "builtin",
+    required: false,
+    blocksCompletion: false
+  });
+
+  return lanes;
+}
+
 export async function main(inputOptions?: InitOptions) {
   const cwd = process.cwd();
   const options = inputOptions ?? parseArgs(process.argv.slice(2));
   const devnsDir = path.join(cwd, ".devns");
+  const scripts = await readPackageScripts(cwd);
 
   await mkdir(path.join(devnsDir, "rfcs"), { recursive: true });
   await mkdir(path.join(devnsDir, "history"), { recursive: true });
+  await mkdir(path.join(devnsDir, "reviews"), { recursive: true });
   await mkdir(path.join(devnsDir, "skills"), { recursive: true });
   await mkdir(path.join(devnsDir, "agents"), { recursive: true });
   await mkdir(path.join(devnsDir, "policies"), { recursive: true });
@@ -78,7 +131,7 @@ export async function main(inputOptions?: InitOptions) {
         policies: ".devns/policies",
         review: {
           mode: "html",
-          outputDir: ".devns/workbench"
+          outputDir: ".devns/reviews"
         },
         completionPolicy: {
           mode: "queue",
@@ -107,7 +160,8 @@ export async function main(inputOptions?: InitOptions) {
           init: "devns-init",
           rfc: "devns-rfc",
           run: "devns-run"
-        }
+        },
+        reviewLanes: recommendedReviewLanes(scripts)
       })
     },
     {
@@ -169,11 +223,20 @@ export async function main(inputOptions?: InitOptions) {
         "- `policies/`: project-local harness policies",
         "- `project.md`: human-provided project background",
         "",
+        "## Reading Order",
+        "",
+        "1. Run `npm run devns:doctor -- --json` when available. If missing, inspect `package.json` and use `npm run devns:status -- --json` or `npm run devns:queue -- status --json`.",
+        "2. Read the active feature from `features.json` and its approved RFC from `rfcs/` or the feature record.",
+        "3. Read the latest `.devns/history/<feature-id>.jsonl` record for decisions, pitfalls, errors, fixes, and lessons.",
+        "4. Read `.devns/reviews/` when reviewing completed work or taking over after a long run.",
+        "",
         "## Rules",
         "",
         "- Run `devns-init` to discover candidates.",
         "- Run `devns-rfc` to clarify a candidate before implementation.",
         "- Only run `devns-run` for features with approved RFCs.",
+        "- Do not keep multiple features active unless a future policy explicitly allows it.",
+        "- Keep `features.json` concise; write detailed evidence, history, and review packets to linked artifacts.",
         ""
       ].join("\n")
     },
@@ -185,6 +248,13 @@ export async function main(inputOptions?: InitOptions) {
         "This directory is the local DEVNS harness workspace.",
         "",
         "Agents and humans can both read it. Humans should edit project background, review RFCs, and approve ready work. Agents should not implement a feature until its RFC is approved.",
+        "",
+        "Agent quick path:",
+        "",
+        "1. Check mode with `npm run devns:doctor -- --json` when available; otherwise inspect `package.json` and use the available DEVNS status command.",
+        "2. Read `index.md`, the active feature RFC, and relevant history before editing.",
+        "3. Run lanes with `npm run devns:lanes -- run --write --json` before completion.",
+        "4. Keep durable knowledge in `history/` and human review packets in `reviews/`.",
         ""
       ].join("\n")
     }

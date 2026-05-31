@@ -36,6 +36,13 @@ export type HumanChangeNote = {
   reason?: string;
 };
 
+export type ExecutionIssueRecord = {
+  summary: string;
+  cause?: string;
+  fix?: string;
+  prevention?: string;
+};
+
 export type ExecutionHistoryRecord = {
   id: string;
   featureId: string;
@@ -43,8 +50,14 @@ export type ExecutionHistoryRecord = {
   createdAt: string;
   actor: "agent" | "human" | "hook" | "system";
   summary: string;
+  decisions: string[];
+  alternativesRejected: string[];
   changedFiles: ChangedFileEvidence[];
   impact: string[];
+  pitfalls: ExecutionIssueRecord[];
+  errors: ExecutionIssueRecord[];
+  fixes: string[];
+  lessons: string[];
   risks: string[];
   dynamicChecks: CheckRecord[];
   staticChecks: CheckRecord[];
@@ -58,6 +71,13 @@ export type FeatureHistorySummary = {
   latestSummary?: string;
   recordCount?: number;
   historyPath?: string;
+};
+
+export type FeatureArtifactRefs = {
+  rfc?: string;
+  evidence?: string;
+  history?: string;
+  review?: string;
 };
 
 export type FeatureEvent = {
@@ -75,6 +95,7 @@ export type CandidateFeature = {
   sources?: string[];
   confidence?: "low" | "medium" | "high";
   suggestedPriority?: FeaturePriority;
+  suggestedRisk?: Risk;
   suggestedMilestone?: string;
   unknowns?: unknown[];
 };
@@ -115,6 +136,15 @@ export type RfcUnknown = {
   owner?: "human" | "agent";
 };
 
+export type RfcClarificationQuestion = {
+  id: string;
+  question: string;
+  recommended: string;
+  options: string[];
+  blocking: boolean;
+  owner?: "human" | "agent";
+};
+
 export type FeatureRfc = {
   status: RfcStatus;
   summary: string;
@@ -131,6 +161,7 @@ export type FeatureRfc = {
   };
   testCases: RfcTestCase[];
   unknowns?: RfcUnknown[];
+  clarificationQuestions?: RfcClarificationQuestion[];
   risks?: string[];
   humanDecision?: {
     status: "pending" | "approved" | "needs_changes" | "rejected";
@@ -152,6 +183,7 @@ export type Feature = {
   acceptanceCriteria: string[];
   verification?: string[];
   evidence?: Evidence[];
+  artifactRefs?: FeatureArtifactRefs;
   changedFiles?: string[];
   history?: FeatureHistorySummary;
   commit?: string;
@@ -175,6 +207,7 @@ export type FeaturePatch = Partial<
     | "reviewDecision"
     | "agentNotes"
     | "evidence"
+    | "artifactRefs"
     | "changedFiles"
     | "history"
     | "commit"

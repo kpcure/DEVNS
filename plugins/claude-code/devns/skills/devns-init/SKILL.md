@@ -13,10 +13,16 @@ Create the `.devns/` workspace if needed, collect project background, and discov
 
 ## Bootstrap
 
+1. Start by checking the current mode:
+
+```sh
+npx devns doctor --json
+```
+
 1. If `.devns/devns.config.json` is missing, run:
 
 ```sh
-npm run devns:init -- --project-name "<project name>" --project-description "<project background>"
+npx devns init --project-name "<project name>" --project-description "<project background>"
 ```
 
 1. If the user has not provided enough background, update `.devns/project.md` with known context and ask for the smallest missing input needed to continue.
@@ -36,9 +42,15 @@ npm run devns:init -- --project-name "<project name>" --project-description "<pr
 2. Inspect repository structure, README, docs, routes, API/schema files, tests, and known legacy/new paths.
 3. Look for both visible product features and implicit harness requirements.
 4. Produce candidate features with source references, confidence, suggested priority, suggested milestone, and known unknowns.
-5. Write or propose updates to `.devns/candidates.json`.
-6. Do not mark candidates as `ready`.
-7. Ask the human to confirm which candidates should be clarified into RFCs.
+5. Use the deterministic discovery command when it fits the repository:
+
+```sh
+npx devns discover --json
+```
+
+6. Write or propose updates to `.devns/candidates.json`.
+7. Do not mark candidates as `ready`.
+8. Ask the human to confirm which candidates should be clarified into RFCs.
 
 ## Implicit Requirements To Look For
 
@@ -75,3 +87,4 @@ npm run devns:init -- --project-name "<project name>" --project-description "<pr
 - Do not create `ready` work from a one-line feature description.
 - Each candidate must later pass the `devns-rfc` clarification skill before implementation.
 - `features.json` is the implementation queue; `candidates.json` is the discovery queue.
+- CLI commands and skills are two entry points into the same JSON state workflow.

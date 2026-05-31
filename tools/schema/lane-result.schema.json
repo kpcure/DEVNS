@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devns.dev/schemas/lane-result.schema.json",
+  "title": "DEVNS Lane Result",
+  "type": "object",
+  "required": ["lane", "type", "status", "decision", "summary", "confidence", "findings", "evidence", "artifacts", "recommendedActions", "blocksCompletion", "required"],
+  "properties": {
+    "lane": { "type": "string" },
+    "type": { "type": "string", "enum": ["command", "agent", "builtin"] },
+    "status": { "type": "string", "enum": ["pass", "fail", "error", "skipped", "flaky_suspected"] },
+    "decision": { "type": "string", "enum": ["allow", "warn", "block", "needs_human_review"] },
+    "summary": { "type": "string" },
+    "confidence": { "type": "string", "enum": ["low", "medium", "high"] },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "message"],
+        "properties": {
+          "severity": { "type": "string", "enum": ["info", "warning", "error"] },
+          "message": { "type": "string" },
+          "category": {
+            "type": "string",
+            "enum": ["correctness", "security", "scope", "test", "maintainability", "reviewability"]
+          },
+          "confidence": { "type": "string", "enum": ["low", "medium", "high"] },
+          "file": { "type": "string" },
+          "line": { "type": "number" },
+          "requirementIds": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type", "summary"],
+              "properties": {
+                "type": { "type": "string", "enum": ["diff", "command", "artifact", "requirement", "source"] },
+                "summary": { "type": "string" },
+                "url": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "suggestedFix": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "summary"],
+        "properties": {
+          "type": { "type": "string" },
+          "summary": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recommendedActions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "blocksCompletion": { "type": "boolean" },
+    "required": { "type": "boolean" },
+    "durationMs": { "type": "number" },
+    "exitCode": { "type": "number" },
+    "startedAt": { "type": "string" },
+    "completedAt": { "type": "string" },
+    "stdoutDigest": { "type": "string" },
+    "stderrDigest": { "type": "string" },
+    "stdout": { "type": "string" },
+    "stderr": { "type": "string" }
+  },
+  "additionalProperties": false
+}

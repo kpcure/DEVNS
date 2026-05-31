@@ -65,6 +65,17 @@
               "additionalProperties": false
             }
           },
+          "artifactRefs": {
+            "type": "object",
+            "description": "Links from the compact feature inventory to detailed per-feature artifacts.",
+            "properties": {
+              "rfc": { "type": "string" },
+              "evidence": { "type": "string" },
+              "history": { "type": "string" },
+              "review": { "type": "string" }
+            },
+            "additionalProperties": false
+          },
           "changedFiles": {
             "type": "array",
             "items": { "type": "string" }
@@ -238,6 +249,29 @@
                       "type": "string",
                       "enum": ["blocking", "non_blocking"]
                     },
+                    "owner": {
+                      "type": "string",
+                      "enum": ["human", "agent"]
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "clarificationQuestions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["id", "question", "recommended", "options", "blocking"],
+                  "properties": {
+                    "id": { "type": "string" },
+                    "question": { "type": "string" },
+                    "recommended": { "type": "string" },
+                    "options": {
+                      "type": "array",
+                      "items": { "type": "string" },
+                      "minItems": 2
+                    },
+                    "blocking": { "type": "boolean" },
                     "owner": {
                       "type": "string",
                       "enum": ["human", "agent"]
