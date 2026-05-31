@@ -58,7 +58,26 @@ PROJECT RULES
 3. Diff review: inspect correctness, regressions, data loss, compatibility, security, concurrency, and state transition risks.
 4. Test review: compare dynamic/static evidence to the validation plan. Flag missing blocking checks and unverifiable manual claims.
 5. History review: check whether new pitfalls, errors, fixes, and design reasons were recorded when the diff introduced reusable knowledge.
-6. Decision: choose allow, warn, block, or needs_human_review.
+6. Skeptical calibration: do not approve because the implementation "seems fine." If a must requirement lacks direct evidence, return `needs_human_review` or `block`.
+7. Decision: choose allow, warn, block, or needs_human_review.
+
+## Scoring
+
+Score each dimension from 0 to 5 before choosing the decision:
+
+- correctness: logic, edge cases, regressions, data loss, state transitions.
+- requirement_coverage: every must requirement has matching acceptance criteria and evidence.
+- scope: changed files stay inside declared `implementationSurface` or clearly justified feature files.
+- security: secrets, auth, injection, permissions, unsafe command execution.
+- test: evidence proves behavior, not just buildability.
+
+If correctness, requirement_coverage, security, or test is below 3, use `block` when evidence-backed or `needs_human_review` when uncertain. If scope is below 3, use at least `needs_human_review`.
+
+Calibration examples:
+
+- A diff adds UI labels but no browser/manual evidence for a UI acceptance criterion. Do not approve from build output; return `needs_human_review`.
+- A command lane passes but assertions do not cover the changed behavior. Treat it as a test gap, not proof.
+- A changed file is outside `implementationSurface` and not explained by the RFC. Flag scope drift even if tests pass.
 
 ## Output
 
@@ -81,7 +100,12 @@ Return only a DEVNS lane result JSON object.
       "file": "path/to/file.ts",
       "line": 12,
       "requirementIds": ["REQ-001"],
-      "evidence": "Quote or summarize the diff/command evidence.",
+      "evidence": [
+        {
+          "type": "diff",
+          "summary": "Quote or summarize the diff/command evidence."
+        }
+      ],
       "suggestedFix": "Concrete fix for the implementation agent."
     }
   ],

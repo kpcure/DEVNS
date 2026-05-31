@@ -23,10 +23,12 @@ async function main() {
 
     const config = await readConfig(cwd);
     const result = await writeDiscoveredCandidates(cwd, config, { force: true });
+    const serialized = JSON.stringify(result.candidates);
     assert.ok(result.candidates.length >= 3);
     assert.ok(result.candidates.every((candidate) => candidate.status === "discovered" || candidate.status === "needs_rfc"));
     assert.ok(result.candidates.every((candidate) => candidate.sources !== undefined));
     assert.ok(result.candidates.some((candidate) => candidate.suggestedRisk));
+    assert.doesNotMatch(serialized, /librarian|loan|overdue|借阅|逾期|图书/i);
 
     const inventory = await readCandidates(cwd, config);
     assert.equal(inventory.candidates.length, result.candidates.length);

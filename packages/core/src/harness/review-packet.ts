@@ -54,6 +54,8 @@ export type WriteReviewPacketOptions = {
   format?: "json" | "prompt";
   write?: boolean;
   maxBytes?: number;
+  commit?: string;
+  base?: string;
 };
 
 async function git(cwd: string, args: string[]) {
@@ -107,10 +109,23 @@ async function historyFor(cwd: string, config: DevnsConfig, feature: Feature) {
   return readExecutionHistoryRecords(filePath);
 }
 
-export async function buildReviewPacket(cwd: string, config: DevnsConfig, feature: Feature, maxBytes = 120_000): Promise<ReviewPacket> {
+export async function buildReviewPacket(
+  cwd: string,
+  config: DevnsConfig,
+  feature: Feature,
+  maxBytes = 120_000,
+  gitRange: { commit?: string; base?: string } = {}
+): Promise<ReviewPacket> {
   const head = await git(cwd, ["rev-parse", "HEAD"]);
-  const base = feature.implementationCommit ?? feature.commit;
-  const diffArgs = base ? ["show", "--format=", "--find-renames", base] : ["diff", "--find-renames", "HEAD", "--"];
+  const base = gitRange.base ?? feature.implementationCommit ?? feature.commit;
+  const reviewHead = gitRange.commit ?? (base ? base : head);
+  const diffArgs = gitRange.commit
+    ? gitRange.base
+      ? ["diff", "--find-renames", gitRange.base, gitRange.commit, "--"]
+      : ["show", "--format=", "--find-renames", gitRange.commit]
+    : base
+      ? ["show", "--format=", "--find-renames", base]
+      : ["diff", "--find-renames", "HEAD", "--"];
   const rawDiff = await git(cwd, diffArgs);
   const diff = trimToBytes(rawDiff, Math.floor(maxBytes * 0.6));
   const status = await git(cwd, ["status", "--short"]);
@@ -138,7 +153,7 @@ export async function buildReviewPacket(cwd: string, config: DevnsConfig, featur
     rfc: feature.rfc,
     git: {
       base,
-      head,
+      head: reviewHead,
       status,
       diff: diff.value,
       truncated: diff.truncated
@@ -200,7 +215,7 @@ export async function writeReviewPacket(cwd: string, options: WriteReviewPacketO
     throw new Error(options.featureId ? `Feature ${options.featureId} not found.` : "No active or completed feature found.");
   }
 
-  const packet = await buildReviewPacket(cwd, config, feature, options.maxBytes);
+  const packet = await buildReviewPacket(cwd, config, feature, options.maxBytes, { commit: options.commit, base: options.base });
   const outputDir = packetOutputDir(cwd, config);
   await mkdir(outputDir, { recursive: true });
   const jsonPath = path.join(outputDir, `${feature.id}.review-packet.json`);

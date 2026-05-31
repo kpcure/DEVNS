@@ -14,6 +14,7 @@ type Options = {
   commit?: string;
   metadataCommit?: string;
   force: boolean;
+  reason?: string;
   output: "text" | "json";
 };
 
@@ -35,6 +36,9 @@ function parseArgs(argv: string[]): Options {
       index += 1;
     } else if (arg === "--force") {
       options.force = true;
+    } else if (arg === "--reason") {
+      options.reason = argv[index + 1];
+      index += 1;
     } else if (arg === "--json") {
       options.output = "json";
     }
@@ -95,7 +99,14 @@ async function main() {
   if (evidenceQuality.decision === "block") {
     throw new Error(`${evidenceQuality.summary} Run verification lanes and record evidence before completing ${feature.id}.`);
   }
-  const hasReviewEvidence = (feature.evidence ?? []).some((item) => /review|human|manual|browser|e2e|visual/i.test(item.type));
+  const hasReviewEvidence = (feature.evidence ?? []).some(
+    (item) =>
+      /review|human|manual|browser|e2e|visual/i.test(item.type) ||
+      ["review_agent", "human_review", "browser_smoke"].includes(item.verificationType ?? "")
+  );
+  if (options.force && !options.reason?.trim()) {
+    throw new Error("--force requires --reason so the override is auditable.");
+  }
   if (options.review === "approved" && (evidenceQuality.decision === "needs_human_review" || !hasReviewEvidence) && !options.force) {
     throw new Error(
       [
@@ -109,15 +120,29 @@ async function main() {
     ...(feature.evidence ?? []),
     {
       type: "git",
-      summary: `Implementation commit ${implementationCommit} recorded for ${feature.id}.`
+      summary: `Implementation commit ${implementationCommit} recorded for ${feature.id}.`,
+      actor: "devns-complete",
+      producedAt: new Date().toISOString()
     }
   ];
+  if (options.force) {
+    evidence.push({
+      type: "completion-override",
+      summary: `Approved completion forced: ${options.reason}`,
+      actor: "devns-complete",
+      producedAt: new Date().toISOString(),
+      verificationType: "human_review"
+    });
+  }
 
   const history = await appendExecutionHistory(cwd, config, {
     featureId: feature.id,
     actor: "agent",
     summary: `Completed ${feature.id} with implementation commit ${implementationCommit}.`,
-    decisions: ["Record implementation commit separately from optional DEVNS metadata commit."],
+    decisions: [
+      "Record implementation commit separately from optional DEVNS metadata commit.",
+      ...(options.force ? [`Force override used during completion: ${options.reason}`] : [])
+    ],
     alternativesRejected: ["Do not require a feature commit to contain its own final metadata commit hash."],
     changedFiles: buildChangedFileEvidence({ ...feature, changedFiles }),
     impact: [`Feature ${feature.id} marked done through devns complete.`],
@@ -130,7 +155,7 @@ async function main() {
     errors: [],
     fixes: [],
     lessons: ["Use `npx devns complete` instead of hand-editing feature completion fields."],
-    risks: [],
+    risks: options.force ? [`Completion was forced: ${options.reason}`] : [],
     dynamicChecks: [],
     staticChecks: []
   });

@@ -12,6 +12,9 @@ export type Evidence = {
   type: string;
   summary: string;
   url?: string;
+  actor?: string;
+  producedAt?: string;
+  artifactRefs?: string[];
   coversAcceptanceCriteriaIds?: string[];
   coversRequirementIds?: string[];
   verificationType?: VerificationType;
@@ -190,6 +193,7 @@ export type Feature = {
   evidence?: Evidence[];
   artifactRefs?: FeatureArtifactRefs;
   changedFiles?: string[];
+  implementationSurface?: string[];
   implementationFiles?: string[];
   stateFiles?: string[];
   history?: FeatureHistorySummary;
@@ -218,6 +222,7 @@ export type FeaturePatch = Partial<
     | "evidence"
     | "artifactRefs"
     | "changedFiles"
+    | "implementationSurface"
     | "implementationFiles"
     | "stateFiles"
     | "history"
@@ -260,6 +265,12 @@ export type DevnsConfig = {
     requireCleanWorktree?: boolean;
     requireCommit?: boolean;
     allowEmptyOutputWhenComplete?: boolean;
+    contextBudget?: {
+      maxContinuationTurns?: number;
+      preferFreshWorkerPerFeature?: boolean;
+      handoffTokenBudget?: number;
+      resetWhenHistoryRecordsExceed?: number;
+    };
   };
   skills?: {
     init?: string;

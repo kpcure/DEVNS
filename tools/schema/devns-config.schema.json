@@ -32,7 +32,17 @@
         "requireReviewDecision": { "type": "boolean" },
         "requireCleanWorktree": { "type": "boolean" },
         "requireCommit": { "type": "boolean" },
-        "allowEmptyOutputWhenComplete": { "type": "boolean" }
+        "allowEmptyOutputWhenComplete": { "type": "boolean" },
+        "contextBudget": {
+          "type": "object",
+          "properties": {
+            "maxContinuationTurns": { "type": "number" },
+            "preferFreshWorkerPerFeature": { "type": "boolean" },
+            "handoffTokenBudget": { "type": "number" },
+            "resetWhenHistoryRecordsExceed": { "type": "number" }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     },

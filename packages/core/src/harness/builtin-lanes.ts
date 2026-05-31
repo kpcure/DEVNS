@@ -80,7 +80,7 @@ export async function resolveChangedFiles(context: BuiltinLaneContext) {
 }
 
 function expectedSurfaces(feature?: Feature) {
-  return new Set([...(feature?.changedFiles ?? []), ...(feature?.context ?? [])]);
+  return new Set([...(feature?.implementationSurface ?? []), ...(feature?.changedFiles ?? [])]);
 }
 
 function matchesExpectedSurface(file: string, expected: Set<string>) {
@@ -111,7 +111,7 @@ export async function runScopeGuard(lane: LaneDefinition, context: BuiltinLaneCo
       evidence: [
         {
           type: "diff" as const,
-          summary: `${file} appears in the working diff but is not declared in feature context or changedFiles.`
+          summary: `${file} appears in the working diff but is not declared in feature implementationSurface or changedFiles.`
         }
       ],
       suggestedFix: "Add the file to the feature impact surface or split unrelated work into another feature."

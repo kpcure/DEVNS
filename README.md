@@ -2,7 +2,7 @@
 
 [中文说明](README.zh-CN.md)
 
-DEVNS is an extension-first harness for long-running agent work where agents keep shipping small, verified units of work while humans review the outcome through an HTML control plane.
+DEVNS is a local-first control plane that keeps long-running coding agents tied to approved intent, explicit evidence, and reviewable feature-sized commits.
 
 The core idea is simple:
 
@@ -121,7 +121,9 @@ DEVNS is licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTI
 
 ## Current Status
 
-This is the first public skeleton: documentation, schema, example data, a static dashboard prototype, plugin packages, and a thin local command surface for initialization, validation, and hook execution. The next milestone is to harden that command surface so plugins, skills, hooks, and reports can call the same core behavior.
+DEVNS is at the 1.0 hardening stage. The core workflow is implemented: doctor/init/discover/RFC/run/lanes/evidence/review/complete/stop, plugin packages, JSON schemas, a local dashboard, review packets, evidence quality gates, and smoke coverage.
+
+The stable surface is the local `devns` entrypoint, `.devns/` workspace contract, feature/RFC/evidence schemas, command lanes, review packets, and completion metadata. Areas still evolving are richer browser lanes, project-specific policy packs, long-context budgeting, and broader golden/eval coverage. See `ROADMAP.md` and `docs/1.0-hardening-roadmap.zh-CN.md`.
 
 ## Local Development
 

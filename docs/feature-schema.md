@@ -130,7 +130,7 @@ Use `npm run devns:complete -- --id <feature-id>` after deterministic evidence e
 
 Evidence should be deterministic where possible: command lanes, tests, build, lint, browser checks, static review, dynamic checks, security scans, or Git evidence. Manual evidence is allowed, but if it is the only evidence DEVNS routes the feature to human review instead of treating it as fully verified.
 
-The built-in `evidence-quality-gate` checks that each feature has acceptance criteria and supporting evidence before completion. Evidence may explicitly declare `coversAcceptanceCriteriaIds`, `coversRequirementIds`, and `verificationType`. Build, lint, and security evidence do not automatically cover product semantics, UI labels, browser behavior, or human-review criteria.
+The built-in `evidence-quality-gate` checks that each feature has acceptance criteria and supporting evidence before completion. Evidence may explicitly declare `coversAcceptanceCriteriaIds`, `coversRequirementIds`, `verificationType`, `actor`, `producedAt`, and `artifactRefs`. Build, lint, and security evidence do not automatically cover product semantics, UI labels, browser behavior, or human-review criteria. Explicit coverage claims still need a compatible `verificationType`; command evidence cannot self-declare coverage for a browser or human-review criterion.
 
 Acceptance criteria may also declare `verificationType`:
 

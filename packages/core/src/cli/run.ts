@@ -46,7 +46,11 @@ async function exists(filePath: string) {
 }
 
 function workerHandoff(config: DevnsConfig, feature: Feature) {
-  const inferredChangedFilePlan = feature.changedFiles?.length ? feature.changedFiles : [];
+  const inferredChangedFilePlan = feature.implementationSurface?.length
+    ? feature.implementationSurface
+    : feature.changedFiles?.length
+      ? feature.changedFiles
+      : [];
   return {
     strategy: "prefer_isolated_worker",
     scope: "exactly_one_feature",
@@ -63,6 +67,7 @@ function workerHandoff(config: DevnsConfig, feature: Feature) {
       ? "Use the listed files as the expected implementation surface, then adjust only if repository evidence proves the plan is wrong."
       : "No implementation file plan is known yet. First inspect the repository and RFC, produce a short implementation file plan, then edit only files justified by that plan.",
     validationPlan: feature.rfc?.validationPlan ?? null,
+    contextBudget: config.completionPolicy?.contextBudget ?? null,
     requiredLanes: (config.reviewLanes ?? [])
       .filter((lane) => lane.required || lane.blocksCompletion)
       .map((lane) => lane.id),

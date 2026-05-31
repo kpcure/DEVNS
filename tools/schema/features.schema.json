@@ -61,6 +61,12 @@
                 "type": { "type": "string" },
                 "summary": { "type": "string" },
                 "url": { "type": "string" },
+                "actor": { "type": "string" },
+                "producedAt": { "type": "string" },
+                "artifactRefs": {
+                  "type": "array",
+                  "items": { "type": "string" }
+                },
                 "coversAcceptanceCriteriaIds": {
                   "type": "array",
                   "items": { "type": "string" }
@@ -89,6 +95,10 @@
             "additionalProperties": false
           },
           "changedFiles": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "implementationSurface": {
             "type": "array",
             "items": { "type": "string" }
           },

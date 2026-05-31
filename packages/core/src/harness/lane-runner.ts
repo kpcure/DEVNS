@@ -228,6 +228,98 @@ export async function runCommandLane(lane: LaneDefinition, cwd: string): Promise
   }
 }
 
+function extractJsonObject(value: string) {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("{")) return trimmed;
+  const start = trimmed.indexOf("{");
+  const end = trimmed.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) {
+    throw new LaneRunnerError("Agent lane did not return a JSON object.");
+  }
+  return trimmed.slice(start, end + 1);
+}
+
+function normalizeAgentLaneResult(value: unknown, lane: LaneDefinition): LaneResult {
+  const result = value as Partial<LaneResult>;
+  return {
+    lane: result.lane ?? lane.id,
+    type: "agent",
+    status: result.status ?? "error",
+    decision: result.decision ?? "needs_human_review",
+    summary: result.summary ?? "Agent lane returned no summary.",
+    confidence: result.confidence ?? "low",
+    findings: result.findings ?? [],
+    evidence: result.evidence ?? [],
+    artifacts: result.artifacts ?? [],
+    recommendedActions: result.recommendedActions ?? [],
+    blocksCompletion: result.blocksCompletion ?? result.decision === "block",
+    required: result.required ?? lane.required ?? false,
+    durationMs: result.durationMs,
+    exitCode: result.exitCode,
+    startedAt: result.startedAt,
+    completedAt: result.completedAt,
+    stdoutDigest: result.stdoutDigest,
+    stderrDigest: result.stderrDigest,
+    stdout: result.stdout,
+    stderr: result.stderr
+  };
+}
+
+export async function runAgentLane(lane: LaneDefinition, cwd: string): Promise<LaneResult> {
+  if (!lane.command) {
+    return skippedLane(lane);
+  }
+
+  const startedAt = Date.now();
+  const startedAtIso = new Date(startedAt).toISOString();
+  try {
+    const { stdout, stderr } = await execAsync(lane.command, {
+      cwd,
+      maxBuffer: 1024 * 1024 * 10
+    });
+    const parsed = JSON.parse(extractJsonObject(stdout)) as unknown;
+    const normalized = normalizeAgentLaneResult(parsed, lane);
+    return {
+      ...normalized,
+      lane: lane.id,
+      type: "agent",
+      durationMs: normalized.durationMs ?? Date.now() - startedAt,
+      exitCode: normalized.exitCode ?? 0,
+      startedAt: normalized.startedAt ?? startedAtIso,
+      completedAt: normalized.completedAt ?? new Date().toISOString(),
+      stdoutDigest: normalized.stdoutDigest ?? digestOutput(stdout),
+      stderrDigest: normalized.stderrDigest ?? digestOutput(stderr),
+      stdout: normalized.stdout ?? trimOutput(stdout),
+      stderr: normalized.stderr ?? trimOutput(stderr)
+    };
+  } catch (error) {
+    const execError = error as Error & { code?: number; stdout?: string; stderr?: string };
+    const blocksCompletion = lane.blocksCompletion ?? lane.required ?? false;
+    return {
+      lane: lane.id,
+      type: "agent",
+      status: "error",
+      decision: laneDecision("error", lane, blocksCompletion),
+      summary: `Agent lane failed: ${execError.message}`,
+      confidence: "high",
+      findings: [{ severity: "error", message: execError.message, category: "reviewability", confidence: "high" }],
+      evidence: [],
+      artifacts: [],
+      recommendedActions: [`Fix agent lane ${lane.id}, rerun it, and ingest a valid lane result.`],
+      blocksCompletion,
+      required: lane.required ?? false,
+      durationMs: Date.now() - startedAt,
+      exitCode: execError.code ?? 1,
+      startedAt: startedAtIso,
+      completedAt: new Date().toISOString(),
+      stdoutDigest: digestOutput(execError.stdout ?? ""),
+      stderrDigest: digestOutput(execError.stderr ?? ""),
+      stdout: trimOutput(execError.stdout ?? ""),
+      stderr: trimOutput(execError.stderr ?? "")
+    };
+  }
+}
+
 export function skippedLane(lane: LaneDefinition): LaneResult {
   return {
     lane: lane.id,
@@ -259,6 +351,10 @@ export async function runLane(lane: LaneDefinition, cwd: string, context: Omit<B
     return runBuiltinLane(lane, { ...context, cwd });
   }
 
+  if (lane.type === "agent") {
+    return runAgentLane(lane, cwd);
+  }
+
   return skippedLane(lane);
 }
 
@@ -288,7 +384,11 @@ export async function runReviewLanes(
 export function laneResultsToEvidence(results: LaneResult[]) {
   return results.map((result): Evidence => ({
     type: `lane:${result.lane}`,
-    summary: `${summarizeResult(result)} Decision: ${result.decision}.`
+    summary: `${summarizeResult(result)} Decision: ${result.decision}.`,
+    actor: result.type === "agent" ? `review-agent:${result.lane}` : `lane:${result.lane}`,
+    producedAt: result.completedAt ?? new Date().toISOString(),
+    artifactRefs: result.artifacts,
+    verificationType: result.type === "agent" ? "review_agent" : result.type === "command" ? "command" : "static_review"
   }));
 }
 

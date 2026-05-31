@@ -79,6 +79,7 @@ async function main() {
     assert.equal(resolved.config.hooks?.stop?.blockOn?.pluginGate, true);
     assert.equal(resolved.config.completionPolicy?.whenNoClaimableFeature, "allow_stop");
     assert.equal(resolved.config.completionPolicy?.requireEvidence, true);
+    assert.equal(resolved.config.completionPolicy?.contextBudget?.preferFreshWorkerPerFeature, true);
     assert.equal(resolved.config.skills?.run, ".devns/skills/run.md");
     assert.equal(resolved.config.extensions?.agents?.["code-reviewer"], ".devns/agents/code-reviewer.json");
     assert.equal(resolved.config.extensions?.policies?.["stop-hook"], ".devns/policies/stop-hook.json");
@@ -101,7 +102,7 @@ async function main() {
 
     await assert.rejects(
       () => loadConfig(cwd, { configPath: ".devns/bad.config.json" }),
-      (error) => error instanceof ConfigError && error.code === "CONFIG_INVALID" && /unknown property unknown/.test(error.message)
+      (error) => error instanceof ConfigError && error.code === "CONFIG_INVALID" && /additional properties/.test(error.message)
     );
 
     process.stdout.write("Config loader smoke passed.\n");

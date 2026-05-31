@@ -71,9 +71,11 @@ npm run devns:dashboard
 npm run devns:run [-- --json] [-- --no-claim]
 npm run devns:discover [-- --json] [-- --force]
 npm run devns:lanes -- run [--feature <feature-id>] [--write] [--json]
+npm run devns:lanes -- ingest --feature <feature-id> --result <lane-result.json> [--actor review-agent:<name>] [--json]
+npm run devns:evidence -- add --feature <feature-id> --type <type> --summary <text> [--verification <kind>] [--covers-ac AC-001]
 npm run devns:review -- generate [--date YYYY-MM-DD] [--json]
-npm run devns:review -- packet [--feature <feature-id>] [--format json|prompt] [--write] [--json]
-npm run devns:complete -- [--id <feature-id>] [--commit <sha>] [--review approved|needs_changes|follow_up] [--json]
+npm run devns:review -- packet [--feature <feature-id>] [--commit <sha>] [--base <sha>] [--format json|prompt] [--write] [--json]
+npm run devns:complete -- [--id <feature-id>] [--commit <sha>] [--review approved|needs_changes|follow_up] [--force --reason <text>] [--json]
 npm run devns:queue -- status [--json]
 npm run devns:queue -- next [--json]
 npm run devns:queue -- claim [--id <feature-id>] [--json]
@@ -101,15 +103,21 @@ In a target repository, this alias may not exist yet. Agents should inspect `pac
 
 `npm run devns:lanes -- run` executes configured review lanes. Command lanes capture exit code, duration, stdout/stderr digests, evidence, and a decision of `allow`, `warn`, `needs_human_review`, or `block`. Pass `--write` to append the full lane result envelope to feature history and store concise lane evidence on the active feature.
 
+A browser smoke check can be wired as a command lane, for example by copying `templates/devns/lanes/browser-smoke.json` into `.devns/lanes/browser-smoke.json` and changing the command to the project's Playwright/Cypress/browser script. Browser evidence should be recorded with `verificationType: "browser_smoke"`.
+
+`npm run devns:lanes -- ingest` records a lane-result JSON envelope produced by a read-only review agent or external verifier. DEVNS validates the lane-result schema before writing history and compact evidence.
+
+`npm run devns:evidence -- add` records human, browser, review-agent, command, or static-review evidence without hand-editing `.devns/features.json`. Use `--covers-ac` and `--covers-req` to explicitly link the evidence to acceptance criteria or requirements.
+
 For robust review automation, run deterministic static and dynamic lanes first, then run any read-only review-agent lane against the Git diff, RFC, lane output, and relevant history. The Stop hook should only aggregate those persisted results.
 
 `evidence-quality-gate` is a built-in review lane that checks acceptance criteria and deterministic evidence coverage. It is also used by validation and completion so a feature cannot be marked done from a title plus prose-only notes.
 
 `npm run devns:review -- generate` creates `.devns/reviews/<date>.json` and `.md`. The report groups completed work by feature, includes RFC intent, commits, changed files, lane evidence, history decisions/pitfalls/lessons, cross-feature risks, and suggested human actions.
 
-`npm run devns:review -- packet` creates a bounded review-agent packet for one feature. Use `--format prompt --write` when handing the packet to a read-only review agent. The packet includes RFC context, Git status and diff, evidence quality, feature evidence, durable history, and project rules.
+`npm run devns:review -- packet` creates a bounded review-agent packet for one feature. Use `--format prompt --write` when handing the packet to a read-only review agent. The packet includes RFC context, Git status and diff, evidence quality, feature evidence, durable history, and project rules. Use `--commit HEAD` or `--base <sha> --commit <sha>` when reviewing a clean worktree after the implementation commit but before `devns complete`.
 
-`npm run devns:complete` marks one feature done after verification evidence exists. It records the implementation commit in `implementationCommit` and preserves `commit` as a compatibility alias. If the DEVNS metadata update is committed separately, pass its hash later as `metadataCommit`; the implementation commit does not need to contain the hash of the metadata commit that follows it. Approved completion requires human, browser, or read-only review evidence when evidence quality says the feature still needs review; `--force` is reserved for explicit human override.
+`npm run devns:complete` marks one feature done after verification evidence exists. It records the implementation commit in `implementationCommit` and preserves `commit` as a compatibility alias. If the DEVNS metadata update is committed separately, pass its hash later as `metadataCommit`; the implementation commit does not need to contain the hash of the metadata commit that follows it. Approved completion requires human, browser, or read-only review evidence when evidence quality says the feature still needs review; `--force` is reserved for explicit human override and must include `--reason`.
 
 Completion should normally follow this order:
 

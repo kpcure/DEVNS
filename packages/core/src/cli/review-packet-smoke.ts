@@ -92,7 +92,7 @@ async function main() {
       staticChecks: []
     });
 
-    const result = await writeReviewPacket(cwd, { featureId: "PKT-001", format: "prompt", write: true });
+    const result = await writeReviewPacket(cwd, { featureId: "PKT-001", format: "prompt", write: true, commit: head });
     assert.equal(result.packet.feature.id, "PKT-001");
     assert.equal(result.packet.evidenceQuality.decision, "allow");
     assert.match(result.packet.git.diff, /reviewed/);

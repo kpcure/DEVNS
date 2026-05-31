@@ -1,0 +1,8 @@
+{
+  "id": "browser-smoke",
+  "type": "command",
+  "command": "npx playwright test",
+  "required": false,
+  "blocksCompletion": false
+}
+

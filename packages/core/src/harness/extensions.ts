@@ -1,4 +1,4 @@
-import { readdir } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import type { DevnsConfig } from "./types";
 
@@ -49,6 +49,16 @@ async function scanDir(cwd: string, kind: ExtensionKind) {
   return files;
 }
 
+async function loadLaneDefinitions(cwd: string, lanes: Record<string, string>): Promise<NonNullable<DevnsConfig["reviewLanes"]>> {
+  const definitions: NonNullable<DevnsConfig["reviewLanes"]> = [];
+  for (const [id, relativePath] of Object.entries(lanes)) {
+    const raw = await readFile(path.join(cwd, relativePath), "utf8");
+    const parsed = JSON.parse(raw) as NonNullable<DevnsConfig["reviewLanes"]>[number];
+    definitions.push({ ...parsed, type: parsed.type ?? "builtin", id: parsed.id ?? id });
+  }
+  return definitions;
+}
+
 export async function scanProjectExtensions(cwd: string): Promise<ExtensionScanResult> {
   const files = {
     skills: await scanDir(cwd, "skills"),
@@ -67,6 +77,9 @@ export async function scanProjectExtensions(cwd: string): Promise<ExtensionScanR
   }
   if (Object.keys(files.sensors).length > 0) {
     configPatch.sensors = files.sensors;
+  }
+  if (Object.keys(files.lanes).length > 0) {
+    configPatch.reviewLanes = await loadLaneDefinitions(cwd, files.lanes);
   }
 
   return { configPatch, files };

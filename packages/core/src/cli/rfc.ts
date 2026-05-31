@@ -208,7 +208,11 @@ async function clarifyRfc(cwd: string, options: RfcOptions) {
     throw new Error(`Unable to find candidate, feature, or RFC ${options.id}`);
   }
 
-  const questions = rfc.clarificationQuestions?.length ? rfc.clarificationQuestions : createClarificationQuestions(rfc, projectContext);
+  const questions = projectContext.trim().length
+    ? createClarificationQuestions(rfc, projectContext)
+    : rfc.clarificationQuestions?.length
+      ? rfc.clarificationQuestions
+      : createClarificationQuestions(rfc, projectContext);
   const payload = {
     id: options.id,
     questions,

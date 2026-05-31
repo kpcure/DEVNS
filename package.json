@@ -28,7 +28,12 @@
     "index.html",
     "vite.config.ts",
     "tsconfig.json",
-    "README.md"
+    "README.md",
+    "README.zh-CN.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "ROADMAP.md"
   ],
   "scripts": {
     "dev": "vite --host 127.0.0.1",
@@ -41,6 +46,7 @@
     "devns:run": "tsx packages/core/src/cli/run.ts",
     "devns:discover": "tsx packages/core/src/cli/discover.ts",
     "devns:complete": "tsx packages/core/src/cli/complete.ts",
+    "devns:evidence": "tsx packages/core/src/cli/evidence.ts",
     "devns:status": "tsx packages/core/src/cli/queue.ts status",
     "devns:doctor": "tsx packages/core/src/cli/doctor.ts",
     "devns:dashboard": "vite --host 127.0.0.1",
@@ -50,6 +56,7 @@
     "devns:review": "tsx packages/core/src/cli/morning-review.ts",
     "config:smoke": "tsx packages/core/src/cli/config-smoke.ts",
     "lane:smoke": "tsx packages/core/src/cli/lane-smoke.ts",
+    "evidence:smoke": "tsx packages/core/src/cli/evidence-smoke.ts",
     "evidence-quality:smoke": "tsx packages/core/src/cli/evidence-quality-smoke.ts",
     "review-agent:smoke": "tsx packages/core/src/cli/review-agent-smoke.ts",
     "history:smoke": "tsx packages/core/src/cli/history-smoke.ts",
@@ -65,7 +72,7 @@
     "review-packet:smoke": "tsx packages/core/src/cli/review-packet-smoke.ts",
     "complete:smoke": "tsx packages/core/src/cli/complete-smoke.ts",
     "validate:smoke": "tsx packages/core/src/cli/validate-smoke.ts",
-    "smoke": "npm run config:smoke --silent && npm run feature-store:smoke --silent && npm run discover:smoke --silent && npm run queue:smoke --silent && npm run rfc:smoke --silent && npm run task-queue:smoke --silent && npm run lane:smoke --silent && npm run evidence-quality:smoke --silent && npm run history:smoke --silent && npm run review-agent:smoke --silent && npm run codex-stop-hook:smoke --silent && npm run morning-review:smoke --silent && npm run review-packet:smoke --silent && npm run complete:smoke --silent && npm run validate:smoke --silent && npm run run:smoke --silent && npm run install-dogfood:smoke --silent",
+    "smoke": "npm run config:smoke --silent && npm run feature-store:smoke --silent && npm run discover:smoke --silent && npm run queue:smoke --silent && npm run rfc:smoke --silent && npm run task-queue:smoke --silent && npm run lane:smoke --silent && npm run evidence:smoke --silent && npm run evidence-quality:smoke --silent && npm run history:smoke --silent && npm run review-agent:smoke --silent && npm run codex-stop-hook:smoke --silent && npm run morning-review:smoke --silent && npm run review-packet:smoke --silent && npm run complete:smoke --silent && npm run validate:smoke --silent && npm run run:smoke --silent && npm run install-dogfood:smoke --silent",
     "devns:stop": "tsx packages/core/src/cli/stop-hook.ts",
     "harness:stop": "tsx packages/core/src/cli/claude-stop-hook.ts",
     "harness:validate": "tsx packages/core/src/cli/validate.ts",
@@ -74,6 +81,8 @@
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
     "@vitejs/plugin-react": "^5.0.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "lucide-react": "^0.475.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

@@ -9,6 +9,8 @@ type Options = {
   format?: "json" | "prompt";
   write?: boolean;
   maxBytes?: number;
+  commit?: string;
+  base?: string;
   output: "text" | "json";
 };
 
@@ -30,6 +32,12 @@ function parseArgs(argv: string[]): Options {
     } else if (arg === "--max-bytes") {
       options.maxBytes = Number(argv[index + 1]);
       index += 1;
+    } else if (arg === "--commit") {
+      options.commit = argv[index + 1];
+      index += 1;
+    } else if (arg === "--base") {
+      options.base = argv[index + 1];
+      index += 1;
     } else if (arg === "--json") {
       options.output = "json";
       options.format = "json";
@@ -43,7 +51,7 @@ function usage() {
     [
       "Usage:",
       "  npm run devns:review -- generate [--date YYYY-MM-DD] [--json]",
-      "  npm run devns:review -- packet [--feature <id>] [--format json|prompt] [--write] [--json]"
+      "  npm run devns:review -- packet [--feature <id>] [--commit <sha>] [--base <sha>] [--format json|prompt] [--write] [--json]"
     ].join("\n") + "\n"
   );
 }
@@ -55,7 +63,9 @@ async function main() {
       featureId: options.featureId,
       format: options.format ?? "json",
       write: options.write,
-      maxBytes: options.maxBytes
+      maxBytes: options.maxBytes,
+      commit: options.commit,
+      base: options.base
     });
     if (options.output === "json") {
       process.stdout.write(`${JSON.stringify({ packet: result.packet, jsonPath: result.jsonPath, promptPath: result.promptPath }, null, 2)}\n`);

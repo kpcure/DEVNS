@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import featuresSchema from "../../../../tools/schema/features.schema.json";
 import type { CandidateInventory, Feature, FeatureInventory, FeaturePatch, DevnsConfig } from "./types";
@@ -16,6 +16,7 @@ const editableFeatureFields = new Set([
   "evidence",
   "artifactRefs",
   "changedFiles",
+  "implementationSurface",
   "implementationFiles",
   "stateFiles",
   "history",
@@ -42,7 +43,10 @@ export async function readJsonFile<T>(filePath: string): Promise<T> {
 }
 
 export async function writeJsonFile(filePath: string, value: unknown) {
-  await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`);
+  await mkdir(path.dirname(filePath), { recursive: true });
+  const tmp = path.join(path.dirname(filePath), `.${path.basename(filePath)}.tmp-${process.pid}-${Date.now()}`);
+  await writeFile(tmp, `${JSON.stringify(value, null, 2)}\n`);
+  await rename(tmp, filePath);
 }
 
 export function computeRevision(value: unknown) {

@@ -48,7 +48,13 @@ export const defaultConfig: DevnsConfig = {
     requireReviewDecision: true,
     requireCleanWorktree: false,
     requireCommit: true,
-    allowEmptyOutputWhenComplete: true
+    allowEmptyOutputWhenComplete: true,
+    contextBudget: {
+      maxContinuationTurns: 10,
+      preferFreshWorkerPerFeature: true,
+      handoffTokenBudget: 2000,
+      resetWhenHistoryRecordsExceed: 20
+    }
   },
   skills: {
     init: "devns-init",
@@ -94,6 +100,17 @@ function mergeConfig<T extends Record<string, unknown>>(base: T, override?: Reco
     }
   }
   return merged as T;
+}
+
+function mergeReviewLanes(
+  base: NonNullable<DevnsConfig["reviewLanes"]> = [],
+  override: NonNullable<DevnsConfig["reviewLanes"]> = []
+) {
+  const byId = new Map(base.map((lane) => [lane.id, lane]));
+  for (const lane of override) {
+    byId.set(lane.id, { ...byId.get(lane.id), ...lane });
+  }
+  return [...byId.values()];
 }
 
 async function fileExists(filePath: string) {
@@ -170,7 +187,11 @@ export async function loadConfig(
 
   const extensions = await scanProjectExtensions(cwd);
   if (Object.values(extensions.files).some((files) => Object.keys(files).length > 0)) {
+    const priorReviewLanes = config.reviewLanes ?? [];
     config = mergeConfig(config as unknown as Record<string, unknown>, extensions.configPatch as Record<string, unknown>) as DevnsConfig;
+    if (extensions.configPatch.reviewLanes) {
+      config.reviewLanes = mergeReviewLanes(priorReviewLanes, extensions.configPatch.reviewLanes);
+    }
     sources.push({ name: "extensions", path: path.join(cwd, ".devns") });
   }
 

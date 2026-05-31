@@ -72,7 +72,7 @@ Supported lane types planned for the core:
 - `agent`
 - `builtin`
 
-Command lanes produce a structured result envelope with command, exit code, duration, stdout/stderr digests, findings, evidence, and a decision. Required blocking failures return `block`; nonblocking failures return `warn` so legacy lint or low-confidence security findings can be reviewed without pretending they are absolute proof.
+Command lanes produce a structured result envelope with command, exit code, duration, stdout/stderr digests, findings, evidence, and a decision. Required blocking failures return `block`; nonblocking failures return `warn` so legacy lint or low-confidence security findings can be reviewed without pretending they are absolute proof. Agent lanes may run an external command that returns lane-result JSON. Project-local lane files in `.devns/lanes/*.json` are merged into `reviewLanes`.
 
 `devns:init` seeds lanes from detected package scripts:
 
@@ -87,3 +87,22 @@ tools/schema/devns-config.schema.json
 ```
 
 Project-specific behavior should be added through declared extension points such as `skills`, `agents`, `reviewLanes`, and `policies`, not by adding arbitrary top-level fields.
+
+## Context Budget
+
+Long stop-hook continuation loops should avoid carrying an ever-growing context. `completionPolicy.contextBudget` gives agents and hooks a shared hint:
+
+```json
+{
+  "completionPolicy": {
+    "contextBudget": {
+      "maxContinuationTurns": 10,
+      "preferFreshWorkerPerFeature": true,
+      "handoffTokenBudget": 2000,
+      "resetWhenHistoryRecordsExceed": 20
+    }
+  }
+}
+```
+
+The current runtime exposes this in `devns run --json` handoff. Hosts can use it to start a fresh worker/subagent per feature while keeping detailed history in `.devns/history/`.
