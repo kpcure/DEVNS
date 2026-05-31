@@ -118,6 +118,11 @@ type Feature = {
   rfc?: FeatureRfc;
 };
 
+function isExtensionRelatedFeature(feature: Feature) {
+  const text = [feature.title, feature.description, feature.milestone, ...(feature.context ?? [])].join(" ").toLowerCase();
+  return /\b(extension|plugin|hook|lane|skill|agent|policy|dashboard|review)\b/.test(text);
+}
+
 type OpenQuestion = {
   id: string;
   title: string;
@@ -1368,7 +1373,7 @@ function App() {
           <div className="stack">
             <ExtensionPoints />
             <FeatureReview
-              features={features.filter((feature) => feature.id === "NS-007" || feature.id === "NS-006" || feature.id === "NS-002")}
+              features={features.filter(isExtensionRelatedFeature)}
               onPatchFeature={updateFeature}
             />
           </div>

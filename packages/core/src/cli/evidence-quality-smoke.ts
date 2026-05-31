@@ -11,27 +11,27 @@ function feature(evidence: Feature["evidence"]): Feature {
     status: "in_progress",
     priority: "P0",
     milestone: "Smoke",
-    acceptanceCriteria: ["Dashboard uses librarian-specific catalog, loan, member, and overdue labels."],
+    acceptanceCriteria: ["The first screen exposes the feature-specific user workflow labels."],
     evidence,
     rfc: {
       status: "approved",
-      summary: "Verify library semantics.",
+      summary: "Verify product semantics.",
       background: "Build output alone cannot prove product semantics.",
-      featureDescription: "Show a librarian workbench.",
-      expectedOutcome: "The first screen uses library-specific workflow language.",
-      goals: ["Library semantics"],
+      featureDescription: "Show the intended user-facing workflow.",
+      expectedOutcome: "The first screen uses feature-specific workflow language.",
+      goals: ["Product semantics"],
       nonGoals: ["Generic SaaS metrics"],
-      requirements: [{ id: "REQ-001", type: "explicit", statement: "Use library domain labels", priority: "must" }],
+      requirements: [{ id: "REQ-001", type: "explicit", statement: "Use feature-specific user workflow labels", priority: "must" }],
       acceptanceCriteria: [
         {
           id: "AC-001",
           requirementIds: ["REQ-001"],
-          statement: "Dashboard uses librarian-specific catalog, loan, member, and overdue labels.",
+          statement: "The first screen exposes the feature-specific user workflow labels.",
           verificationType: "browser_smoke"
         }
       ],
       validationPlan: { dynamic: ["browser smoke"], static: ["review text labels"] },
-      testCases: [{ id: "TC-001", acceptanceCriteriaIds: ["AC-001"], type: "e2e", scenario: "Open dashboard", expected: "Library labels are visible" }],
+      testCases: [{ id: "TC-001", acceptanceCriteriaIds: ["AC-001"], type: "e2e", scenario: "Open the app", expected: "Workflow labels are visible" }],
       humanDecision: { status: "approved" }
     }
   };
@@ -41,12 +41,26 @@ const buildOnly = evaluateEvidenceQuality(feature([{ type: "lane:build", summary
 assert.equal(buildOnly.decision, "needs_human_review");
 assert.equal(buildOnly.coverage[0]?.covered, false);
 
+const falselyClaimed = evaluateEvidenceQuality(
+  feature([
+    {
+      type: "lane:build",
+      summary: "Build passed and claimed browser coverage.",
+      coversAcceptanceCriteriaIds: ["AC-001"],
+      verificationType: "command"
+    }
+  ])
+);
+assert.equal(falselyClaimed.decision, "needs_human_review");
+assert.equal(falselyClaimed.coverage[0]?.covered, false);
+assert.match(falselyClaimed.summary, /incompatible verification type/);
+
 const browserCovered = evaluateEvidenceQuality(
   feature([
     { type: "lane:build", summary: "Build passed." },
     {
       type: "browser",
-      summary: "Observed catalog, loan, member, and overdue labels.",
+      summary: "Observed the feature-specific workflow labels.",
       coversAcceptanceCriteriaIds: ["AC-001"],
       verificationType: "browser_smoke"
     }

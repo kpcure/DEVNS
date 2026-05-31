@@ -190,28 +190,25 @@ export function createRfcScaffold(input: Pick<CandidateFeature, "id" | "title" |
   };
 }
 
-function domainHints(text = "") {
-  const hints = [...text.matchAll(/图书|目录|借阅|会员|逾期|馆员|工作台|catalog|loan|member|overdue|risk|activity|workbench|library|librarian/gi)].map((item) => item[0]);
-  return [...new Set(hints)].slice(0, 8);
-}
-
 export function createClarificationQuestions(
   rfc: Pick<FeatureRfc, "background" | "expectedOutcome" | "nonGoals" | "validationPlan">,
   context = ""
 ): RfcClarificationQuestion[] {
   const questions: RfcClarificationQuestion[] = [];
-  const hints = domainHints(context);
+  const hasProjectContext = context.trim().length > 0;
 
   if (isBlank(rfc.background)) {
     questions.push({
       id: "Q-INTENT-001",
-      question: hints.length ? `Which domain problem should this feature solve around ${hints.join(", ")}?` : "What project or user problem should this feature solve?",
-      recommended: hints.length
-        ? `Use the provided project domain signals (${hints.join(", ")}) to define the first concrete user problem.`
+      question: hasProjectContext
+        ? "Which concrete user or project problem from the provided project context should this feature solve?"
+        : "What project or user problem should this feature solve?",
+      recommended: hasProjectContext
+        ? "Ground the problem statement in nouns and workflows that already appear in the project context."
         : "Define the concrete user/project problem before implementation.",
       options: [
-        hints.length
-          ? `Define the first user-visible slice using ${hints.slice(0, 4).join(", ")}.`
+        hasProjectContext
+          ? "Define the first user-visible slice using only concepts present in the project context."
           : "Define the concrete user/project problem before implementation.",
         "Treat this as a technical maintenance task with no direct user-facing problem.",
         "Defer this feature until the problem statement is clearer."

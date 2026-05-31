@@ -46,11 +46,7 @@ async function exists(filePath: string) {
 }
 
 function workerHandoff(config: DevnsConfig, feature: Feature) {
-  const inferredChangedFilePlan = feature.changedFiles?.length
-    ? feature.changedFiles
-    : feature.context?.length
-      ? feature.context
-      : ["src/App.tsx", "src/App.css", "src/index.css"];
+  const inferredChangedFilePlan = feature.changedFiles?.length ? feature.changedFiles : [];
   return {
     strategy: "prefer_isolated_worker",
     scope: "exactly_one_feature",
@@ -61,7 +57,11 @@ function workerHandoff(config: DevnsConfig, feature: Feature) {
     rfc: feature.rfc ?? null,
     historyPath: feature.history?.historyPath ?? historyPathForFeature(process.cwd(), config, feature.id),
     context: feature.context ?? [],
+    contextSources: feature.context ?? [],
     changedFilePlan: inferredChangedFilePlan,
+    implementationPlanning: inferredChangedFilePlan.length
+      ? "Use the listed files as the expected implementation surface, then adjust only if repository evidence proves the plan is wrong."
+      : "No implementation file plan is known yet. First inspect the repository and RFC, produce a short implementation file plan, then edit only files justified by that plan.",
     validationPlan: feature.rfc?.validationPlan ?? null,
     requiredLanes: (config.reviewLanes ?? [])
       .filter((lane) => lane.required || lane.blocksCompletion)

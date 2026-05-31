@@ -42,7 +42,7 @@ export function renderDevnsAgentsSection(options: AgentsIndexOptions) {
     "- Hook behavior: `hooks/stop-hook.md`, `docs/claude-code-hooks.md`, `docs/codex-plugin.md`",
     "- Review-agent contract: `docs/review-agent-contract.md`, `tools/schema/lane-result.schema.json`",
     "- Prompt contracts: `docs/prompt-contracts.md`, `plugins/*/devns/prompts/`",
-    "- Roadmap and research: `.workbench/roadmaps/`, `.workbench/research/`",
+    "- Roadmap and project status: `README.md`, `README.zh-CN.md`, `docs/`",
     "",
     "### Mode Selection",
     "",

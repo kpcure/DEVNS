@@ -25,7 +25,7 @@ Run `npx devns doctor --json` when available. In this source checkout, `npm run 
 - Hook behavior: `hooks/stop-hook.md`, `docs/claude-code-hooks.md`, `docs/codex-plugin.md`
 - Review-agent contract: `docs/review-agent-contract.md`, `tools/schema/lane-result.schema.json`
 - Prompt contracts: `docs/prompt-contracts.md`, `plugins/*/devns/prompts/`
-- Roadmap and research: `.workbench/roadmaps/`, `.workbench/research/`
+- Roadmap and project status: `README.md`, `README.zh-CN.md`, `docs/`
 ### Mode Selection
 - Bootstrap: if `.devns/devns.config.json` or `.devns/features.json` is missing, run `devns-init` before implementation.
 - Claim: if no feature is active, inspect the queue and claim only a feature with an approved RFC.

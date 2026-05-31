@@ -56,7 +56,7 @@ To block stop:
 ```json
 {
   "decision": "block",
-  "reason": "Continue feature NS-003. Verification evidence is missing."
+  "reason": "Continue feature CAND-003. Verification evidence is missing."
 }
 ```
 

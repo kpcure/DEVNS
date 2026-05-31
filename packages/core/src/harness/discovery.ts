@@ -71,28 +71,6 @@ function shortGoalName(goal: string) {
   return (firstLine ?? "project goal").slice(0, 80);
 }
 
-const domainSeedPatterns = [
-  /图书|目录|借阅|会员|逾期|馆员|工作台|后台/g,
-  /\b(catalog|loan|loans|member|members|overdue|risk|activity|workbench|admin|dashboard|library|librarian)\b/gi
-];
-
-function domainSeeds(goal: string) {
-  const seeds = new Set<string>();
-  for (const pattern of domainSeedPatterns) {
-    for (const match of goal.matchAll(pattern)) {
-      seeds.add(match[0].toLowerCase());
-    }
-  }
-  return [...seeds];
-}
-
-function domainCandidateTitle(goalName: string, seeds: string[]) {
-  if (seeds.some((seed) => /图书|library|catalog|loan|member|overdue|librarian|借阅|会员|逾期|目录|馆员/.test(seed))) {
-    return "Build librarian daily workbench with catalog, loans, members, and overdue risk";
-  }
-  return `Build the first domain workflow for ${goalName}`;
-}
-
 export async function discoverCandidateFeatures(cwd: string, existing: CandidateFeature[] = []): Promise<DiscoveryResult> {
   const [project, readme, agents, packageJson] = await Promise.all([
     readIfExists(cwd, ".devns/project.md"),
@@ -108,20 +86,18 @@ export async function discoverCandidateFeatures(cwd: string, existing: Candidate
   if (hasMeaningfulProjectGoal(project)) {
     const goalText = projectGoalText(project, readme);
     const goalName = shortGoalName(goalText);
-    const seeds = domainSeeds(goalText);
-    if (seeds.length) {
-      candidates.push({
-        id: nextCandidateId([...existing, ...candidates], offset++),
-        title: domainCandidateTitle(goalName, seeds),
-        description: `Implement a concrete business slice using these domain signals from the project goal: ${seeds.slice(0, 10).join(", ")}. Prefer observable user workflow over generic admin or process scaffolding.`,
-        status: "needs_rfc",
-        sources: [project!.path, ...(readme ? [readme.path] : [])],
-        confidence: "high",
-        suggestedPriority: "P0",
-        suggestedRisk: "medium",
-        suggestedMilestone: "MVP"
-      });
-    }
+    candidates.push({
+      id: nextCandidateId([...existing, ...candidates], offset++),
+      title: `Implement the first observable workflow for ${goalName}`,
+      description:
+        "Build one concrete user-visible slice grounded only in the project goal and repository sources. Do not introduce domain concepts that are not present in the project context.",
+      status: "needs_rfc",
+      sources: [project!.path, ...(readme ? [readme.path] : [])],
+      confidence: "high",
+      suggestedPriority: "P0",
+      suggestedRisk: "medium",
+      suggestedMilestone: "MVP"
+    });
     candidates.push({
       id: nextCandidateId([...existing, ...candidates], offset++),
       title: `Define MVP scope for ${goalName}`,
@@ -129,7 +105,7 @@ export async function discoverCandidateFeatures(cwd: string, existing: Candidate
       status: "needs_rfc",
       sources: [project!.path],
       confidence: "medium",
-      suggestedPriority: seeds.length ? "P1" : "P0",
+      suggestedPriority: "P1",
       suggestedRisk: "medium",
       suggestedMilestone: "Discovery",
       unknowns: [
@@ -139,17 +115,6 @@ export async function discoverCandidateFeatures(cwd: string, existing: Candidate
           owner: "human"
         }
       ]
-    });
-    candidates.push({
-      id: nextCandidateId([...existing, ...candidates], offset++),
-      title: `Implement the primary workflow for ${goalName}`,
-      description: "Build the first observable workflow implied by the project goal, keeping data model, UI/API surface, and validation narrow enough for one feature.",
-      status: "discovered",
-      sources: [project!.path, ...(readme ? [readme.path] : [])],
-      confidence: "medium",
-      suggestedPriority: "P1",
-      suggestedRisk: "medium",
-      suggestedMilestone: "MVP"
     });
     candidates.push({
       id: nextCandidateId([...existing, ...candidates], offset++),
