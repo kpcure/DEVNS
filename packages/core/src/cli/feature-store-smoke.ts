@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import assert from "node:assert/strict";
@@ -31,6 +31,8 @@ async function main() {
       acceptanceCriteria: ["Can patch allowed fields"]
     });
     await writeInventory(cwd, config, inventory);
+    const devnsFilesAfterWrite = await readdir(path.join(cwd, ".devns"));
+    assert.equal(devnsFilesAfterWrite.some((file) => file.startsWith(".features.json.tmp-")), false);
 
     await patchFeature(cwd, config, "SMOKE-001", { status: "in_progress" });
     const updated = await readInventory(cwd, config);
@@ -66,6 +68,8 @@ async function main() {
 
     const currentRevision = computeRevision(updated);
     assert.equal(updated.revision, currentRevision);
+    const devnsFilesAfterPatches = await readdir(path.join(cwd, ".devns"));
+    assert.equal(devnsFilesAfterPatches.some((file) => file.startsWith(".features.json.tmp-")), false);
     process.stdout.write("Feature Store smoke passed.\n");
   } finally {
     process.chdir(originalCwd);

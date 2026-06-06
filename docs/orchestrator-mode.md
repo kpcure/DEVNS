@@ -72,11 +72,23 @@ The command returns:
 
 - mode: `bootstrap_required`, `claim_next`, `continue_active`, `blocked_ready`, or `empty_queue`
 - stop hook role: `safety_net_only`
+- trace summary: `traceId`, `spanId`, path, and event count when a DEVNS workspace exists
 - feature context
 - worker handoff
 - implementation subagent name, launch instruction, and prompt
 - review subagent name, launch instruction, and prompt
 - main agent next steps
+
+When tracing is enabled, `devns orchestrate` appends one bounded local record to `.devns/traces/orchestrator.jsonl`. The record follows a trace-like workflow shape: trace id, span id, workflow name, host, mode, selected feature, claim status, subagent names, events, reasons, and next-step labels. It does not store worker prompts, review prompts, diffs, model transcripts, or command stdout. Pass `--no-trace` for read-only inspection scripts that must avoid writing diagnostics.
+
+Inspect and audit recent traces with:
+
+```sh
+npm run devns -- trace --tail 20
+npm run devns -- trace --audit --json
+```
+
+The audit checks that claim traces include feature selection and claim events, feature orchestration traces include handoff events, empty-queue traces do not select a feature, and no prompt/diff/transcript/stdout/stderr markers were stored.
 
 ## Installed Subagents
 

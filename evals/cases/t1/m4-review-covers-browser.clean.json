@@ -1,0 +1,67 @@
+{
+  "id": "m4-review-covers-browser.clean",
+  "tier": "t1",
+  "mode": "M4_evidence_quality",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "F-4",
+      "title": "Dashboard interaction review",
+      "description": "Independent review evidence can cover browser-semantic criteria when it is explicit.",
+      "status": "in_progress",
+      "priority": "P0",
+      "milestone": "MVP",
+      "risk": "high",
+      "acceptanceCriteria": ["A user can open the dashboard and see the feature evidence panel update."],
+      "rfc": {
+        "status": "approved",
+        "summary": "Allow independent semantic review evidence for browser criteria.",
+        "background": "Some projects rely on review agents or humans when browser automation is unavailable.",
+        "featureDescription": "The dashboard interaction needs semantic validation.",
+        "expectedOutcome": "Review-agent evidence can cover browser-smoke criteria.",
+        "goals": ["Allow compatible independent semantic evidence"],
+        "nonGoals": ["Require Playwright for every project"],
+        "requirements": [
+          {
+            "id": "REQ-1",
+            "type": "explicit",
+            "statement": "Browser-semantic criteria can be covered by review-agent evidence.",
+            "priority": "must"
+          }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-1",
+            "requirementIds": ["REQ-1"],
+            "statement": "A user can open the dashboard and see the feature evidence panel update.",
+            "verificationType": "browser_smoke"
+          }
+        ],
+        "validationPlan": {
+          "dynamic": ["Browser smoke or independent review-agent semantic inspection"],
+          "static": []
+        },
+        "testCases": [],
+        "humanDecision": {
+          "status": "approved"
+        }
+      },
+      "evidence": [
+        {
+          "type": "review",
+          "verificationType": "review_agent",
+          "actor": "review-agent:code-review",
+          "summary": "Reviewed the dashboard interaction packet and confirmed the feature evidence panel update path.",
+          "artifactRefs": [".devns/reviews/packets/F-4.review-packet.json"],
+          "coversAcceptanceCriteriaIds": ["AC-1"]
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "evidence_quality"
+  },
+  "expect": {
+    "decision": "allowed"
+  }
+}

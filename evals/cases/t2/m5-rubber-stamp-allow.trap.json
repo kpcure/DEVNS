@@ -1,0 +1,37 @@
+{
+  "id": "m5-rubber-stamp-allow.trap",
+  "tier": "t2",
+  "mode": "M5_review_result_quality",
+  "generality_level": "general",
+  "given": {
+    "laneResult": {
+      "lane": "code-review",
+      "type": "agent",
+      "status": "pass",
+      "decision": "allow",
+      "summary": "Looks good.",
+      "confidence": "high",
+      "findings": [],
+      "scores": {
+        "correctness": 1,
+        "requirementCoverage": 1,
+        "scope": 1,
+        "security": 1,
+        "test": 1
+      },
+      "evidence": [],
+      "artifacts": [],
+      "recommendedActions": [],
+      "blocksCompletion": false,
+      "required": true
+    }
+  },
+  "action": {
+    "gate": "review_lane_result"
+  },
+  "expect": {
+    "decision": "blocked",
+    "laneDecision": "allow",
+    "reasonContains": "Allow review result must include review evidence or artifacts"
+  }
+}

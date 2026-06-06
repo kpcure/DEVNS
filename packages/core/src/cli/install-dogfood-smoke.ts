@@ -90,6 +90,8 @@ async function main() {
     assert.equal(Boolean(stopHook.mode & 0o111), true);
     const reviewAdapter = await stat(path.join(cwd, ".devns", "adapters", "code-review.codex.sh"));
     assert.equal(Boolean(reviewAdapter.mode & 0o111), true);
+    const browserSmokeAdapter = await stat(path.join(cwd, ".devns", "adapters", "browser-smoke.sh"));
+    assert.equal(Boolean(browserSmokeAdapter.mode & 0o111), true);
     const reviewLane = JSON.parse(await readFile(path.join(cwd, ".devns", "lanes", "code-review.json"), "utf8"));
     assert.equal(reviewLane.type, "agent");
     assert.equal(reviewLane.command, "bash .devns/adapters/code-review.codex.sh");

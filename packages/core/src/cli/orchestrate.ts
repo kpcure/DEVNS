@@ -2,7 +2,9 @@
 import { access } from "node:fs/promises";
 import { evaluateRfcReadiness } from "../harness/rfc";
 import { orchestrationPacket, type OrchestratorHost } from "../harness/orchestration";
+import { appendOrchestratorTrace } from "../harness/orchestrator-trace";
 import { activeFeature, blockedReadyFeature, claimFeature, nextFeature, TaskQueueError } from "../harness/task-queue";
+import type { DevnsConfig } from "../harness/types";
 import { readConfig, readInventory } from "../harness/state";
 
 type Options = {
@@ -10,6 +12,7 @@ type Options = {
   claim: boolean;
   by: string;
   host: OrchestratorHost;
+  trace: boolean;
 };
 
 function parseArgs(argv: string[]): Options {
@@ -17,7 +20,8 @@ function parseArgs(argv: string[]): Options {
     output: "text",
     claim: true,
     by: "devns-orchestrator",
-    host: "generic"
+    host: "generic",
+    trace: true
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -26,6 +30,8 @@ function parseArgs(argv: string[]): Options {
       options.output = "json";
     } else if (arg === "--no-claim") {
       options.claim = false;
+    } else if (arg === "--no-trace") {
+      options.trace = false;
     } else if (arg === "--by") {
       options.by = argv[index + 1] || options.by;
       index += 1;
@@ -54,11 +60,22 @@ function writeJson(value: unknown) {
   process.stdout.write(`${JSON.stringify(value, null, 2)}\n`);
 }
 
-function writeText(packet: ReturnType<typeof orchestrationPacket>) {
+type OrchestrationOutput = ReturnType<typeof orchestrationPacket> & {
+  trace?: {
+    traceId: string;
+    spanId: string;
+    path: string;
+    eventCount: number;
+    error?: string;
+  };
+};
+
+function writeText(packet: OrchestrationOutput) {
   const lines = [
     `Mode: ${packet.mode}`,
     `Host: ${packet.host}`,
     `Stop hook: ${packet.stopHookRole}`,
+    packet.trace?.error ? `Trace warning: ${packet.trace.error}` : packet.trace ? `Trace: ${packet.trace.path}#${packet.trace.traceId}` : undefined,
     packet.featureId ? `Feature: ${packet.featureId} - ${packet.title}` : undefined,
     packet.implementationSubagent ? `Implementation: ${packet.implementationSubagent.launchInstruction}` : undefined,
     packet.reviewSubagent ? `Review: ${packet.reviewSubagent.launchInstruction}` : undefined,
@@ -66,6 +83,46 @@ function writeText(packet: ReturnType<typeof orchestrationPacket>) {
     packet.mode === "empty_queue" ? "No claimable feature remains." : undefined
   ].filter(Boolean);
   process.stdout.write(`${lines.join("\n")}\n`);
+}
+
+async function withTrace(
+  cwd: string,
+  config: DevnsConfig | undefined,
+  packet: ReturnType<typeof orchestrationPacket>,
+  enabled: boolean
+): Promise<OrchestrationOutput> {
+  if (!enabled || !config) {
+    return packet;
+  }
+
+  try {
+    const trace = await appendOrchestratorTrace(cwd, config, packet);
+    return {
+      ...packet,
+      trace: trace.summary
+    };
+  } catch (error) {
+    return {
+      ...packet,
+      trace: {
+        traceId: "",
+        spanId: "",
+        path: "",
+        eventCount: 0,
+        error: error instanceof Error ? error.message : "Unable to write orchestrator trace."
+      }
+    };
+  }
+}
+
+async function emit(
+  cwd: string,
+  config: DevnsConfig | undefined,
+  packet: ReturnType<typeof orchestrationPacket>,
+  options: Options
+) {
+  const output = await withTrace(cwd, config, packet, options.trace);
+  options.output === "json" ? writeJson(output) : writeText(output);
 }
 
 async function main() {
@@ -79,7 +136,7 @@ async function main() {
       cwd,
       reasons: ["DEVNS workspace is missing. Run devns-init before implementation."]
     });
-    options.output === "json" ? writeJson(payload) : writeText(payload);
+    await emit(cwd, undefined, payload, options);
     return;
   }
 
@@ -95,7 +152,7 @@ async function main() {
       config,
       feature: active
     });
-    options.output === "json" ? writeJson(payload) : writeText(payload);
+    await emit(cwd, config, payload, options);
     return;
   }
 
@@ -116,7 +173,7 @@ async function main() {
       feature,
       claimed: Boolean(result)
     });
-    options.output === "json" ? writeJson(payload) : writeText(payload);
+    await emit(cwd, config, payload, options);
     return;
   }
 
@@ -131,7 +188,7 @@ async function main() {
       feature: blocked.feature,
       reasons
     });
-    options.output === "json" ? writeJson(payload) : writeText(payload);
+    await emit(cwd, config, payload, options);
     return;
   }
 
@@ -149,7 +206,7 @@ async function main() {
         ? ["No claimable feature remains. Some features still need RFC clarification."]
         : ["No claimable feature remains. It is safe for the orchestrator to stop."]
   });
-  options.output === "json" ? writeJson(payload) : writeText(payload);
+  await emit(cwd, config, payload, options);
 }
 
 main().catch((error) => {

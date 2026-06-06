@@ -255,6 +255,7 @@ export type DevnsConfig = {
   candidates?: string;
   rfcs?: string;
   history?: string;
+  traces?: string;
   completionPolicy?: {
     mode?: "queue";
     whenNoActiveFeature?: "claim_next" | "allow_stop";

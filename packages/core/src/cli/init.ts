@@ -149,6 +149,14 @@ async function writeReviewAgentAdapter(cwd: string, adapter: "codex" | "claude",
   return didCopy;
 }
 
+async function writeBrowserSmokeAdapter(cwd: string, force: boolean) {
+  const sourcePath = path.join(packageRoot, "templates", "devns", "adapters", "browser-smoke.sh");
+  const destinationPath = path.join(cwd, ".devns", "adapters", "browser-smoke.sh");
+  const didCopy = await copyNewFile(sourcePath, destinationPath, force);
+  await chmod(destinationPath, 0o755);
+  return didCopy;
+}
+
 async function writeReviewAgentLane(cwd: string, adapter: "codex" | "claude", force: boolean) {
   const lane = {
     id: "code-review",
@@ -250,6 +258,8 @@ export async function main(inputOptions?: InitOptions) {
 
   await mkdir(path.join(devnsDir, "rfcs"), { recursive: true });
   await mkdir(path.join(devnsDir, "history"), { recursive: true });
+  await mkdir(path.join(devnsDir, "traces"), { recursive: true });
+  await mkdir(path.join(devnsDir, "artifacts"), { recursive: true });
   await mkdir(path.join(devnsDir, "reviews"), { recursive: true });
   await mkdir(path.join(devnsDir, "skills"), { recursive: true });
   await mkdir(path.join(devnsDir, "agents"), { recursive: true });
@@ -269,6 +279,7 @@ export async function main(inputOptions?: InitOptions) {
         candidates: ".devns/candidates.json",
         rfcs: ".devns/rfcs",
         history: ".devns/history",
+        traces: ".devns/traces",
         policies: ".devns/policies",
         review: {
           mode: "html",
@@ -365,6 +376,8 @@ export async function main(inputOptions?: InitOptions) {
         "- `candidates.json`: discovered candidates that are not ready for implementation",
         "- `rfcs/`: RFC records for candidate and executable features",
         "- `history/`: execution history and impact records",
+        "- `traces/`: local orchestrator and harness trace records",
+        "- `artifacts/`: generated verification artifacts such as browser smoke reports",
         "- `skills/`: project-local skill overrides",
         "- `policies/`: project-local harness policies",
         "- `project.md`: human-provided project background",
@@ -374,7 +387,8 @@ export async function main(inputOptions?: InitOptions) {
         "1. Run `npm run devns:doctor -- --json` when available. If missing, inspect `package.json` and use `npm run devns:status -- --json` or `npm run devns:queue -- status --json`.",
         "2. Read the active feature from `features.json` and its approved RFC from `rfcs/` or the feature record.",
         "3. Read the latest `.devns/history/<feature-id>.jsonl` record for decisions, pitfalls, errors, fixes, and lessons.",
-        "4. Read `.devns/reviews/` when reviewing completed work or taking over after a long run.",
+        "4. Read `.devns/traces/orchestrator.jsonl` when debugging claim, handoff, or review-routing behavior.",
+        "5. Read `.devns/reviews/` when reviewing completed work or taking over after a long run.",
         "",
         "## Rules",
         "",
@@ -400,7 +414,7 @@ export async function main(inputOptions?: InitOptions) {
         "1. Check mode with `npm run devns:doctor -- --json` when available; otherwise inspect `package.json` and use the available DEVNS status command.",
         "2. Read `index.md`, the active feature RFC, and relevant history before editing.",
         "3. Run lanes with `npm run devns:lanes -- run --write --json` before completion.",
-        "4. Keep durable knowledge in `history/` and human review packets in `reviews/`.",
+        "4. Keep durable knowledge in `history/`, local workflow diagnostics in `traces/`, and human review packets in `reviews/`.",
         ""
       ].join("\n")
     }
@@ -419,6 +433,9 @@ export async function main(inputOptions?: InitOptions) {
 
   const didCopyWorkbench = await copyNewFile(workbenchTemplatePath, workbenchOutputPath, options.force);
   (didCopyWorkbench ? written : skipped).push(path.relative(cwd, workbenchOutputPath));
+
+  const didCopyBrowserSmokeAdapter = await writeBrowserSmokeAdapter(cwd, options.force);
+  (didCopyBrowserSmokeAdapter ? written : skipped).push(".devns/adapters/browser-smoke.sh");
 
   if (reviewAdapter) {
     const didCopyAdapter = await writeReviewAgentAdapter(cwd, reviewAdapter, options.force);

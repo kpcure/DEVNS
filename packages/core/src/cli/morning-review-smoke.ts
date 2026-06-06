@@ -25,9 +25,18 @@ function doneFeature(id: string, changedFiles: string[], commit?: string): Featu
     acceptanceCriteria: ["Criterion has evidence"],
     verification: ["fixture"],
     evidence: [
-      { type: "lane:unit", summary: "Lane unit passed. Decision: allow." },
+      {
+        type: "lane:browser-smoke",
+        summary: "Browser smoke passed. Decision: allow.",
+        verificationType: "browser_smoke",
+        coversAcceptanceCriteriaIds: ["AC-001"],
+        artifactRefs: [`.devns/artifacts/browser-smoke/${id}/run.json`]
+      },
       { type: "git", summary: `Committed ${changedFiles.length} file(s).` }
     ],
+    artifactRefs: {
+      evidence: `.devns/evidence/${id}.json`
+    },
     changedFiles,
     commit: commit ?? `${id.toLowerCase()}abc`,
     implementationCommit: commit,
@@ -101,6 +110,8 @@ async function main() {
     assert.match(rev001?.lessons[0] ?? "", /RFC intent/);
     assert.match(rev001?.diff?.patch ?? "", /shared/);
     assert.ok((rev001?.diff?.filesChanged ?? 0) > 0);
+    assert.ok(rev001?.artifactRefs.includes(".devns/artifacts/browser-smoke/REV-001/run.json"));
+    assert.ok(rev001?.artifactRefs.includes(".devns/evidence/REV-001.json"));
 
     const configless = await readInventory(cwd, config);
     delete configless.features[0].commit;
@@ -112,7 +123,9 @@ async function main() {
 
     const json = JSON.parse(await readFile(path.join(cwd, result.jsonPath), "utf8"));
     assert.equal(json.packets.length, 2);
-    assert.match(await readFile(path.join(cwd, result.markdownPath), "utf8"), /Morning Review 2026-05-30/);
+    const markdown = await readFile(path.join(cwd, result.markdownPath), "utf8");
+    assert.match(markdown, /Morning Review 2026-05-30/);
+    assert.match(markdown, /\.devns\/artifacts\/browser-smoke\/REV-001\/run\.json/);
 
     process.stdout.write("Morning review smoke passed.\n");
   } finally {

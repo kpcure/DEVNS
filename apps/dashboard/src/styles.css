@@ -766,6 +766,10 @@ nav button:active {
   margin-top: 5px;
 }
 
+.review-list li {
+  overflow-wrap: anywhere;
+}
+
 .coverage-item strong {
   display: block;
   color: var(--ink);

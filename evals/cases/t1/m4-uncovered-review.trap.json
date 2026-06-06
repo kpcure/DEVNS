@@ -1,0 +1,67 @@
+{
+  "id": "m4-uncovered-review.trap",
+  "tier": "t1",
+  "mode": "M4_evidence_quality",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "F-4",
+      "title": "Security review gate",
+      "description": "Review-agent criteria require review-agent evidence.",
+      "status": "in_progress",
+      "priority": "P0",
+      "milestone": "MVP",
+      "risk": "high",
+      "acceptanceCriteria": ["The changed authentication path receives independent code review."],
+      "rfc": {
+        "status": "approved",
+        "summary": "Verify review-agent evidence cannot be replaced by build output.",
+        "background": "Security-sensitive changes need independent semantic review.",
+        "featureDescription": "Authentication changes must receive code review.",
+        "expectedOutcome": "Build evidence alone leaves review-agent criteria uncovered.",
+        "goals": ["Require review-agent evidence for review-agent criteria"],
+        "nonGoals": ["Run a real security scanner"],
+        "requirements": [
+          {
+            "id": "REQ-1",
+            "type": "explicit",
+            "statement": "Independent review evidence is required for authentication-path review.",
+            "priority": "must"
+          }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-1",
+            "requirementIds": ["REQ-1"],
+            "statement": "The changed authentication path receives independent code review.",
+            "verificationType": "review_agent"
+          }
+        ],
+        "validationPlan": {
+          "dynamic": [],
+          "static": ["Review-agent lane"]
+        },
+        "testCases": [],
+        "humanDecision": {
+          "status": "approved"
+        }
+      },
+      "evidence": [
+        {
+          "type": "command",
+          "verificationType": "command",
+          "actor": "lane:build",
+          "summary": "npm run build exited with code 0.",
+          "coversAcceptanceCriteriaIds": ["AC-1"]
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "evidence_quality"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "incompatible verification type"
+  }
+}

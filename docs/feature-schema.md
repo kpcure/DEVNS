@@ -115,6 +115,8 @@ The feature inventory should stay compact enough for agents and dashboards to sc
 
 Use the inventory for queue status, summaries, and links. Use artifact files for full RFC records, lane evidence, execution history, and review packets.
 
+DEVNS writes compact JSON state through the shared atomic JSON writer: data is written to a same-directory temporary file, fsynced, renamed into place, and checked for temporary file leakage in smoke/eval coverage. This protects queue state from partial writes during long agent runs while keeping revision conflict checks in place for stale writers.
+
 ## Completion Metadata
 
 Completed features can record two related commit hashes:

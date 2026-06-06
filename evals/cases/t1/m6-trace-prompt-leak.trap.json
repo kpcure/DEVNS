@@ -1,0 +1,49 @@
+{
+  "id": "m6-trace-prompt-leak.trap",
+  "tier": "t1",
+  "mode": "M6_trace_quality",
+  "generality_level": "general",
+  "given": {
+    "record": {
+      "schemaVersion": 1,
+      "traceId": "trace-leak",
+      "spanId": "span-leak",
+      "name": "devns.orchestrate",
+      "kind": "agent.workflow",
+      "startedAt": "2026-06-06T00:00:00.000Z",
+      "completedAt": "2026-06-06T00:00:01.000Z",
+      "host": "codex",
+      "mode": "claim_next",
+      "featureId": "TRACE-002",
+      "featureTitle": "Trace leak",
+      "claimed": true,
+      "stopHookRole": "safety_net_only",
+      "reasons": [],
+      "subagents": {
+        "implementation": "devns_feature_worker",
+        "review": "devns_code_reviewer"
+      },
+      "events": [
+        { "name": "queue.inspect", "at": "2026-06-06T00:00:00.000Z" },
+        { "name": "feature.selected", "at": "2026-06-06T00:00:00.100Z" },
+        { "name": "feature.claimed", "at": "2026-06-06T00:00:00.200Z" },
+        { "name": "handoff.prepared", "at": "2026-06-06T00:00:00.300Z" }
+      ],
+      "attributes": {
+        "devns.host": "codex",
+        "devns.mode": "claim_next",
+        "devns.claimed": true,
+        "devns.feature.id": "TRACE-002",
+        "devns.stop_hook.role": "safety_net_only"
+      },
+      "nextSteps": ["Worker handoff JSON: do not store this prompt text."]
+    }
+  },
+  "action": {
+    "gate": "orchestrator_trace"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "forbidden prompt/diff/transcript marker"
+  }
+}

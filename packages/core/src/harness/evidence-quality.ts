@@ -123,6 +123,7 @@ function evidenceTypeCovers(evidence: Evidence, criterion: ReturnType<typeof acc
 export function evaluateEvidenceQuality(feature: Feature): EvidenceQualityReport {
   const evidence = feature.evidence ?? [];
   const deterministic = evidence.filter(evidenceLooksDeterministic);
+  const semantic = evidence.filter((item) => evidenceLooksBrowser(item) || evidenceLooksReview(item));
   const manual = evidence.filter(evidenceLooksManual);
   const criteria = acceptanceCriteriaFor(feature);
   const findings: EvidenceQualityReport["findings"] = [];
@@ -131,11 +132,11 @@ export function evaluateEvidenceQuality(feature: Feature): EvidenceQualityReport
     findings.push({ severity: "error", message: "Feature has no evidence.", suggestedFix: "Run verification lanes and record at least one deterministic evidence item." });
   }
 
-  if (!deterministic.length && evidence.length) {
+  if (!deterministic.length && !semantic.length && evidence.length) {
     findings.push({
       severity: "warning",
-      message: "Evidence exists, but none is deterministic command, lane, git, browser, or static evidence.",
-      suggestedFix: "Add command, lane, build, test, lint, browser, static, dynamic, or git evidence."
+      message: "Evidence exists, but none is deterministic command, lane, git, browser, static, or independent semantic evidence.",
+      suggestedFix: "Add command, lane, build, test, lint, browser, static, dynamic, git, or review-agent evidence."
     });
   }
 

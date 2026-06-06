@@ -15,6 +15,7 @@ This directory is ignored by Git by default because it is runtime state for a ta
   features.json
   rfcs/
   history/
+  traces/
   reviews/
   skills/
   policies/
@@ -27,7 +28,9 @@ This directory is ignored by Git by default because it is runtime state for a ta
 - `features.json`: implementation queue. Items are claimable only after an approved RFC.
 - `rfcs/`: RFC records for candidates and features.
 - `history/`: curated execution knowledge, including decisions, alternatives, pitfalls, errors, fixes, lessons, and verification summaries.
+- `traces/`: local JSONL workflow traces, such as `orchestrator.jsonl`, for diagnosing claim, handoff, review, and stop behavior.
 - `reviews/`: feature-centered morning review packets for humans and future agent handoff.
+- `artifacts/`: generated verification artifacts such as browser smoke reports, screenshots, stdout, and stderr.
 - `skills/`: project-local skill overrides or extra workflow notes.
 - `policies/`: project-local harness rules.
 
@@ -48,6 +51,7 @@ Before a feature can be considered complete:
 - run configured lanes with `npm run devns:lanes -- run --write --json`
 - keep `features.json` to status, evidence summaries, changed files, review decision, and commit metadata
 - put detailed lane output and reusable project knowledge in `.devns/history/`
+- keep orchestration diagnostics in `.devns/traces/` rather than feature evidence
 - generate or refresh morning review packets when handing work back to a human
 - commit exactly one feature, with explicit files only
 

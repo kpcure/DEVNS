@@ -1,0 +1,23 @@
+{
+  "id": "m7-state-temp-leak.trap",
+  "tier": "t1",
+  "mode": "M7_state_reliability",
+  "generality_level": "general",
+  "given": {
+    "seedTempFiles": [".features.json.tmp-stale"],
+    "value": {
+      "project": {
+        "name": "Atomic write eval",
+        "description": "State writes should not leave temp files."
+      },
+      "features": []
+    }
+  },
+  "action": {
+    "gate": "state_atomic_write"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "temporary state file"
+  }
+}

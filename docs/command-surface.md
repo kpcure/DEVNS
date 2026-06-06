@@ -80,6 +80,7 @@ npm run devns:lanes -- run [--feature <feature-id>] [--write] [--json]
 npm run devns:lanes -- ingest --feature <feature-id> --result <lane-result.json> [--actor review-agent:<name>] [--json]
 npm run devns:evidence -- add --feature <feature-id> --type <type> --summary <text> [--verification <kind>] [--covers-ac AC-001]
 npm run devns:eval -- run --tier t1 [--mode <mode>] [--json] [--report evals/out/report.md]
+npm run devns:trace [-- --tail 20] [-- --audit] [-- --json]
 npm run devns:stop-log [-- --tail 20] [-- --json]
 npm run devns:review -- generate [--date YYYY-MM-DD] [--json]
 npm run devns:review -- packet [--feature <feature-id>] [--commit <sha>] [--base <sha>] [--format json|prompt] [--write] [--json]
@@ -109,7 +110,9 @@ In a target repository, this alias may not exist yet. Agents should inspect `pac
 
 `npm run devns:run` is the agent-facing loop entry. It detects bootstrap, active, claimable, blocked, and empty-queue modes. By default it claims the next approved feature when no feature is active; pass `--no-claim` to inspect without mutating state. When a feature is active or claimed, JSON output includes `workerHandoff`, a compact contract for running that one feature in an isolated worker/subagent or fresh implementation context when the host supports it.
 
-`npm run devns:orchestrate` is the preferred long-run entrypoint. It keeps the main agent as orchestrator and returns a complete packet for one feature: implementation subagent name/prompt, read-only review subagent name/prompt, worker handoff, required lanes, and main-agent next steps. Stop hooks become safety nets instead of the primary work loop. See `docs/orchestrator-mode.md`.
+`npm run devns:orchestrate` is the preferred long-run entrypoint. It keeps the main agent as orchestrator and returns a complete packet for one feature: implementation subagent name/prompt, read-only review subagent name/prompt, worker handoff, required lanes, main-agent next steps, and a local trace summary. By default it appends a bounded workflow record to `.devns/traces/orchestrator.jsonl`; pass `--no-trace` for read-only inspection. Stop hooks become safety nets instead of the primary work loop. See `docs/orchestrator-mode.md`.
+
+`npm run devns:trace` reads `.devns/traces/orchestrator.jsonl`, the local workflow trace written by Orchestrator Mode. Use `--audit` to check that recent traces include required queue/feature/handoff events and do not contain forbidden prompt, diff, transcript, stdout, or stderr markers.
 
 `npm run harness:validate` and `npx @kpcure/devns validate` are deterministic health checks. They inspect workspace shape, schema validity, RFC readiness, evidence quality, lane evidence records, hook wiring, and curated history/review artifacts. They are intentionally fast and do not run a model-based semantic review. Semantic validation must come from configured `type: "agent"` review lanes, browser/human evidence, or project-specific command lanes.
 
@@ -119,7 +122,7 @@ In a target repository, this alias may not exist yet. Agents should inspect `pac
 
 Agent lanes are review-worker adapters. For a lane such as `code-review`, DEVNS writes a review packet and prompt, injects `DEVNS_REVIEW_PROMPT`, `DEVNS_REVIEW_PACKET`, `DEVNS_FEATURE_ID`, `DEVNS_DIFF_BASE`, and `DEVNS_REPO`, then executes the lane command. The command must return one `tools/schema/lane-result.schema.json` object. `devns init --host codex` installs `.devns/adapters/code-review.codex.sh`, `.devns/lanes/code-review.json`, and `.codex/agents/devns_code_reviewer.toml`. `devns init --host claude` installs `.claude/agents/code-reviewer.md` and a Claude Code `type: "agent"` Stop hook prompt that can act as a safety-net reviewer.
 
-A browser smoke check can be wired as a command lane, for example by copying `templates/devns/lanes/browser-smoke.json` into `.devns/lanes/browser-smoke.json` and changing the command to the project's Playwright/Cypress/browser script. Browser evidence should be recorded with `verificationType: "browser_smoke"`.
+A browser smoke check can be wired as a command lane by copying `templates/devns/lanes/browser-smoke.json` into `.devns/lanes/browser-smoke.json` and changing `DEVNS_BROWSER_SMOKE_COMMAND` to the project's Playwright/Cypress/browser script. `devns init` installs `.devns/adapters/browser-smoke.sh`; the adapter writes `.devns/artifacts/browser-smoke/<timestamp>/run.json`, stdout, and stderr, then prints `DEVNS_ARTIFACT=...` markers so lane results and feature evidence retain artifact refs. Browser evidence should use `verificationType: "browser_smoke"`.
 
 `npm run devns:lanes -- ingest` records a lane-result JSON envelope produced by a read-only review agent or external verifier. DEVNS validates the lane-result schema before writing history and compact evidence.
 
@@ -131,7 +134,7 @@ For robust review automation, run deterministic static and dynamic lanes first, 
 
 `evidence-quality-gate` is a built-in review lane that checks acceptance criteria and deterministic evidence coverage. It is also used by validation and completion so a feature cannot be marked done from a title plus prose-only notes.
 
-`npm run devns:review -- generate` creates `.devns/reviews/<date>.json` and `.md`. The report groups completed work by feature, includes RFC intent, commits, changed files, lane evidence, history decisions/pitfalls/lessons, cross-feature risks, and suggested human actions.
+`npm run devns:review -- generate` creates `.devns/reviews/<date>.json` and `.md`. The report groups completed work by feature, includes RFC intent, commits, changed files, lane evidence, evidence artifact refs, history decisions/pitfalls/lessons, cross-feature risks, and suggested human actions.
 
 `npm run devns:review -- packet` creates a bounded review-agent packet for one feature. Use `--format prompt --write` when handing the packet to a read-only review agent. The packet includes RFC context, Git status and diff, evidence quality, feature evidence, durable history, and project rules. Use `--commit HEAD` or `--base <sha> --commit <sha>` when reviewing a clean worktree after the implementation commit but before `devns complete`.
 

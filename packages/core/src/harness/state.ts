@@ -1,5 +1,5 @@
-import { createHash } from "node:crypto";
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { mkdir, open, readFile, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import featuresSchema from "../../../../tools/schema/features.schema.json";
 import type { CandidateInventory, Feature, FeatureInventory, FeaturePatch, DevnsConfig } from "./types";
@@ -43,10 +43,35 @@ export async function readJsonFile<T>(filePath: string): Promise<T> {
 }
 
 export async function writeJsonFile(filePath: string, value: unknown) {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  const tmp = path.join(path.dirname(filePath), `.${path.basename(filePath)}.tmp-${process.pid}-${Date.now()}`);
-  await writeFile(tmp, `${JSON.stringify(value, null, 2)}\n`);
-  await rename(tmp, filePath);
+  const dir = path.dirname(filePath);
+  await mkdir(dir, { recursive: true });
+  const tmp = path.join(dir, `.${path.basename(filePath)}.tmp-${process.pid}-${randomUUID()}`);
+  let handle: Awaited<ReturnType<typeof open>> | undefined;
+
+  try {
+    handle = await open(tmp, "wx");
+    await handle.writeFile(`${JSON.stringify(value, null, 2)}\n`);
+    await handle.sync();
+    await handle.close();
+    handle = undefined;
+    await rename(tmp, filePath);
+
+    let dirHandle: Awaited<ReturnType<typeof open>> | undefined;
+    try {
+      dirHandle = await open(dir, "r");
+      await dirHandle.sync();
+    } catch {
+      // Directory fsync is a best-effort durability improvement and is not supported everywhere.
+    } finally {
+      await dirHandle?.close().catch(() => undefined);
+    }
+  } catch (error) {
+    if (handle) {
+      await handle.close().catch(() => undefined);
+    }
+    await rm(tmp, { force: true }).catch(() => undefined);
+    throw error;
+  }
 }
 
 export function computeRevision(value: unknown) {

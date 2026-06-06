@@ -37,6 +37,7 @@ npx @kpcure/devns doctor
 npx @kpcure/devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
 npx @kpcure/devns discover --json
 npx @kpcure/devns orchestrate --host codex --json
+npx @kpcure/devns trace --audit --json
 npx @kpcure/devns stop-log --tail 20
 npx @kpcure/devns dashboard
 ```
@@ -174,7 +175,7 @@ DEVNS is licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTI
 
 DEVNS is at the 1.0 hardening stage. The core workflow is implemented: doctor/init/discover/RFC/run/lanes/evidence/review/complete/stop, plugin packages, JSON schemas, a local dashboard, review packets, evidence quality gates, and smoke coverage.
 
-The stable surface is the local `devns` entrypoint, `.devns/` workspace contract, feature/RFC/evidence schemas, command lanes, review packets, and completion metadata. Areas still evolving are richer browser lanes, project-specific policy packs, long-context budgeting, and broader golden/eval coverage. See `ROADMAP.md` and `docs/1.0-hardening-roadmap.zh-CN.md`.
+The stable surface is the local `devns` entrypoint, `.devns/` workspace contract, atomic feature/candidate state writes, feature/RFC/evidence schemas, command lanes, browser-smoke artifact adapter, review packets, local orchestrator traces, T1/T2 harness evals, and completion metadata. Areas still evolving are richer browser artifact display, project-specific policy packs, long-context budgeting, T3 seed repos, and review-agent adapter calibration. See `ROADMAP.md`, `docs/1.0-hardening-roadmap.zh-CN.md`, and `docs/solidification-analysis.zh-CN.md`.
 
 ## Local Development
 

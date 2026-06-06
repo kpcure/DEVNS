@@ -11,6 +11,7 @@ async function main() {
 
   try {
     await writeFile(path.join(cwd, "pass.mjs"), "process.stdout.write('ok')\n");
+    await writeFile(path.join(cwd, "artifact.mjs"), "process.stdout.write('DEVNS_ARTIFACT=.devns/artifacts/browser-smoke/run.json\\n')\n");
     await writeFile(path.join(cwd, "fail.mjs"), "process.stderr.write('bad'); process.exit(7)\n");
     await writeFile(path.join(cwd, "warn.mjs"), "process.stderr.write('legacy lint debt'); process.exit(3)\n");
     await writeFile(path.join(cwd, "secret.txt"), `${"api_" + "key"} = '12345678901234567890'\n`);
@@ -32,6 +33,13 @@ async function main() {
           command: "node fail.mjs",
           required: true,
           blocksCompletion: true
+        },
+        {
+          id: "artifact-command",
+          type: "command",
+          command: "node artifact.mjs",
+          required: false,
+          blocksCompletion: false
         },
         {
           id: "warn-command",
@@ -109,7 +117,7 @@ async function main() {
       feature,
       changedFiles: ["pass.mjs", "secret.txt"]
     });
-    assert.equal(summary.results.length, 8);
+    assert.equal(summary.results.length, 9);
     assert.equal(summary.results[0]?.status, "pass");
     assert.equal(summary.results[0]?.decision, "allow");
     assert.equal(summary.results[0]?.exitCode, 0);
@@ -118,23 +126,26 @@ async function main() {
     assert.equal(summary.results[1]?.decision, "block");
     assert.equal(summary.results[1]?.exitCode, 7);
     assert.equal(summary.results[1]?.blocksCompletion, true);
-    assert.equal(summary.results[2]?.status, "fail");
-    assert.equal(summary.results[2]?.decision, "warn");
-    assert.equal(summary.results[2]?.blocksCompletion, false);
-    assert.equal(summary.results[3]?.status, "error");
-    assert.equal(summary.results[3]?.decision, "block");
-    assert.equal(summary.results[3]?.blocksCompletion, true);
-    assert.match(summary.results[3]?.summary ?? "", /missing-review-agent/);
-    assert.equal(summary.results[4]?.status, "fail");
-    assert.match(summary.results[4]?.summary ?? "", /outside declared feature surface/);
-    assert.equal(summary.results[5]?.status, "pass");
+    assert.equal(summary.results[2]?.status, "pass");
+    assert.deepEqual(summary.results[2]?.artifacts, [".devns/artifacts/browser-smoke/run.json"]);
+    assert.equal(summary.results[3]?.status, "fail");
+    assert.equal(summary.results[3]?.decision, "warn");
+    assert.equal(summary.results[3]?.blocksCompletion, false);
+    assert.equal(summary.results[4]?.status, "error");
+    assert.equal(summary.results[4]?.decision, "block");
+    assert.equal(summary.results[4]?.blocksCompletion, true);
+    assert.match(summary.results[4]?.summary ?? "", /missing-review-agent/);
+    assert.equal(summary.results[5]?.status, "fail");
+    assert.match(summary.results[5]?.summary ?? "", /outside declared feature surface/);
     assert.equal(summary.results[6]?.status, "pass");
-    assert.equal(summary.results[7]?.status, "fail");
-    assert.match(summary.results[7]?.summary ?? "", /Security scan/);
+    assert.equal(summary.results[7]?.status, "pass");
+    assert.equal(summary.results[8]?.status, "fail");
+    assert.match(summary.results[8]?.summary ?? "", /Security scan/);
     assert.equal(summary.blocksCompletion, true);
     assert.match(summary.continuationReason ?? "", /fail-command/);
-    assert.match(laneResultsToEvidence(summary.results)[2]?.summary ?? "", /Decision: warn/);
-    assert.equal(laneResultsToEvidence(summary.results).length, 8);
+    assert.deepEqual(laneResultsToEvidence(summary.results)[2]?.artifactRefs, [".devns/artifacts/browser-smoke/run.json"]);
+    assert.match(laneResultsToEvidence(summary.results)[3]?.summary ?? "", /Decision: warn/);
+    assert.equal(laneResultsToEvidence(summary.results).length, 9);
 
     process.stdout.write("Lane runner smoke passed.\n");
   } finally {

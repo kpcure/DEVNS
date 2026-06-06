@@ -34,6 +34,7 @@ export const defaultConfig: DevnsConfig = {
   candidates: ".devns/candidates.json",
   rfcs: ".devns/rfcs",
   history: ".devns/history",
+  traces: ".devns/traces",
   policies: ".devns/policies",
   review: {
     mode: "html",

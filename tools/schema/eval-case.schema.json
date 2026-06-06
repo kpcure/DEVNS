@@ -16,7 +16,15 @@
       "properties": {
         "gate": {
           "type": "string",
-          "enum": ["completion_independent_review", "candidate_provenance", "scope_guard"]
+          "enum": [
+            "completion_independent_review",
+            "candidate_provenance",
+            "scope_guard",
+            "evidence_quality",
+            "review_lane_result",
+            "orchestrator_trace",
+            "state_atomic_write"
+          ]
         },
         "cmd": { "type": "string" },
         "args": { "type": "object" }
@@ -28,7 +36,54 @@
       "required": ["decision"],
       "properties": {
         "decision": { "type": "string", "enum": ["allowed", "blocked"] },
-        "reasonContains": { "type": "string" }
+        "reasonContains": { "type": "string" },
+        "laneDecision": { "type": "string", "enum": ["allow", "warn", "block", "needs_human_review"] },
+        "requiredFindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/findingExpectation" }
+        },
+        "forbiddenFindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/findingExpectation" }
+        },
+        "minScores": {
+          "type": "object",
+          "properties": {
+            "correctness": { "type": "number", "minimum": 0, "maximum": 1 },
+            "requirementCoverage": { "type": "number", "minimum": 0, "maximum": 1 },
+            "scope": { "type": "number", "minimum": 0, "maximum": 1 },
+            "security": { "type": "number", "minimum": 0, "maximum": 1 },
+            "test": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "additionalProperties": false
+        },
+        "maxErrorFindings": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "findingExpectation": {
+      "type": "object",
+      "properties": {
+        "severity": { "type": "string", "enum": ["info", "warning", "error"] },
+        "category": {
+          "type": "string",
+          "enum": ["correctness", "security", "scope", "test", "maintainability", "reviewability"]
+        },
+        "confidence": { "type": "string", "enum": ["low", "medium", "high"] },
+        "file": { "type": "string" },
+        "line": { "type": "number" },
+        "messageContains": { "type": "string" },
+        "requirementIds": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "evidenceTypes": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["diff", "command", "artifact", "requirement", "source"] }
+        },
+        "blocksCompletion": { "type": "boolean" }
       },
       "additionalProperties": false
     }

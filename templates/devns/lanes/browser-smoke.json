@@ -1,8 +1,7 @@
 {
   "id": "browser-smoke",
   "type": "command",
-  "command": "npx playwright test",
+  "command": "DEVNS_BROWSER_SMOKE_COMMAND='npx playwright test' bash .devns/adapters/browser-smoke.sh",
   "required": false,
   "blocksCompletion": false
 }
-

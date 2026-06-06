@@ -16,6 +16,7 @@ DEVNS configuration lives in:
   "candidates": ".devns/candidates.json",
   "rfcs": ".devns/rfcs",
   "history": ".devns/history",
+  "traces": ".devns/traces",
   "policies": ".devns/policies",
   "skills": {
     "init": "devns-init",
@@ -31,6 +32,7 @@ DEVNS configuration lives in:
 - `candidates`: discovered work that still needs human confirmation or RFC clarification.
 - `rfcs`: directory for RFC records and future per-feature RFC files.
 - `history`: execution history, impact summaries, and evidence records.
+- `traces`: local JSONL traces for orchestrator and harness workflow decisions.
 - `policies`: project-local harness policies.
 - `skills`: host-visible skill names or project-local skill overrides.
 
@@ -87,6 +89,8 @@ Command lanes produce a structured result envelope with command, exit code, dura
 - `lint` is nonblocking by default because existing projects often carry legacy lint debt.
 - `security_basic` is a builtin lightweight secret/config-change scanner and starts as nonblocking risk evidence.
 
+Browser smoke checks are project-specific because teams use different browser runners. `devns init` installs `.devns/adapters/browser-smoke.sh`; copy `templates/devns/lanes/browser-smoke.json` into `.devns/lanes/browser-smoke.json` and replace `DEVNS_BROWSER_SMOKE_COMMAND` with the project command, such as `npx playwright test` or `npm run e2e`. The adapter emits `DEVNS_ARTIFACT=...` lines that command lanes capture as artifact refs.
+
 The config schema is fixed in:
 
 ```text
@@ -113,3 +117,7 @@ Long stop-hook continuation loops should avoid carrying an ever-growing context.
 ```
 
 The current runtime exposes this in `devns orchestrate --json` handoff. Hosts can use it to start a fresh worker/subagent per feature while keeping detailed history in `.devns/history/`.
+
+## Local Traces
+
+`traces` defaults to `.devns/traces`. `devns orchestrate` appends one bounded JSONL record to `.devns/traces/orchestrator.jsonl` for each workspace decision. The record includes mode, host, selected feature, claim status, subagent names, reasons, events, and next-step labels. It intentionally does not store generated prompts, diffs, model transcripts, stdout, or stderr. Use `devns trace --audit` to inspect recent records.

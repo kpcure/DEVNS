@@ -5,7 +5,7 @@ import { promisify } from "node:util";
 import { evaluateEvidenceQuality, type EvidenceQualityReport } from "./evidence-quality";
 import { historyPathForFeature, readExecutionHistoryRecords } from "./history";
 import { readConfig, readInventory, resolveFromCwd } from "./state";
-import type { DevnsConfig, ExecutionHistoryRecord, Feature, FeatureInventory } from "./types";
+import type { DevnsConfig, Evidence, ExecutionHistoryRecord, Feature, FeatureInventory } from "./types";
 
 const execFileAsync = promisify(execFile);
 
@@ -39,6 +39,7 @@ export type FeatureReviewPacket = {
   evidenceQuality: EvidenceQualityReport;
   reviewStatus: ReviewCompletionStatus;
   evidence: string[];
+  artifactRefs: string[];
   acceptanceCoverage: Array<{
     criterion: string;
     evidence: string[];
@@ -74,8 +75,19 @@ function unique(values: string[]) {
   return [...new Set(values.filter(Boolean))];
 }
 
+function formatEvidence(item: Evidence) {
+  const artifacts = item.artifactRefs?.length ? ` [artifacts: ${item.artifactRefs.join(", ")}]` : "";
+  return `${item.type}: ${item.summary}${artifacts}`;
+}
+
 function evidenceSummaries(feature: Feature) {
-  return (feature.evidence ?? []).map((item) => `${item.type}: ${item.summary}`);
+  return (feature.evidence ?? []).map(formatEvidence);
+}
+
+function featureArtifactRefs(feature: Feature) {
+  const featureRefs = Object.values(feature.artifactRefs ?? {}).filter((value): value is string => Boolean(value));
+  const evidenceRefs = (feature.evidence ?? []).flatMap((item) => item.artifactRefs ?? []);
+  return unique([...featureRefs, ...evidenceRefs]);
 }
 
 async function git(cwd: string, args: string[]) {
@@ -179,6 +191,7 @@ export async function buildFeatureReviewPacket(
   const history = await historyForFeature(cwd, config, feature);
   const flattened = flattenHistory(history.records);
   const evidence = evidenceSummaries(feature);
+  const artifactRefs = featureArtifactRefs(feature);
   const diff = await diffForFeature(cwd, feature);
   const evidenceQuality = evaluateEvidenceQuality(feature);
   const reviewStatus: ReviewCompletionStatus = hasReviewEvidence(feature) ? "review_completed" : diff ? "review_packet_ready" : "missing";
@@ -199,9 +212,10 @@ export async function buildFeatureReviewPacket(
     evidenceQuality,
     reviewStatus,
     evidence,
+    artifactRefs,
     acceptanceCoverage: evidenceQuality.coverage.map((item) => ({
       criterion: item.criterion,
-      evidence: item.evidence.map((evidenceItem) => `${evidenceItem.type}: ${evidenceItem.summary}`)
+      evidence: item.evidence.map(formatEvidence)
     })),
     ...flattened,
     historyPath: path.relative(cwd, history.filePath)
@@ -266,6 +280,9 @@ export function renderMorningReviewMarkdown(report: MorningReviewReport) {
       "",
       "### Evidence",
       markdownList(packet.evidence),
+      "",
+      "### Artifacts",
+      markdownList(packet.artifactRefs),
       "",
       "### Decisions And Lessons",
       markdownList([...packet.decisions, ...packet.lessons]),

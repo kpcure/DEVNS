@@ -139,6 +139,8 @@ Contains:
 - `features.json`
 - `rfcs/`
 - `history/`
+- `traces/`
+- `artifacts/`
 - `skills/`
 - `policies/`
 

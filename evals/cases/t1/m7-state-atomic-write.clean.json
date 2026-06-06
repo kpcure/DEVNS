@@ -1,0 +1,31 @@
+{
+  "id": "m7-state-atomic-write.clean",
+  "tier": "t1",
+  "mode": "M7_state_reliability",
+  "generality_level": "general",
+  "given": {
+    "value": {
+      "project": {
+        "name": "Atomic write eval",
+        "description": "State writes should be durable and clean."
+      },
+      "features": [
+        {
+          "id": "ATOMIC-001",
+          "title": "Atomic state write",
+          "description": "Write and read state through the DEVNS atomic JSON writer.",
+          "status": "ready",
+          "priority": "P1",
+          "milestone": "Reliability",
+          "acceptanceCriteria": ["State write round-trip succeeds."]
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "state_atomic_write"
+  },
+  "expect": {
+    "decision": "allowed"
+  }
+}

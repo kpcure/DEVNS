@@ -6,6 +6,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { Feature, FeatureInventory, FeatureRfc, DevnsConfig } from "../harness/types";
+import type { OrchestratorTraceRecord } from "../harness/orchestrator-trace";
 
 const execFileAsync = promisify(execFile);
 
@@ -133,6 +134,15 @@ async function makeProject(features: Feature[]) {
   return cwd;
 }
 
+async function readTraceRecords(cwd: string) {
+  const raw = await readFile(path.join(cwd, ".devns", "traces", "orchestrator.jsonl"), "utf8");
+  return raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as OrchestratorTraceRecord);
+}
+
 async function main() {
   const repoRoot = process.cwd();
   const claimProject = await makeProject([feature("ORCH-001", "ready")]);
@@ -150,9 +160,19 @@ async function main() {
     assert.match(claim.implementationSubagent.prompt, /Worker handoff JSON/);
     assert.equal(claim.reviewSubagent.name, "devns_code_reviewer");
     assert.match(claim.reviewSubagent.prompt, /lane-result JSON/);
+    assert.equal(claim.trace.path, ".devns/traces/orchestrator.jsonl");
+    assert.equal(typeof claim.trace.traceId, "string");
 
     const claimInventory = JSON.parse(await readFile(path.join(claimProject, ".devns", "features.json"), "utf8")) as FeatureInventory;
     assert.equal(claimInventory.features[0]?.status, "in_progress");
+    const claimTrace = await readTraceRecords(claimProject);
+    assert.equal(claimTrace.length, 1);
+    assert.equal(claimTrace[0]?.mode, "claim_next");
+    assert.equal(claimTrace[0]?.featureId, "ORCH-001");
+    assert.equal(claimTrace[0]?.claimed, true);
+    assert.equal(claimTrace[0]?.subagents.implementation, "devns_feature_worker");
+    assert.equal(claimTrace[0]?.subagents.review, "devns_code_reviewer");
+    assert.deepEqual(Object.keys(claimTrace[0] ?? {}).includes("prompt"), false);
 
     const active = JSON.parse(await runDevns(repoRoot, activeProject, "orchestrate", "--host", "claude", "--json"));
     assert.equal(active.mode, "continue_active");
@@ -160,10 +180,16 @@ async function main() {
     assert.equal(active.implementationSubagent.name, "devns-feature-worker");
     assert.match(active.implementationSubagent.launchInstruction, /Use the devns-feature-worker subagent/);
     assert.equal(active.reviewSubagent.name, "devns-code-reviewer");
+    const activeTrace = await readTraceRecords(activeProject);
+    assert.equal(activeTrace[0]?.mode, "continue_active");
+    assert.equal(activeTrace[0]?.featureId, "ORCH-002");
 
     const empty = JSON.parse(await runDevns(repoRoot, emptyProject, "orchestrate", "--json"));
     assert.equal(empty.mode, "empty_queue");
     assert.match(empty.reasons.join(" "), /safe for the orchestrator to stop/);
+    const emptyTrace = await readTraceRecords(emptyProject);
+    assert.equal(emptyTrace[0]?.mode, "empty_queue");
+    assert.equal(emptyTrace[0]?.featureId, undefined);
 
     process.stdout.write("Orchestrate smoke passed.\n");
   } finally {

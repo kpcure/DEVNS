@@ -1,0 +1,67 @@
+{
+  "id": "m4-fake-browser-coverage.trap",
+  "tier": "t1",
+  "mode": "M4_evidence_quality",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "F-4",
+      "title": "Dashboard interaction smoke",
+      "description": "Command evidence must not satisfy browser-semantic acceptance criteria.",
+      "status": "in_progress",
+      "priority": "P0",
+      "milestone": "MVP",
+      "risk": "high",
+      "acceptanceCriteria": ["A user can open the dashboard and see the feature evidence panel update."],
+      "rfc": {
+        "status": "approved",
+        "summary": "Verify browser smoke coverage cannot be faked by build output.",
+        "background": "DEVNS must prevent self-reported command evidence from bypassing UI semantics.",
+        "featureDescription": "The dashboard interaction needs browser-level validation.",
+        "expectedOutcome": "Command evidence claiming browser coverage is rejected.",
+        "goals": ["Reject incompatible evidence coverage claims"],
+        "nonGoals": ["Validate the real dashboard implementation"],
+        "requirements": [
+          {
+            "id": "REQ-1",
+            "type": "explicit",
+            "statement": "Browser-semantic criteria require browser, human, or review-agent evidence.",
+            "priority": "must"
+          }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-1",
+            "requirementIds": ["REQ-1"],
+            "statement": "A user can open the dashboard and see the feature evidence panel update.",
+            "verificationType": "browser_smoke"
+          }
+        ],
+        "validationPlan": {
+          "dynamic": ["Playwright or equivalent browser smoke"],
+          "static": []
+        },
+        "testCases": [],
+        "humanDecision": {
+          "status": "approved"
+        }
+      },
+      "evidence": [
+        {
+          "type": "command",
+          "verificationType": "command",
+          "actor": "lane:build",
+          "summary": "npm run build exited with code 0.",
+          "coversAcceptanceCriteriaIds": ["AC-1"]
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "evidence_quality"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "incompatible verification type"
+  }
+}

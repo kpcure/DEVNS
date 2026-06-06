@@ -36,7 +36,7 @@ function usage() {
       "  devns eval run --tier t1 [--mode M3_fake_evidence] [--json]",
       "  devns eval run --all --report evals/out/report.md",
       "",
-      "T1 deterministic gate evals run in CI. T2/T3 cases are reserved for model-in-the-loop and nightly workflows."
+      "T1 deterministic gate evals and T2 frozen review-result golden checks run locally. T3 cases are reserved for nightly workflows."
     ].join("\n") + "\n"
   );
 }

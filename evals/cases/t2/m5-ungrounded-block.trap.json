@@ -1,0 +1,50 @@
+{
+  "id": "m5-ungrounded-block.trap",
+  "tier": "t2",
+  "mode": "M5_review_result_quality",
+  "generality_level": "general",
+  "given": {
+    "laneResult": {
+      "lane": "code-review",
+      "type": "agent",
+      "status": "fail",
+      "decision": "block",
+      "summary": "Review blocked the feature but did not ground the finding.",
+      "confidence": "high",
+      "findings": [
+        {
+          "severity": "error",
+          "category": "security",
+          "confidence": "high",
+          "message": "This might be unsafe.",
+          "suggestedFix": "Inspect the security-sensitive path manually."
+        }
+      ],
+      "scores": {
+        "correctness": 0.8,
+        "requirementCoverage": 0.8,
+        "scope": 0.8,
+        "security": 0.2,
+        "test": 0.8
+      },
+      "evidence": [
+        {
+          "type": "review-context",
+          "summary": "Review claimed to inspect the packet."
+        }
+      ],
+      "artifacts": [".devns/reviews/packets/F-6.review-packet.json"],
+      "recommendedActions": ["Ask the reviewer to provide file, line, and diff evidence."],
+      "blocksCompletion": true,
+      "required": true
+    }
+  },
+  "action": {
+    "gate": "review_lane_result"
+  },
+  "expect": {
+    "decision": "blocked",
+    "laneDecision": "block",
+    "reasonContains": "Blocking review result lacks a high-confidence evidence-backed error finding"
+  }
+}

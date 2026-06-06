@@ -1,0 +1,49 @@
+{
+  "id": "m5-grounded-allow.clean",
+  "tier": "t2",
+  "mode": "M5_review_result_quality",
+  "generality_level": "general",
+  "given": {
+    "laneResult": {
+      "lane": "code-review",
+      "type": "agent",
+      "status": "pass",
+      "decision": "allow",
+      "summary": "Review found no actionable issue in the feature diff.",
+      "confidence": "high",
+      "findings": [],
+      "scores": {
+        "correctness": 0.96,
+        "requirementCoverage": 0.94,
+        "scope": 0.98,
+        "security": 0.92,
+        "test": 0.88
+      },
+      "evidence": [
+        {
+          "type": "review-context",
+          "summary": "Reviewed RFC, diff, command lane outputs, evidence quality report, and project rules."
+        }
+      ],
+      "artifacts": [".devns/reviews/packets/F-5.review-packet.json"],
+      "recommendedActions": ["No blocking issue found; keep browser-smoke coverage on the release checklist."],
+      "blocksCompletion": false,
+      "required": true
+    }
+  },
+  "action": {
+    "gate": "review_lane_result"
+  },
+  "expect": {
+    "decision": "allowed",
+    "laneDecision": "allow",
+    "minScores": {
+      "correctness": 0.9,
+      "requirementCoverage": 0.9,
+      "scope": 0.9,
+      "security": 0.85,
+      "test": 0.8
+    },
+    "maxErrorFindings": 0
+  }
+}

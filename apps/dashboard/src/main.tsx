@@ -40,6 +40,7 @@ type Evidence = {
   type: string;
   summary: string;
   url?: string;
+  artifactRefs?: string[];
 };
 
 type RfcStatus = "draft" | "needs_human_review" | "approved" | "needs_changes" | "blocked" | "superseded";
@@ -184,6 +185,7 @@ type ReviewPacket = {
   };
   reviewStatus?: "review_completed" | "review_packet_ready" | "missing";
   evidence: string[];
+  artifactRefs?: string[];
   acceptanceCoverage?: Array<{
     criterion: string;
     evidence: string[];
@@ -1004,6 +1006,10 @@ function ReviewPacketDialog({
             <section className="review-modal-section">
               <h3>Evidence</h3>
               <ReviewList items={packet.evidence} empty="No evidence recorded." />
+            </section>
+            <section className="review-modal-section">
+              <h3>Artifacts</h3>
+              <ReviewList items={packet.artifactRefs ?? []} empty="No artifacts recorded." />
             </section>
           </div>
         </div>

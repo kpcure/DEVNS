@@ -1,0 +1,74 @@
+{
+  "id": "m5-grounded-block.clean",
+  "tier": "t2",
+  "mode": "M5_review_result_quality",
+  "generality_level": "general",
+  "given": {
+    "laneResult": {
+      "lane": "code-review",
+      "type": "agent",
+      "status": "fail",
+      "decision": "block",
+      "summary": "Review found a high-confidence correctness regression.",
+      "confidence": "high",
+      "findings": [
+        {
+          "severity": "error",
+          "category": "correctness",
+          "confidence": "high",
+          "file": "packages/core/src/harness/evidence-quality.ts",
+          "line": 112,
+          "requirementIds": ["REQ-1"],
+          "message": "Command evidence can still satisfy browser-smoke acceptance criteria through an incompatible direct coverage claim.",
+          "evidence": [
+            {
+              "type": "diff",
+              "summary": "The diff accepts coversAcceptanceCriteriaIds before checking verificationType compatibility."
+            },
+            {
+              "type": "requirement",
+              "summary": "REQ-1 requires browser-semantic criteria to use browser, human, or review-agent evidence."
+            }
+          ],
+          "suggestedFix": "Apply evidenceKindMatches before treating explicit coverage claims as supporting evidence."
+        }
+      ],
+      "scores": {
+        "correctness": 0.45,
+        "requirementCoverage": 0.8,
+        "scope": 0.95,
+        "security": 0.9,
+        "test": 0.5
+      },
+      "evidence": [
+        {
+          "type": "review-context",
+          "summary": "Reviewed RFC, diff, evidence quality report, and feature history."
+        }
+      ],
+      "artifacts": [".devns/reviews/packets/F-4.review-packet.json"],
+      "recommendedActions": ["Fix the incompatible evidence coverage path and add a trap eval."],
+      "blocksCompletion": true,
+      "required": true
+    }
+  },
+  "action": {
+    "gate": "review_lane_result"
+  },
+  "expect": {
+    "decision": "allowed",
+    "laneDecision": "block",
+    "requiredFindings": [
+      {
+        "severity": "error",
+        "category": "correctness",
+        "confidence": "high",
+        "file": "packages/core/src/harness/evidence-quality.ts",
+        "line": 112,
+        "requirementIds": ["REQ-1"],
+        "evidenceTypes": ["diff", "requirement"],
+        "blocksCompletion": true
+      }
+    ]
+  }
+}

@@ -11,6 +11,7 @@
     "candidates": { "type": "string" },
     "rfcs": { "type": "string" },
     "history": { "type": "string" },
+    "traces": { "type": "string" },
     "policies": { "type": "string" },
     "completionPolicy": {
       "type": "object",

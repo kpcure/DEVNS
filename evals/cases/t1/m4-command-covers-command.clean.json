@@ -1,0 +1,66 @@
+{
+  "id": "m4-command-covers-command.clean",
+  "tier": "t1",
+  "mode": "M4_evidence_quality",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "F-4",
+      "title": "CLI eval command",
+      "description": "Command evidence should cover command-verifiable acceptance criteria.",
+      "status": "in_progress",
+      "priority": "P0",
+      "milestone": "MVP",
+      "risk": "medium",
+      "acceptanceCriteria": ["The eval command exits successfully."],
+      "rfc": {
+        "status": "approved",
+        "summary": "Verify deterministic command evidence.",
+        "background": "DEVNS needs deterministic evidence for command gates.",
+        "featureDescription": "The eval command should run cleanly.",
+        "expectedOutcome": "Command evidence is accepted for command-verifiable criteria.",
+        "goals": ["Accept compatible command evidence"],
+        "nonGoals": ["Use browser or review evidence for this command-only case"],
+        "requirements": [
+          {
+            "id": "REQ-1",
+            "type": "explicit",
+            "statement": "The eval command must exit successfully.",
+            "priority": "must"
+          }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-1",
+            "requirementIds": ["REQ-1"],
+            "statement": "The eval command exits successfully.",
+            "verificationType": "command"
+          }
+        ],
+        "validationPlan": {
+          "dynamic": ["npm run devns -- eval run --tier t1 --json"],
+          "static": []
+        },
+        "testCases": [],
+        "humanDecision": {
+          "status": "approved"
+        }
+      },
+      "evidence": [
+        {
+          "type": "command",
+          "verificationType": "command",
+          "actor": "lane:eval",
+          "summary": "npm run devns -- eval run --tier t1 --json exited with code 0.",
+          "coversAcceptanceCriteriaIds": ["AC-1"]
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "evidence_quality"
+  },
+  "expect": {
+    "decision": "allowed"
+  }
+}

@@ -115,6 +115,17 @@ function digestOutput(value: string) {
   return lines.slice(-8).join("\n");
 }
 
+function artifactRefsFromOutput(...values: string[]) {
+  const refs: string[] = [];
+  for (const value of values) {
+    for (const line of value.split("\n")) {
+      const match = /^\s*DEVNS_ARTIFACT[:=]\s*(.+?)\s*$/.exec(line);
+      if (match?.[1]) refs.push(match[1]);
+    }
+  }
+  return uniqueValues(refs);
+}
+
 function laneDecision(status: LaneResult["status"], lane: LaneDefinition, blocksCompletion: boolean): LaneResult["decision"] {
   if (blocksCompletion) return "block";
   if (status === "fail") return lane.required ? "needs_human_review" : "warn";
@@ -178,7 +189,7 @@ export async function runCommandLane(lane: LaneDefinition, cwd: string): Promise
           summary: `${lane.command} exited with code 0 in ${durationMs}ms.`
         }
       ],
-      artifacts: [],
+      artifacts: artifactRefsFromOutput(stdout, stderr),
       recommendedActions: [],
       blocksCompletion: false,
       required: lane.required ?? false,
@@ -220,7 +231,7 @@ export async function runCommandLane(lane: LaneDefinition, cwd: string): Promise
           summary: `${lane.command} exited with code ${execError.code ?? 1} in ${durationMs}ms.`
         }
       ],
-      artifacts: [],
+      artifacts: artifactRefsFromOutput(execError.stdout ?? "", execError.stderr ?? ""),
       recommendedActions: blocksCompletion
         ? [`Fix ${lane.id} command failure, rerun the lane, and update feature evidence.`]
         : [`Review ${lane.id} findings and decide whether legacy debt can be accepted for this feature.`],
