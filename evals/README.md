@@ -54,4 +54,6 @@ T1 and T2 cases are deterministic regression fixtures for the DEVNS control plan
 - `M14_project_browser_policy_config`: project config can drive browser artifact policy without per-eval arguments.
 - `M15_artifact_digest_review_surface`: browser artifact refs are converted into review-facing digests instead of staying refs-only.
 
+`M16_dashboard_artifact_preview` is a UI hardening step rather than a deterministic gate today: the dashboard renders those digests as compact cards and modal details. The next eval-worthy step is a screenshot/DOM semantic grader for dashboard artifact previews.
+
 This keeps the eval suite focused on the behaviors that make DEVNS trustworthy as an agent harness: intent provenance, scope control, independent review, and evidence that matches the acceptance criterion's verification type.

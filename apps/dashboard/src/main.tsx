@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   AlertTriangle,
+  Camera,
   CheckCircle2,
   ChevronDown,
   CircleDot,
@@ -18,7 +19,9 @@ import {
   Search,
   ShieldCheck,
   Sparkles,
+  Terminal,
   TestTube2,
+  Wifi,
   X
 } from "lucide-react";
 import {
@@ -30,6 +33,7 @@ import {
   SortingState,
   useReactTable
 } from "@tanstack/react-table";
+import { createPortal } from "react-dom";
 import "./styles.css";
 
 type Status = "ready" | "in_progress" | "done" | "blocked" | "failed";
@@ -186,6 +190,7 @@ type ReviewPacket = {
   reviewStatus?: "review_completed" | "review_packet_ready" | "missing";
   evidence: string[];
   artifactRefs?: string[];
+  artifactDigests?: ArtifactDigest[];
   acceptanceCoverage?: Array<{
     criterion: string;
     evidence: string[];
@@ -197,6 +202,26 @@ type ReviewPacket = {
   lessons: string[];
   risks?: string[];
   historyPath?: string;
+};
+
+type ArtifactDigest = {
+  artifactRef: string;
+  kind: "browser_smoke" | "file";
+  status: "ok" | "warn" | "missing";
+  summary: string;
+  bytes?: number;
+  browserSmoke?: {
+    exitCode?: number;
+    richArtifactCount: number;
+    screenshots: number;
+    traces: number;
+    consoleEntries: number;
+    consoleErrors: number;
+    networkRequests: number;
+    networkFailures: number;
+    sampleUrls: string[];
+    policyFindings: string[];
+  };
 };
 
 type MorningReviewReport = {
@@ -336,6 +361,27 @@ function toneForRfcStatus(status?: RfcStatus) {
   if (status === "blocked" || status === "needs_changes") return "bad";
   if (status === "needs_human_review") return "warn";
   return "info";
+}
+
+function toneForArtifactStatus(status?: ArtifactDigest["status"]) {
+  if (status === "ok") return "good";
+  if (status === "missing") return "bad";
+  if (status === "warn") return "warn";
+  return "neutral";
+}
+
+function artifactRefLabel(ref: string) {
+  const parts = ref.split("/");
+  return parts.length > 3 ? `${parts.at(-2)}/${parts.at(-1)}` : ref;
+}
+
+function artifactCount(packet: ReviewPacket) {
+  return packet.artifactDigests?.length || packet.artifactRefs?.length || 0;
+}
+
+function artifactCountLabel(packet: ReviewPacket) {
+  const count = artifactCount(packet);
+  return `${count} ${count === 1 ? "ref" : "refs"}`;
 }
 
 function StatCard({
@@ -882,6 +928,7 @@ function MorningReview({ report }: { report?: MorningReviewReport }) {
           </div>
           {packets.slice(0, 6).map((packet) => (
             <button className="review-packet" key={packet.featureId} type="button" onClick={() => setSelectedPacket(packet)}>
+              {packet.artifactDigests?.some((digest) => digest.status !== "ok") && <span className="packet-alert-dot" aria-label="Artifact warning" />}
               <div className="review-packet-head">
                 <div>
                   <span className="mono">{packet.featureId}</span>
@@ -898,7 +945,9 @@ function MorningReview({ report }: { report?: MorningReviewReport }) {
                 <span>+{packet.diff?.insertions ?? 0} / -{packet.diff?.deletions ?? 0}</span>
                 <span>{packet.reviewStatus?.replace("_", " ") ?? "review unknown"}</span>
                 <span>{packet.evidence.length} evidence</span>
+                <span>{artifactCount(packet)} artifacts</span>
               </div>
+              <ArtifactDigestStrip digests={packet.artifactDigests ?? []} />
               {[...packet.pitfalls, ...packet.errors, ...packet.lessons].slice(0, 2).map((item) => (
                 <p className="review-packet-note" key={item}>
                   {item}
@@ -942,7 +991,7 @@ function ReviewPacketDialog({
   const knowledge = [...(packet.decisions ?? []), ...(packet.lessons ?? []), ...(packet.fixes ?? [])];
   const coverage = packet.acceptanceCoverage ?? [];
 
-  return (
+  return createPortal(
     <div className="review-modal-backdrop" role="presentation" onMouseDown={onClose}>
       <div className="review-modal" role="dialog" aria-modal="true" aria-labelledby="review-modal-title" onMouseDown={(event) => event.stopPropagation()}>
         <div className="review-modal-header">
@@ -1008,8 +1057,11 @@ function ReviewPacketDialog({
               <ReviewList items={packet.evidence} empty="No evidence recorded." />
             </section>
             <section className="review-modal-section">
-              <h3>Artifacts</h3>
-              <ReviewList items={packet.artifactRefs ?? []} empty="No artifacts recorded." />
+              <div className="modal-section-head">
+                <h3>Artifacts</h3>
+                <span>{artifactCountLabel(packet)}</span>
+              </div>
+              <ArtifactDigestList digests={packet.artifactDigests ?? []} refs={packet.artifactRefs ?? []} />
             </section>
           </div>
         </div>
@@ -1036,6 +1088,82 @@ function ReviewPacketDialog({
           </section>
         </div>
       </div>
+    </div>,
+    document.body
+  );
+}
+
+function ArtifactDigestStrip({ digests }: { digests: ArtifactDigest[] }) {
+  const visible = digests.slice(0, 2);
+  if (!visible.length) return null;
+
+  return (
+    <div className="artifact-strip" aria-label="Artifact digest summary">
+      {visible.map((digest) => (
+        <div className={cx("artifact-strip-item", `artifact-${digest.status}`)} key={digest.artifactRef}>
+          <Pill tone={toneForArtifactStatus(digest.status)}>{digest.status}</Pill>
+          <span>{artifactRefLabel(digest.artifactRef)}</span>
+          {digest.browserSmoke && (
+            <strong>
+              {digest.browserSmoke.screenshots} shot · {digest.browserSmoke.networkFailures} net fail
+            </strong>
+          )}
+        </div>
+      ))}
+      {digests.length > visible.length && <span className="artifact-more">+{digests.length - visible.length}</span>}
+    </div>
+  );
+}
+
+function ArtifactDigestList({ digests, refs }: { digests: ArtifactDigest[]; refs: string[] }) {
+  if (!digests.length) {
+    return <ReviewList items={refs} empty="No artifacts recorded." />;
+  }
+
+  return (
+    <div className="artifact-digest-list">
+      {digests.map((digest) => (
+        <article className={cx("artifact-digest-card", `artifact-${digest.status}`)} key={digest.artifactRef}>
+          <div className="artifact-digest-head">
+            <span className="mono">{artifactRefLabel(digest.artifactRef)}</span>
+            <Pill tone={toneForArtifactStatus(digest.status)}>{digest.status}</Pill>
+          </div>
+          <p>{digest.summary}</p>
+          {digest.browserSmoke && <BrowserSmokeDigest digest={digest.browserSmoke} />}
+          {digest.bytes !== undefined && !digest.browserSmoke && <div className="artifact-bytes">{digest.bytes.toLocaleString()} bytes</div>}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function BrowserSmokeDigest({ digest }: { digest: NonNullable<ArtifactDigest["browserSmoke"]> }) {
+  return (
+    <>
+      <div className="artifact-metrics" aria-label="Browser smoke artifact metrics">
+        <ArtifactMetric icon={<Camera size={14} />} label="shots" value={digest.screenshots} />
+        <ArtifactMetric icon={<Terminal size={14} />} label="console" value={`${digest.consoleErrors}/${digest.consoleEntries}`} />
+        <ArtifactMetric icon={<Wifi size={14} />} label="network" value={`${digest.networkFailures}/${digest.networkRequests}`} />
+        <ArtifactMetric icon={<FileDiff size={14} />} label="traces" value={digest.traces} />
+      </div>
+      {digest.sampleUrls.length > 0 && (
+        <div className="artifact-url-list">
+          {digest.sampleUrls.slice(0, 3).map((url) => (
+            <code key={url}>{url}</code>
+          ))}
+        </div>
+      )}
+      {digest.policyFindings.length > 0 && <ReviewList items={digest.policyFindings} empty="No policy findings." />}
+    </>
+  );
+}
+
+function ArtifactMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string | number }) {
+  return (
+    <div className="artifact-metric">
+      {icon}
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }

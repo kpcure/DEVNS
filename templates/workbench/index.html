@@ -233,6 +233,12 @@
   .evidence-row:last-child { border-bottom: 0; }
   .kind { color: var(--ink-3); font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; }
   .ref { padding: 1px 5px; border-radius: 3px; background: var(--accent-soft); color: var(--accent-ink); font-family: var(--mono); font-size: 11.5px; }
+  .artifact-refs { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+  .artifact-refs code {
+    max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    padding: 2px 5px; border: 1px solid var(--line); border-radius: 4px;
+    background: var(--surface-sunk); color: var(--ink-3); font-family: var(--mono); font-size: 10.5px;
+  }
   .when { color: var(--ink-3); font-family: var(--mono); font-size: 10.5px; white-space: nowrap; }
   .files { border: 1px solid var(--line); border-radius: 6px; overflow: hidden; font-family: var(--mono); font-size: 12px; }
   .frow { display: grid; grid-template-columns: 58px 1fr; gap: 10px; padding: 7px 10px; border-bottom: 1px solid var(--line); }
@@ -399,7 +405,7 @@ const fallbackInventory = {
       context: [".devns/features.json"],
       acceptanceCriteria: ["Feature inventory renders in the workbench", "Human can scan RFC, evidence, risks, and stop-hook blockers"],
       verification: ["Open JSON manually", "Review selected feature"],
-      evidence: [{ type: "template", summary: "Static template loaded with fallback data." }],
+      evidence: [{ type: "template", summary: "Static template loaded with fallback data.", artifactRefs: [".devns/artifacts/browser-smoke/demo/run.json"] }],
       changedFiles: ["templates/workbench/index.html"],
       commit: "",
       reviewDecision: "pending",
@@ -531,13 +537,19 @@ function validationRows(items) {
 }
 function evidenceRows(feature) {
   if (!feature.evidence.length) return `<div class="empty">No evidence recorded yet.</div>`;
-  return feature.evidence.map(item => `
+  return feature.evidence.map(item => {
+    const artifacts = list(item.artifactRefs);
+    return `
     <div class="evidence-row">
       <div class="kind">${escapeHtml(item.type || item.kind || "evidence")}</div>
-      <div><span class="ref">${escapeHtml(item.url || item.ref || feature.id)}</span> ${escapeHtml(item.summary || item.body || "")}</div>
+      <div>
+        <span class="ref">${escapeHtml(item.url || item.ref || feature.id)}</span> ${escapeHtml(item.summary || item.body || "")}
+        ${artifacts.length ? `<div class="artifact-refs">${artifacts.map(ref => `<code>${escapeHtml(ref)}</code>`).join("")}</div>` : ""}
+      </div>
       <div class="when">now</div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 }
 function fileRows(feature) {
   if (!feature.changedFiles.length) return `<div class="empty">No changed files recorded.</div>`;

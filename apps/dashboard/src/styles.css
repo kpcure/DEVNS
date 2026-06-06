@@ -582,6 +582,7 @@ nav button:active {
 }
 
 .review-packet {
+  position: relative;
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -594,8 +595,19 @@ nav button:active {
   transition:
     border-color 140ms ease,
     background 140ms ease,
-    transform 140ms ease,
-    box-shadow 140ms ease;
+  transform 140ms ease,
+  box-shadow 140ms ease;
+}
+
+.packet-alert-dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--warn);
+  box-shadow: 0 0 0 4px var(--warn-soft);
 }
 
 .review-packet:hover,
@@ -632,6 +644,65 @@ nav button:active {
   margin-top: 10px;
   color: var(--accent);
   font-size: 12px;
+  font-weight: 720;
+}
+
+.artifact-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.artifact-strip-item {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+  padding: 4px 7px;
+  color: var(--body);
+  font-size: 12px;
+}
+
+.artifact-strip-item > span:not(.pill) {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifact-strip-item strong {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 680;
+  white-space: nowrap;
+}
+
+.artifact-strip-item.artifact-warn,
+.artifact-digest-card.artifact-warn {
+  border-color: rgba(255, 149, 0, 0.32);
+  background: var(--warn-soft);
+}
+
+.artifact-strip-item.artifact-missing,
+.artifact-digest-card.artifact-missing {
+  border-color: rgba(215, 0, 21, 0.24);
+  background: var(--bad-soft);
+}
+
+.artifact-more {
+  display: inline-grid;
+  min-width: 26px;
+  min-height: 26px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 11px;
   font-weight: 720;
 }
 
@@ -768,6 +839,89 @@ nav button:active {
 
 .review-list li {
   overflow-wrap: anywhere;
+}
+
+.artifact-digest-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 9px;
+}
+
+.artifact-digest-card {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.58);
+  padding: 9px;
+}
+
+.artifact-digest-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.artifact-digest-head .mono {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifact-digest-card p {
+  color: var(--body);
+  font-size: 12px;
+}
+
+.artifact-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.artifact-metric {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 0 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.artifact-metric svg {
+  color: var(--accent);
+}
+
+.artifact-metric strong {
+  color: var(--ink);
+  font-weight: 760;
+}
+
+.artifact-url-list {
+  display: grid;
+  gap: 5px;
+}
+
+.artifact-url-list code,
+.artifact-bytes {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.64);
+  color: var(--muted);
+  padding: 5px 6px;
+  font-family: "SFMono-Regular", ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .coverage-item strong {
