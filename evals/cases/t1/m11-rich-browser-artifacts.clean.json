@@ -1,0 +1,98 @@
+{
+  "id": "m11-rich-browser-artifacts.clean",
+  "tier": "t1",
+  "mode": "M11_artifact_content_quality",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "ARTIFACT-003",
+      "title": "Rich browser artifacts",
+      "description": "Browser evidence includes inspectable screenshots and structured logs.",
+      "status": "done",
+      "priority": "P0",
+      "milestone": "Artifact Quality",
+      "risk": "medium",
+      "acceptanceCriteria": ["The browser smoke artifact includes inspectable rich artifacts."],
+      "evidence": [
+        {
+          "type": "browser",
+          "summary": "Browser smoke captured screenshot, console, and network artifacts.",
+          "verificationType": "browser_smoke",
+          "coversAcceptanceCriteriaIds": ["AC-001"],
+          "artifactRefs": [".devns/artifacts/browser-smoke/ARTIFACT-003/run.json"]
+        }
+      ],
+      "rfc": {
+        "status": "approved",
+        "summary": "Verify rich browser artifacts.",
+        "background": "Reviewers need more than stdout/stderr for UI semantics.",
+        "featureDescription": "Record screenshots and structured browser logs.",
+        "expectedOutcome": "Reviewers can inspect rich browser artifacts.",
+        "goals": ["Rich artifact quality"],
+        "nonGoals": [],
+        "requirements": [
+          { "id": "REQ-001", "type": "explicit", "statement": "Browser evidence includes rich artifacts.", "priority": "must" }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-001",
+            "requirementIds": ["REQ-001"],
+            "statement": "The browser smoke artifact includes inspectable rich artifacts.",
+            "verificationType": "browser_smoke"
+          }
+        ],
+        "validationPlan": { "dynamic": ["artifact content quality"], "static": [] },
+        "testCases": [],
+        "humanDecision": { "status": "approved" }
+      }
+    },
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-003/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "artifactDir": ".devns/artifacts/browser-smoke/ARTIFACT-003",
+          "stdout": ".devns/artifacts/browser-smoke/ARTIFACT-003/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/ARTIFACT-003/stderr.log",
+          "artifacts": [
+            { "kind": "screenshot", "path": ".devns/artifacts/browser-smoke/ARTIFACT-003/screenshot.png" },
+            { "kind": "console", "path": ".devns/artifacts/browser-smoke/ARTIFACT-003/console.ndjson" },
+            { "kind": "network", "path": ".devns/artifacts/browser-smoke/ARTIFACT-003/network.ndjson" }
+          ]
+        }
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-003/stdout.log",
+        "content": "browser ok\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-003/stderr.log",
+        "content": ""
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-003/screenshot.png",
+        "encoding": "base64",
+        "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-003/console.ndjson",
+        "content": "{\"type\":\"log\",\"text\":\"ready\"}\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-003/network.ndjson",
+        "content": "{\"method\":\"GET\",\"url\":\"http://127.0.0.1/\"}\n"
+      }
+    ]
+  },
+  "action": {
+    "gate": "artifact_integrity",
+    "args": { "requireRichBrowserArtifacts": true }
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "Artifact integrity passed"
+  }
+}

@@ -1,8 +1,9 @@
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { evaluateCompletionGate } from "../packages/core/src/harness/completion-gate";
 import { evaluateEvidenceQuality } from "../packages/core/src/harness/evidence-quality";
+import { evaluateArtifactIntegrity } from "../packages/core/src/harness/artifact-integrity";
 import { runScopeGuard } from "../packages/core/src/harness/builtin-lanes";
 import { findingBlocksCompletion, type LaneFinding, type LaneResult } from "../packages/core/src/harness/lane-runner";
 import { auditOrchestratorTraces, type OrchestratorTraceRecord } from "../packages/core/src/harness/orchestrator-trace";
@@ -27,6 +28,7 @@ export type EvalCase = {
       | "candidate_provenance"
       | "scope_guard"
       | "evidence_quality"
+      | "artifact_integrity"
       | "review_lane_result"
       | "orchestrator_trace"
       | "state_atomic_write";
@@ -258,6 +260,35 @@ async function evaluateStateAtomicWrite(given: Record<string, unknown>) {
   }
 }
 
+async function evaluateArtifactIntegrityGate(given: Record<string, unknown>, args: Record<string, unknown> = {}) {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-eval-artifacts-"));
+  try {
+    for (const artifact of (given.artifacts ?? []) as Array<{ path: string; content: string | Record<string, unknown>; encoding?: "base64" }>) {
+      const artifactPath = path.join(cwd, artifact.path);
+      await mkdir(path.dirname(artifactPath), { recursive: true });
+      const content =
+        artifact.encoding === "base64" && typeof artifact.content === "string"
+          ? Buffer.from(artifact.content, "base64")
+          : typeof artifact.content === "string"
+            ? artifact.content
+            : `${JSON.stringify(artifact.content, null, 2)}\n`;
+      await writeFile(artifactPath, content);
+    }
+    const report = await evaluateArtifactIntegrity(cwd, given.feature as Feature, {
+      requireRichBrowserArtifacts: Boolean(args.requireRichBrowserArtifacts),
+      failOnConsoleError: Boolean(args.failOnConsoleError),
+      failOnNetworkError: Boolean(args.failOnNetworkError),
+      networkFailureStatus: typeof args.networkFailureStatus === "number" ? args.networkFailureStatus : undefined
+    });
+    return {
+      decision: report.decision === "block" ? ("blocked" as const) : ("allowed" as const),
+      reason: report.summary
+    };
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+}
+
 export async function runT1Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
   let result: { decision: EvalDecision; reason: string };
 
@@ -272,6 +303,8 @@ export async function runT1Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
     result = await evaluateScopeGuard(testCase.given);
   } else if (testCase.action.gate === "evidence_quality") {
     result = evaluateEvidenceQualityGate(testCase.given);
+  } else if (testCase.action.gate === "artifact_integrity") {
+    result = await evaluateArtifactIntegrityGate(testCase.given, testCase.action.args);
   } else if (testCase.action.gate === "orchestrator_trace") {
     result = evaluateOrchestratorTrace(testCase.given);
   } else if (testCase.action.gate === "state_atomic_write") {

@@ -14,4 +14,4 @@
 - Add richer browser smoke artifact display for screenshots, console logs, and network digests.
 - Expand project extension wiring for policies, agents, and lanes.
 - Add context-budget policy support for long stop-hook continuation loops.
-- Expand evals from T2 frozen review-result golden checks, M6 trace-quality checks, and M7 state-reliability checks into frozen review packets, adapter calibration, end-to-end trace continuity, and T3 seed repositories.
+- Expand evals from T2 frozen review-result golden checks, M6/M8 trace checks, M7 state-reliability checks, M9 artifact requirements, M10 artifact integrity, M11 rich artifact parseability, and M12 basic browser policy graders into frozen review packets, adapter calibration, worker/repair trace continuity, UI screenshot semantic graders, browser allowlist/budget policy, and T3 seed repositories.

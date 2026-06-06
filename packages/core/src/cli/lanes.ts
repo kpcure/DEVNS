@@ -2,6 +2,7 @@
 import { readFile } from "node:fs/promises";
 import { appendExecutionHistory, buildChangedFileEvidence, laneResultsToChecks } from "../harness/history";
 import { laneResultsToEvidence, runReviewLanes, type LaneResult } from "../harness/lane-runner";
+import { appendWorkflowTraceSafely } from "../harness/orchestrator-trace";
 import { patchFeature, readConfig, readInventory } from "../harness/state";
 import type { Feature } from "../harness/types";
 import laneResultSchema from "../../../../tools/schema/lane-result.schema.json";
@@ -69,6 +70,10 @@ function activeOrSelectedFeature(features: Feature[], featureId?: string) {
   return features.find((feature) => feature.status === "in_progress");
 }
 
+function isReviewLane(result: LaneResult, actor?: string) {
+  return result.type === "agent" || /review|code-review/i.test(result.lane) || /review/i.test(actor ?? "");
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   if (options.command !== "run" && options.command !== "ingest") {
@@ -125,7 +130,44 @@ async function main() {
       evidence: [...(feature.evidence ?? []), ...evidence],
       history: history.summary
     });
-    const payload = { featureId: feature.id, result: laneResult, evidence, history: history.summary, revision: result.revision };
+    const trace = await appendWorkflowTraceSafely(cwd, config, {
+      name: "devns.lanes.ingest",
+      featureId: feature.id,
+      featureTitle: feature.title,
+      events: [
+        {
+          name: "lane.result.ingested",
+          attributes: {
+            "devns.lane.id": laneResult.lane,
+            "devns.lane.type": laneResult.type,
+            "devns.lane.status": laneResult.status,
+            "devns.lane.decision": laneResult.decision,
+            "devns.lane.blocks_completion": laneResult.blocksCompletion,
+            "devns.artifacts.count": laneResult.artifacts.length
+          }
+        },
+        ...(isReviewLane(laneResult, options.actor)
+          ? [
+              {
+                name: "review.result",
+                attributes: {
+                  "devns.review.lane": laneResult.lane,
+                  "devns.review.decision": laneResult.decision,
+                  "devns.review.findings.count": laneResult.findings.length
+                }
+              }
+            ]
+          : [])
+      ],
+      attributes: {
+        "devns.command": "lanes.ingest",
+        "devns.lane.id": laneResult.lane,
+        "devns.lane.decision": laneResult.decision,
+        "devns.artifacts.count": laneResult.artifacts.length
+      },
+      reasons: laneResult.decision === "allow" ? [] : [laneResult.summary]
+    });
+    const payload = { featureId: feature.id, result: laneResult, evidence, history: history.summary, revision: result.revision, trace };
     if (options.output === "json") {
       writeJson(payload);
       return;
@@ -170,10 +212,47 @@ async function main() {
     });
   }
 
+  const trace =
+    options.write && feature
+      ? await appendWorkflowTraceSafely(cwd, config, {
+          name: "devns.lanes.run",
+          featureId: feature.id,
+          featureTitle: feature.title,
+          events: [
+            {
+              name: "lane.run",
+              attributes: {
+                "devns.lanes.count": summary.results.length,
+                "devns.lanes.blocking": summary.blocksCompletion,
+                "devns.lanes.artifacts.count": summary.results.reduce((count, result) => count + result.artifacts.length, 0)
+              }
+            },
+            ...(summary.results.some((result) => isReviewLane(result))
+              ? [
+                  {
+                    name: "review.result",
+                    attributes: {
+                      "devns.review.lanes.count": summary.results.filter((result) => isReviewLane(result)).length,
+                      "devns.review.blocking": summary.results.some((result) => isReviewLane(result) && result.blocksCompletion)
+                    }
+                  }
+                ]
+              : [])
+          ],
+          attributes: {
+            "devns.command": "lanes.run",
+            "devns.lanes.count": summary.results.length,
+            "devns.lanes.blocking": summary.blocksCompletion
+          },
+          reasons: summary.continuationReason ? [summary.continuationReason] : []
+        })
+      : undefined;
+
   const payload = {
     ...summary,
     featureId: feature?.id,
-    history: historySummary
+    history: historySummary,
+    trace
   };
 
   if (options.output === "json") {

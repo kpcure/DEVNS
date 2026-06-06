@@ -1,0 +1,63 @@
+{
+  "id": "m9-traceable-semantic-evidence.clean",
+  "tier": "t1",
+  "mode": "M9_artifact_requirements",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "ART-001",
+      "title": "Traceable semantic evidence",
+      "description": "Browser semantic evidence must be backed by artifacts.",
+      "status": "in_progress",
+      "priority": "P0",
+      "milestone": "Artifact Requirements",
+      "risk": "medium",
+      "acceptanceCriteria": ["The dashboard exposes the reviewed workflow labels."],
+      "rfc": {
+        "status": "approved",
+        "summary": "Verify user-visible workflow labels.",
+        "background": "Semantic product evidence needs traceable artifacts.",
+        "featureDescription": "Show reviewed labels on the dashboard.",
+        "expectedOutcome": "The user can inspect the evidence behind the browser check.",
+        "goals": ["Trace semantic evidence"],
+        "nonGoals": [],
+        "requirements": [
+          { "id": "REQ-001", "type": "explicit", "statement": "Dashboard labels are visible and reviewable.", "priority": "must" }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-001",
+            "requirementIds": ["REQ-001"],
+            "statement": "The dashboard exposes the reviewed workflow labels.",
+            "verificationType": "browser_smoke"
+          }
+        ],
+        "validationPlan": { "dynamic": ["browser smoke"], "static": [] },
+        "testCases": [
+          {
+            "id": "TC-001",
+            "acceptanceCriteriaIds": ["AC-001"],
+            "type": "e2e",
+            "scenario": "Open dashboard",
+            "expected": "Reviewed labels are visible"
+          }
+        ],
+        "humanDecision": { "status": "approved" }
+      },
+      "evidence": [
+        {
+          "type": "browser",
+          "summary": "Browser smoke observed the reviewed workflow labels.",
+          "verificationType": "browser_smoke",
+          "coversAcceptanceCriteriaIds": ["AC-001"],
+          "artifactRefs": [".devns/artifacts/browser-smoke/ART-001/run.json"]
+        }
+      ]
+    }
+  },
+  "action": { "gate": "evidence_quality" },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "Evidence quality passed"
+  }
+}

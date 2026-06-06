@@ -43,6 +43,11 @@ OpenAI 的 agent eval 指南把 trace、grader、dataset、eval run 作为 agent
 - `orchestrator_trace` 进入 T1 eval runner，并新增 `M6_trace_quality` cases，覆盖正常 claim trace、prompt 泄漏 trap、缺失 claim event trap。
 - 状态写入使用加固后的 atomic JSON writer：随机临时文件、fsync、rename、异常清理，并新增 `M7_state_reliability` eval 覆盖 round-trip 和 temp leakage。
 - `devns init` 安装 `.devns/adapters/browser-smoke.sh`，`templates/devns/lanes/browser-smoke.json` 可包装项目自己的 Playwright/Cypress/browser 命令并产出 artifact refs。
+- `devns lanes run --write`、`devns lanes ingest` 和 `devns complete` 现在会向同一个 `.devns/traces/orchestrator.jsonl` 追加 lane/review/completion span；`M8_trace_continuity` 检查完成态 feature 是否具备 handoff、lane/review evidence 和 completion 的连续 trace。
+- `evidence_quality` 现在要求用于覆盖验收项的 browser/human/review 语义 evidence 带 `artifactRefs` 或 `url`；`M9_artifact_requirements` 覆盖可追溯语义证据 clean case 和无 artifact 自报 trap。
+- 新增 `artifact_integrity` 检查：本地 evidence artifact refs 必须存在，browser-smoke `run.json` 必须是可识别 manifest 并指向存在的 stdout/stderr；`M10_artifact_integrity` 覆盖 manifest clean 和缺失 log trap。
+- Browser-smoke adapter 现在会向被包装命令暴露 artifact 目录，并自动把截图、trace、`console.ndjson`、`network.ndjson` 等 rich artifacts 写入 manifest；`M11_artifact_content_quality` 检查 rich artifacts 存在、图片格式基本可信、console/network JSON/JSONL 可解析。
+- `artifact_integrity` 新增可选严格策略：`failOnConsoleError` 会阻断 console error，`failOnNetworkError` 会阻断 failed/error 标记或默认 500+ 状态码；`M12_browser_policy_quality` 覆盖健康 browser artifact、console error trap、network 5xx trap。
 
 ### 3. Evidence Must Match Verification Type
 
@@ -51,6 +56,7 @@ DEVNS 的核心风险不是“没有跑命令”，而是 evidence 看起来很�
 - AC 声明 `verificationType`。
 - evidence 声明 `verificationType` 和覆盖关系。
 - 显式覆盖也必须通过类型兼容检查。
+- 语义 evidence 必须能追溯到 review packet、browser-smoke artifact、截图、日志或外部 review URL。
 - command/build 不能冒充 browser/human/review 语义证据。
 - review-agent evidence 是独立语义 evidence，不应被当作普通自报文本。
 
@@ -79,16 +85,16 @@ DEVNS 的核心风险不是“没有跑命令”，而是 evidence 看起来很�
 
 1. T2 已接入 frozen review-result golden，但还没有把 frozen review packet + model adapter 的完整 prompt 校准纳入 runner。
 2. T3 seed repository 还没有 pass^k、成本、耗时和失败分类。
-3. Browser smoke lane 已有通用 adapter/template、smoke 覆盖和 dashboard/morning review artifact refs 展示，但截图、console、network digest 还没有形成统一 artifact 约定。
-4. Orchestrator 已有本地 trace-like execution record，但 worker result、lane run、repair loop、complete 还没有统一进入同一 trace。
-5. Eval schema 已支持 finding expectations 和 score thresholds，但还不能表达 artifact requirements 和 trace continuity。
+3. Browser smoke lane 已有通用 adapter/template、smoke 覆盖、dashboard/morning review artifact refs 展示、rich artifact manifest 和基础 console/network policy grader；截图语义断言、network allowlist/budget 和 dashboard 富预览还没有形成统一约定。
+4. Orchestrator trace 已覆盖 handoff、lane run、review ingest、complete 的连续性；worker result 和 repair loop 还没有进入同一 trace。
+5. Eval schema 和 T1 cases 已能表达 trace continuity、semantic artifact requirements、browser-smoke manifest integrity、基础 rich artifact parseability 和 console/network policy trap，但还没有 UI 截图语义断言、console error budget、network allowlist 这类更细的内容级 grader。
 6. CI 目前能跑 T1/T2，但没有 nightly/release 级别的 T3。
 
 ## 建议顺序
 
 1. 完成 T1 控制面 eval 覆盖：domain drift、scope、review independence、evidence quality、review finding grounding。
 2. 扩展 T2 frozen review packets：用固定 diff 注入 correctness/security/test/scope bug，要求 review agent 返回结构化 findings，再用 `review_lane_result` golden grader 校验。
-3. 扩展 local trace record：当前已记录 orchestrate claim/handoff/review-routing，下一步把 worker result、lane run、review result、repair loop、complete 串成同一 workflow trace。
-4. 扩展 browser smoke artifact 体验：当前 adapter 已产出 run/stdout/stderr artifact refs，并已在 morning review/dashboard 展示 refs；下一步补截图/console/network 约定和富展示。
+3. 扩展 local trace record：当前已记录 orchestrate claim/handoff/review-routing、lane run、review result、complete；下一步把 worker result 和 repair loop 串进同一 workflow trace。
+4. 扩展 browser smoke artifact 体验：当前 adapter 已产出 run/stdout/stderr 和可选截图/trace/console/network artifact refs，并已在 evidence-quality、artifact-integrity、morning review/dashboard 中使用 refs；下一步补 UI 截图语义断言、console error budget、network allowlist 和 dashboard 富展示。
 5. 增加 T3 seed repos：小型 CLI、React/Vite、Next、Python package，按 pass^k 和成本统计。
 6. 将 eval report 接入 dashboard/morning review，让人看到 harness 质量趋势，而不只是当前 feature 状态。

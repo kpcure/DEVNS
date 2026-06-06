@@ -1,0 +1,90 @@
+{
+  "id": "m12-network-5xx.trap",
+  "tier": "t1",
+  "mode": "M12_browser_policy_quality",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "ARTIFACT-007",
+      "title": "Network failure browser artifact",
+      "description": "Browser evidence points at a network artifact with a failed request.",
+      "status": "done",
+      "priority": "P0",
+      "milestone": "Artifact Quality",
+      "risk": "medium",
+      "acceptanceCriteria": ["The browser smoke artifact has no failed requests."],
+      "evidence": [
+        {
+          "type": "browser",
+          "summary": "Browser smoke captured network artifacts.",
+          "verificationType": "browser_smoke",
+          "coversAcceptanceCriteriaIds": ["AC-001"],
+          "artifactRefs": [".devns/artifacts/browser-smoke/ARTIFACT-007/run.json"]
+        }
+      ],
+      "rfc": {
+        "status": "approved",
+        "summary": "Reject failed requests.",
+        "background": "A browser run with 5xx network responses should not be accepted as healthy.",
+        "featureDescription": "Block browser smoke artifacts containing failed requests.",
+        "expectedOutcome": "Network failure artifacts block completion.",
+        "goals": ["Browser artifact policy"],
+        "nonGoals": [],
+        "requirements": [
+          { "id": "REQ-001", "type": "explicit", "statement": "Network failures must fail browser artifact policy.", "priority": "must" }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-001",
+            "requirementIds": ["REQ-001"],
+            "statement": "The browser smoke artifact has no failed requests.",
+            "verificationType": "browser_smoke"
+          }
+        ],
+        "validationPlan": { "dynamic": ["browser artifact policy"], "static": [] },
+        "testCases": [],
+        "humanDecision": { "status": "approved" }
+      }
+    },
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-007/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "artifactDir": ".devns/artifacts/browser-smoke/ARTIFACT-007",
+          "stdout": ".devns/artifacts/browser-smoke/ARTIFACT-007/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/ARTIFACT-007/stderr.log",
+          "artifacts": [
+            { "kind": "network", "path": ".devns/artifacts/browser-smoke/ARTIFACT-007/network.ndjson" }
+          ]
+        }
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-007/stdout.log",
+        "content": "browser ok\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-007/stderr.log",
+        "content": ""
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-007/network.ndjson",
+        "content": "{\"method\":\"GET\",\"url\":\"http://127.0.0.1/api\",\"status\":500}\n"
+      }
+    ]
+  },
+  "action": {
+    "gate": "artifact_integrity",
+    "args": {
+      "requireRichBrowserArtifacts": true,
+      "failOnNetworkError": true
+    }
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "contains failed request"
+  }
+}

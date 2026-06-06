@@ -42,6 +42,14 @@ function evidenceLooksBrowser(evidence: Evidence) {
   return /browser|e2e|playwright|selenium|visual/i.test(evidence.type) || evidence.verificationType === "browser_smoke";
 }
 
+function evidenceHasArtifactRef(evidence: Evidence) {
+  return Boolean(evidence.url || evidence.artifactRefs?.length);
+}
+
+function criterionNeedsTraceableSemanticEvidence(criterion: { verificationType: VerificationType }) {
+  return ["browser_smoke", "human_review", "review_agent"].includes(criterion.verificationType);
+}
+
 function criterionLooksProductSemantic(value: string) {
   return /user|screen|page|dashboard|ui|ux|label|semantic|workflow|workbench|visible|display|show|journey|interaction|业务|语义|首屏|看板|页面|用户|展示|交互|流程/i.test(value);
 }
@@ -168,6 +176,22 @@ export function evaluateEvidenceQuality(feature: Feature): EvidenceQualityReport
     };
   });
 
+  const traceabilityGaps = coverage.flatMap((criterionCoverage) =>
+    criterionNeedsTraceableSemanticEvidence(criterionCoverage)
+      ? criterionCoverage.evidence
+          .filter((item) => (evidenceLooksBrowser(item) || evidenceLooksReview(item) || evidenceLooksManual(item)) && !evidenceHasArtifactRef(item))
+          .map((item) => ({ criterion: criterionCoverage, evidence: item }))
+      : []
+  );
+  if (traceabilityGaps.length) {
+    const uniqueEvidence = new Set(traceabilityGaps.map((item) => `${item.evidence.type}\n${item.evidence.summary}`));
+    findings.push({
+      severity: "warning",
+      message: `${uniqueEvidence.size} semantic evidence item(s) lack artifactRefs or url.`,
+      suggestedFix: "Attach review packets, browser-smoke artifacts, screenshots, logs, or an external review URL to semantic evidence."
+    });
+  }
+
   const incompatibleClaims = criteria.flatMap((criterion) =>
     evidence
       .filter((item) => evidenceDirectlyCovers(item, criterion) && !evidenceKindMatches(item, criterion))
@@ -195,7 +219,7 @@ export function evaluateEvidenceQuality(feature: Feature): EvidenceQualityReport
   const uncoveredReview = uncovered.some((item) => item.requiresHumanReview);
   const decision: EvidenceQualityDecision = hasError
     ? "block"
-    : uncoveredReview || (manual.length === evidence.length && evidence.length)
+    : uncoveredReview || traceabilityGaps.length || (manual.length === evidence.length && evidence.length)
       ? "needs_human_review"
       : hasWarning
         ? "warn"

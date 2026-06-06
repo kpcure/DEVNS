@@ -1,0 +1,96 @@
+{
+  "id": "m12-browser-policy-clean.clean",
+  "tier": "t1",
+  "mode": "M12_browser_policy_quality",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "ARTIFACT-005",
+      "title": "Healthy browser policy artifacts",
+      "description": "Browser evidence includes structured console and network artifacts with no policy violations.",
+      "status": "done",
+      "priority": "P0",
+      "milestone": "Artifact Quality",
+      "risk": "medium",
+      "acceptanceCriteria": ["The browser smoke artifact has no console errors or failed requests."],
+      "evidence": [
+        {
+          "type": "browser",
+          "summary": "Browser smoke captured healthy console and network artifacts.",
+          "verificationType": "browser_smoke",
+          "coversAcceptanceCriteriaIds": ["AC-001"],
+          "artifactRefs": [".devns/artifacts/browser-smoke/ARTIFACT-005/run.json"]
+        }
+      ],
+      "rfc": {
+        "status": "approved",
+        "summary": "Verify browser policy artifacts.",
+        "background": "Reviewers need browser artifacts to be both parseable and healthy.",
+        "featureDescription": "Reject browser smoke runs with console errors or failed requests.",
+        "expectedOutcome": "Healthy browser artifacts pass strict policy.",
+        "goals": ["Browser artifact policy"],
+        "nonGoals": [],
+        "requirements": [
+          { "id": "REQ-001", "type": "explicit", "statement": "Browser smoke artifacts must expose console and network health.", "priority": "must" }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-001",
+            "requirementIds": ["REQ-001"],
+            "statement": "Browser smoke artifacts have no console errors or failed requests.",
+            "verificationType": "browser_smoke"
+          }
+        ],
+        "validationPlan": { "dynamic": ["browser artifact policy"], "static": [] },
+        "testCases": [],
+        "humanDecision": { "status": "approved" }
+      }
+    },
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-005/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "artifactDir": ".devns/artifacts/browser-smoke/ARTIFACT-005",
+          "stdout": ".devns/artifacts/browser-smoke/ARTIFACT-005/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/ARTIFACT-005/stderr.log",
+          "artifacts": [
+            { "kind": "console", "path": ".devns/artifacts/browser-smoke/ARTIFACT-005/console.ndjson" },
+            { "kind": "network", "path": ".devns/artifacts/browser-smoke/ARTIFACT-005/network.ndjson" }
+          ]
+        }
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-005/stdout.log",
+        "content": "browser ok\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-005/stderr.log",
+        "content": ""
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-005/console.ndjson",
+        "content": "{\"type\":\"log\",\"text\":\"ready\"}\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-005/network.ndjson",
+        "content": "{\"method\":\"GET\",\"url\":\"http://127.0.0.1/\",\"status\":200}\n"
+      }
+    ]
+  },
+  "action": {
+    "gate": "artifact_integrity",
+    "args": {
+      "requireRichBrowserArtifacts": true,
+      "failOnConsoleError": true,
+      "failOnNetworkError": true
+    }
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "Artifact integrity passed"
+  }
+}

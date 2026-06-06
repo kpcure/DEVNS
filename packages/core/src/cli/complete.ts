@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 import { evaluateCompletionGate } from "../harness/completion-gate";
 import { appendExecutionHistory, buildChangedFileEvidence } from "../harness/history";
 import { evaluateEvidenceQuality } from "../harness/evidence-quality";
+import { appendWorkflowTraceSafely } from "../harness/orchestrator-trace";
 import { patchFeature, readConfig, readInventory } from "../harness/state";
 import type { Evidence, Feature, FeaturePatch, ReviewDecision } from "../harness/types";
 
@@ -187,13 +188,44 @@ async function main() {
   }
 
   const result = await patchFeature(cwd, config, feature.id, patch);
+  const trace = await appendWorkflowTraceSafely(cwd, config, {
+    name: "devns.complete",
+    featureId: feature.id,
+    featureTitle: feature.title,
+    events: [
+      {
+        name: "review.decision",
+        attributes: {
+          "devns.review.decision": options.review,
+          "devns.completion.force": options.force
+        }
+      },
+      {
+        name: "feature.completed",
+        attributes: {
+          "devns.commit.implementation": implementationCommit,
+          "devns.changed_files.count": changedFiles.length,
+          "devns.implementation_files.count": implementationFiles.length,
+          "devns.state_files.count": stateFiles.length
+        }
+      }
+    ],
+    attributes: {
+      "devns.command": "complete",
+      "devns.review.decision": options.review,
+      "devns.completion.force": options.force,
+      "devns.changed_files.count": changedFiles.length
+    },
+    reasons: options.force && options.reason ? [options.reason] : []
+  });
 
   const payload = {
     feature: result.feature,
     implementationCommit,
     metadataCommit: options.metadataCommit,
     changedFiles,
-    history: history.summary
+    history: history.summary,
+    trace
   };
 
   if (options.output === "json") {

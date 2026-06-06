@@ -1,0 +1,79 @@
+{
+  "id": "m10-browser-artifact-manifest.clean",
+  "tier": "t1",
+  "mode": "M10_artifact_integrity",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "ARTIFACT-001",
+      "title": "Browser artifact manifest",
+      "description": "Browser evidence has a valid manifest and logs.",
+      "status": "done",
+      "priority": "P0",
+      "milestone": "Artifact Integrity",
+      "risk": "medium",
+      "acceptanceCriteria": ["The browser smoke artifact is inspectable."],
+      "evidence": [
+        {
+          "type": "browser",
+          "summary": "Browser smoke passed with a traceable manifest.",
+          "verificationType": "browser_smoke",
+          "coversAcceptanceCriteriaIds": ["AC-001"],
+          "artifactRefs": [".devns/artifacts/browser-smoke/ARTIFACT-001/run.json"]
+        }
+      ],
+      "rfc": {
+        "status": "approved",
+        "summary": "Verify browser artifact integrity.",
+        "background": "Fake artifact refs undermine semantic evidence.",
+        "featureDescription": "Record browser artifacts with a stable manifest.",
+        "expectedOutcome": "Reviewers can inspect the manifest and logs.",
+        "goals": ["Artifact integrity"],
+        "nonGoals": [],
+        "requirements": [
+          { "id": "REQ-001", "type": "explicit", "statement": "Browser evidence uses a traceable manifest.", "priority": "must" }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-001",
+            "requirementIds": ["REQ-001"],
+            "statement": "The browser smoke artifact is inspectable.",
+            "verificationType": "browser_smoke"
+          }
+        ],
+        "validationPlan": { "dynamic": ["artifact integrity"], "static": [] },
+        "testCases": [],
+        "humanDecision": { "status": "approved" }
+      }
+    },
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-001/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "startedAt": "2026-06-06T00:00:00Z",
+          "completedAt": "2026-06-06T00:00:01Z",
+          "artifactDir": ".devns/artifacts/browser-smoke/ARTIFACT-001",
+          "stdout": ".devns/artifacts/browser-smoke/ARTIFACT-001/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/ARTIFACT-001/stderr.log"
+        }
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-001/stdout.log",
+        "content": "browser ok\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-001/stderr.log",
+        "content": ""
+      }
+    ]
+  },
+  "action": { "gate": "artifact_integrity" },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "Artifact integrity passed"
+  }
+}

@@ -16,6 +16,8 @@ STDERR_FILE="$ABS_OUT_DIR/stderr.log"
 REPORT_FILE="$ABS_OUT_DIR/run.json"
 
 mkdir -p "$ABS_OUT_DIR"
+export DEVNS_BROWSER_SMOKE_ARTIFACT_DIR="$OUT_DIR"
+export DEVNS_BROWSER_SMOKE_ARTIFACT_ABS_DIR="$ABS_OUT_DIR"
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 set +e
 (
@@ -26,9 +28,40 @@ EXIT_CODE=$?
 set -e
 COMPLETED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-node - "$REPORT_FILE" "$COMMAND" "$EXIT_CODE" "$STARTED_AT" "$COMPLETED_AT" "$OUT_DIR" <<'NODE'
+node - "$REPORT_FILE" "$COMMAND" "$EXIT_CODE" "$STARTED_AT" "$COMPLETED_AT" "$OUT_DIR" "$ABS_OUT_DIR" <<'NODE'
 const fs = require("node:fs");
-const [reportFile, command, exitCode, startedAt, completedAt, outDir] = process.argv.slice(2);
+const path = require("node:path");
+const [reportFile, command, exitCode, startedAt, completedAt, outDir, absOutDir] = process.argv.slice(2);
+const excluded = new Set(["run.json", "stdout.log", "stderr.log"]);
+
+function walk(dir, prefix = "") {
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  return entries.flatMap((entry) => {
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const absolute = path.join(dir, entry.name);
+    if (entry.isDirectory()) return walk(absolute, relative);
+    if (!entry.isFile() || excluded.has(relative)) return [];
+    return [{ relative, absolute }];
+  });
+}
+
+function kindFor(file) {
+  const lower = file.toLowerCase();
+  if (/\.(png|jpe?g|webp)$/.test(lower)) return "screenshot";
+  if (/trace.*\.zip$/.test(lower) || /\.trace\.zip$/.test(lower)) return "trace";
+  if (/console.*\.(ndjson|jsonl|json)$/.test(lower)) return "console";
+  if (/(network|requests?|har).*\.(ndjson|jsonl|json|har)$/.test(lower)) return "network";
+  if (/\.(webm|mp4|mov)$/.test(lower)) return "video";
+  if (/\.log$/.test(lower)) return "log";
+  return "other";
+}
+
+const artifacts = walk(absOutDir).map((item) => ({
+  kind: kindFor(item.relative),
+  path: `${outDir}/${item.relative}`,
+  bytes: fs.statSync(item.absolute).size
+}));
+
 const report = {
   schemaVersion: 1,
   type: "browser_smoke",
@@ -38,9 +71,13 @@ const report = {
   completedAt,
   artifactDir: outDir,
   stdout: `${outDir}/stdout.log`,
-  stderr: `${outDir}/stderr.log`
+  stderr: `${outDir}/stderr.log`,
+  artifacts
 };
 fs.writeFileSync(reportFile, `${JSON.stringify(report, null, 2)}\n`);
+for (const artifact of artifacts) {
+  console.log(`DEVNS_ARTIFACT=${artifact.path}`);
+}
 NODE
 
 echo "DEVNS_ARTIFACT=$OUT_DIR/run.json"

@@ -45,5 +45,10 @@ T1 and T2 cases are deterministic regression fixtures for the DEVNS control plan
 - `M5_review_result_quality`: grounded block/allow review outputs and traps for rubber-stamp allow or ungrounded block outputs.
 - `M6_trace_quality`: orchestrator trace structure, claim-event integrity, and prompt/diff/transcript leakage traps.
 - `M7_state_reliability`: atomic state write round-trip and temporary state file leakage traps.
+- `M8_trace_continuity`: completed feature traces must include handoff, lane/review evidence, and completion in order.
+- `M9_artifact_requirements`: semantic browser/human/review evidence must include artifact refs or URLs.
+- `M10_artifact_integrity`: browser-smoke artifact refs must resolve to a valid manifest and log files.
+- `M11_artifact_content_quality`: rich browser artifacts such as screenshots and structured console/network logs must be parseable.
+- `M12_browser_policy_quality`: optional strict browser policies block console errors and failed network requests.
 
 This keeps the eval suite focused on the behaviors that make DEVNS trustworthy as an agent harness: intent provenance, scope control, independent review, and evidence that matches the acceptance criterion's verification type.

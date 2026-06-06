@@ -1,0 +1,67 @@
+{
+  "id": "m8-workflow-trace-missing-lane.trap",
+  "tier": "t1",
+  "mode": "M8_trace_continuity",
+  "generality_level": "general",
+  "given": {
+    "records": [
+      {
+        "schemaVersion": 1,
+        "traceId": "trace-trap-1",
+        "spanId": "span-orchestrate",
+        "name": "devns.orchestrate",
+        "kind": "agent.workflow",
+        "startedAt": "2026-06-06T00:00:00.000Z",
+        "completedAt": "2026-06-06T00:00:01.000Z",
+        "host": "codex",
+        "mode": "claim_next",
+        "featureId": "TRACE-002",
+        "featureTitle": "Trace missing lane",
+        "claimed": true,
+        "stopHookRole": "safety_net_only",
+        "reasons": [],
+        "subagents": {
+          "implementation": "devns_feature_worker",
+          "review": "devns_code_reviewer"
+        },
+        "events": [
+          { "name": "queue.inspect", "at": "2026-06-06T00:00:00.000Z" },
+          { "name": "feature.selected", "at": "2026-06-06T00:00:00.100Z" },
+          { "name": "feature.claimed", "at": "2026-06-06T00:00:00.200Z" },
+          { "name": "handoff.prepared", "at": "2026-06-06T00:00:00.300Z" }
+        ],
+        "attributes": {
+          "devns.host": "codex",
+          "devns.mode": "claim_next",
+          "devns.claimed": true,
+          "devns.feature.id": "TRACE-002",
+          "devns.stop_hook.role": "safety_net_only"
+        },
+        "nextSteps": ["Launch implementation subagent."]
+      },
+      {
+        "schemaVersion": 1,
+        "traceId": "trace-trap-2",
+        "spanId": "span-complete",
+        "name": "devns.complete",
+        "kind": "tool.command",
+        "startedAt": "2026-06-06T00:00:04.000Z",
+        "completedAt": "2026-06-06T00:00:05.000Z",
+        "featureId": "TRACE-002",
+        "events": [
+          { "name": "review.decision", "at": "2026-06-06T00:00:04.100Z" },
+          { "name": "feature.completed", "at": "2026-06-06T00:00:04.200Z" }
+        ],
+        "attributes": {
+          "devns.feature.id": "TRACE-002",
+          "devns.review.decision": "approved"
+        }
+      }
+    ]
+  },
+  "action": { "gate": "orchestrator_trace" },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "lane.run or lane.result.ingested"
+  }
+}

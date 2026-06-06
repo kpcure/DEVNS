@@ -62,11 +62,25 @@ const browserCovered = evaluateEvidenceQuality(
       type: "browser",
       summary: "Observed the feature-specific workflow labels.",
       coversAcceptanceCriteriaIds: ["AC-001"],
-      verificationType: "browser_smoke"
+      verificationType: "browser_smoke",
+      artifactRefs: [".devns/artifacts/browser-smoke/smoke/run.json"]
     }
   ])
 );
 assert.equal(browserCovered.decision, "allow");
 assert.equal(browserCovered.coverage[0]?.covered, true);
+
+const browserWithoutArtifact = evaluateEvidenceQuality(
+  feature([
+    {
+      type: "browser",
+      summary: "Observed the feature-specific workflow labels without an artifact.",
+      coversAcceptanceCriteriaIds: ["AC-001"],
+      verificationType: "browser_smoke"
+    }
+  ])
+);
+assert.equal(browserWithoutArtifact.decision, "needs_human_review");
+assert.match(browserWithoutArtifact.summary, /lack artifactRefs or url/);
 
 process.stdout.write("Evidence quality smoke passed.\n");

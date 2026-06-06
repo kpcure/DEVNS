@@ -5,6 +5,7 @@ import candidatesSchema from "../../../../tools/schema/candidates.schema.json";
 import rfcSchema from "../../../../tools/schema/rfc.schema.json";
 import laneResultSchema from "../../../../tools/schema/lane-result.schema.json";
 import { evaluateClaudeStopHook } from "./claude-stop";
+import { evaluateArtifactIntegrity } from "./artifact-integrity";
 import { defaultConfig } from "./config";
 import { historyPathForFeature, readExecutionHistoryRecords } from "./history";
 import { readLatestMorningReview } from "./morning-review";
@@ -271,6 +272,17 @@ async function validateState(cwd: string, config: DevnsConfig, inventory: Featur
         missing
       );
     }
+
+    const artifactIntegrity = await evaluateArtifactIntegrity(cwd, feature);
+    check(
+      checks,
+      "state",
+      `state.evidence_artifacts.${feature.id}`,
+      artifactIntegrity.decision === "block" ? (strict ? "fail" : "warn") : artifactIntegrity.decision === "allow" ? "pass" : "warn",
+      artifactIntegrity.summary,
+      artifactIntegrity.findings.map((finding) => finding.message),
+      "Regenerate missing artifacts, attach a review/browser artifact, or remove stale artifact refs from evidence."
+    );
   }
 
   try {

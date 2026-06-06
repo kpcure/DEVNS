@@ -21,6 +21,7 @@
             "candidate_provenance",
             "scope_guard",
             "evidence_quality",
+            "artifact_integrity",
             "review_lane_result",
             "orchestrator_trace",
             "state_atomic_write"

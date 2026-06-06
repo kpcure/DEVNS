@@ -1,0 +1,90 @@
+{
+  "id": "m12-console-error.trap",
+  "tier": "t1",
+  "mode": "M12_browser_policy_quality",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "ARTIFACT-006",
+      "title": "Console error browser artifact",
+      "description": "Browser evidence points at a console artifact with an error event.",
+      "status": "done",
+      "priority": "P0",
+      "milestone": "Artifact Quality",
+      "risk": "medium",
+      "acceptanceCriteria": ["The browser smoke artifact has no console errors."],
+      "evidence": [
+        {
+          "type": "browser",
+          "summary": "Browser smoke captured console artifacts.",
+          "verificationType": "browser_smoke",
+          "coversAcceptanceCriteriaIds": ["AC-001"],
+          "artifactRefs": [".devns/artifacts/browser-smoke/ARTIFACT-006/run.json"]
+        }
+      ],
+      "rfc": {
+        "status": "approved",
+        "summary": "Reject console errors.",
+        "background": "A browser run with console errors should not be accepted as healthy.",
+        "featureDescription": "Block browser smoke artifacts containing console errors.",
+        "expectedOutcome": "Console error artifacts block completion.",
+        "goals": ["Browser artifact policy"],
+        "nonGoals": [],
+        "requirements": [
+          { "id": "REQ-001", "type": "explicit", "statement": "Console errors must fail browser artifact policy.", "priority": "must" }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-001",
+            "requirementIds": ["REQ-001"],
+            "statement": "The browser smoke artifact has no console errors.",
+            "verificationType": "browser_smoke"
+          }
+        ],
+        "validationPlan": { "dynamic": ["browser artifact policy"], "static": [] },
+        "testCases": [],
+        "humanDecision": { "status": "approved" }
+      }
+    },
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-006/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "artifactDir": ".devns/artifacts/browser-smoke/ARTIFACT-006",
+          "stdout": ".devns/artifacts/browser-smoke/ARTIFACT-006/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/ARTIFACT-006/stderr.log",
+          "artifacts": [
+            { "kind": "console", "path": ".devns/artifacts/browser-smoke/ARTIFACT-006/console.ndjson" }
+          ]
+        }
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-006/stdout.log",
+        "content": "browser ok\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-006/stderr.log",
+        "content": ""
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-006/console.ndjson",
+        "content": "{\"type\":\"error\",\"text\":\"Uncaught Error: boom\"}\n"
+      }
+    ]
+  },
+  "action": {
+    "gate": "artifact_integrity",
+    "args": {
+      "requireRichBrowserArtifacts": true,
+      "failOnConsoleError": true
+    }
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "contains console error"
+  }
+}

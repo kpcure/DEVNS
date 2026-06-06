@@ -36,9 +36,10 @@ function parseArgs(argv: string[]): Options {
 function textLine(record: Awaited<ReturnType<typeof readOrchestratorTraces>>[number]) {
   const parts = [
     record.completedAt,
-    record.host,
-    record.mode,
-    record.claimed ? "claimed" : undefined,
+    record.name,
+    "host" in record ? record.host : undefined,
+    "mode" in record ? record.mode : undefined,
+    "claimed" in record && record.claimed ? "claimed" : undefined,
     record.featureId ? `feature=${record.featureId}` : undefined,
     `trace=${record.traceId}`
   ].filter(Boolean);
@@ -66,7 +67,7 @@ async function main() {
   } else {
     for (const record of records) {
       process.stdout.write(`${textLine(record)}\n`);
-      if (record.reasons.length) {
+      if (record.reasons?.length) {
         process.stdout.write(`  ${record.reasons.join(" ")}\n`);
       }
     }

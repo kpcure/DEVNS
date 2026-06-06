@@ -1,0 +1,87 @@
+{
+  "id": "m11-invalid-browser-console-artifact.trap",
+  "tier": "t1",
+  "mode": "M11_artifact_content_quality",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "ARTIFACT-004",
+      "title": "Invalid browser console artifact",
+      "description": "Browser evidence points at an invalid structured console artifact.",
+      "status": "done",
+      "priority": "P0",
+      "milestone": "Artifact Quality",
+      "risk": "medium",
+      "acceptanceCriteria": ["The browser smoke artifact includes inspectable rich artifacts."],
+      "evidence": [
+        {
+          "type": "browser",
+          "summary": "Browser smoke claims to have captured console artifacts.",
+          "verificationType": "browser_smoke",
+          "coversAcceptanceCriteriaIds": ["AC-001"],
+          "artifactRefs": [".devns/artifacts/browser-smoke/ARTIFACT-004/run.json"]
+        }
+      ],
+      "rfc": {
+        "status": "approved",
+        "summary": "Verify rich browser artifacts.",
+        "background": "Reviewers need parseable browser logs.",
+        "featureDescription": "Record structured browser logs.",
+        "expectedOutcome": "Reviewers can inspect rich browser artifacts.",
+        "goals": ["Rich artifact quality"],
+        "nonGoals": [],
+        "requirements": [
+          { "id": "REQ-001", "type": "explicit", "statement": "Browser evidence includes rich artifacts.", "priority": "must" }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-001",
+            "requirementIds": ["REQ-001"],
+            "statement": "The browser smoke artifact includes inspectable rich artifacts.",
+            "verificationType": "browser_smoke"
+          }
+        ],
+        "validationPlan": { "dynamic": ["artifact content quality"], "static": [] },
+        "testCases": [],
+        "humanDecision": { "status": "approved" }
+      }
+    },
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-004/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "artifactDir": ".devns/artifacts/browser-smoke/ARTIFACT-004",
+          "stdout": ".devns/artifacts/browser-smoke/ARTIFACT-004/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/ARTIFACT-004/stderr.log",
+          "artifacts": [
+            { "kind": "console", "path": ".devns/artifacts/browser-smoke/ARTIFACT-004/console.ndjson" }
+          ]
+        }
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-004/stdout.log",
+        "content": "browser ok\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-004/stderr.log",
+        "content": ""
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-004/console.ndjson",
+        "content": "not-json\n"
+      }
+    ]
+  },
+  "action": {
+    "gate": "artifact_integrity",
+    "args": { "requireRichBrowserArtifacts": true }
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "is not valid JSON/JSONL"
+  }
+}
