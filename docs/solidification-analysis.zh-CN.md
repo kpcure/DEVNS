@@ -88,9 +88,9 @@ DEVNS 的核心风险不是“没有跑命令”，而是 evidence 看起来很�
 
 1. T2 已接入 frozen review-result golden，但还没有把 frozen review packet + model adapter 的完整 prompt 校准纳入 runner。
 2. T3 seed repository 还没有 pass^k、成本、耗时和失败分类。
-3. Browser smoke lane 已有通用 adapter/template、smoke 覆盖、dashboard/morning review artifact refs 展示、rich artifact manifest、项目级 console/network policy、预算和 URL allow/block-list、review packet/morning review artifact digest，以及 dashboard artifact digest 富预览；截图语义断言还没有形成统一约定。
+3. Browser smoke lane 已有通用 adapter/template、smoke 覆盖、dashboard/morning review artifact refs 展示、rich artifact manifest、项目级 console/network policy、预算和 URL allow/block-list、review packet/morning review artifact digest、dashboard artifact digest 富预览，以及 dashboard artifact preview 的 DOM/文本快照语义 grader；下一步是接入真实截图/OCR/可访问树采集。
 4. Orchestrator trace 已覆盖 handoff、lane run、review ingest、complete 的连续性；worker result 和 repair loop 还没有进入同一 trace。
-5. Eval schema 和 T1 cases 已能表达 trace continuity、semantic artifact requirements、browser-smoke manifest integrity、基础 rich artifact parseability、console/network policy trap、预算和 URL allow/block-list、artifact digest，但还没有 UI 截图语义断言这类更高阶内容级 grader。
+5. Eval schema 和 T1 cases 已能表达 trace continuity、semantic artifact requirements、browser-smoke manifest integrity、基础 rich artifact parseability、console/network policy trap、预算和 URL allow/block-list、artifact digest、dashboard artifact preview 语义快照；下一步是把真实浏览器截图/OCR/可访问树产物接入该 grader。
 6. CI 目前能跑 T1/T2，但没有 nightly/release 级别的 T3。
 
 ## 建议顺序
@@ -98,6 +98,6 @@ DEVNS 的核心风险不是“没有跑命令”，而是 evidence 看起来很�
 1. 完成 T1 控制面 eval 覆盖：domain drift、scope、review independence、evidence quality、review finding grounding。
 2. 扩展 T2 frozen review packets：用固定 diff 注入 correctness/security/test/scope bug，要求 review agent 返回结构化 findings，再用 `review_lane_result` golden grader 校验。
 3. 扩展 local trace record：当前已记录 orchestrate claim/handoff/review-routing、lane run、review result、complete；下一步把 worker result 和 repair loop 串进同一 workflow trace。
-4. 扩展 browser smoke artifact 体验：当前 adapter 已产出 run/stdout/stderr 和可选截图/trace/console/network artifact refs，并已在 evidence-quality、artifact-integrity、morning review、review packet 和 dashboard artifact digest 预览中使用；下一步补 UI 截图语义断言。
+4. 扩展 browser smoke artifact 体验：当前 adapter 已产出 run/stdout/stderr 和可选截图/trace/console/network artifact refs，并已在 evidence-quality、artifact-integrity、morning review、review packet、dashboard artifact digest 预览和 dashboard semantic snapshot grader 中使用；下一步把真实截图/OCR/可访问树采集接入该 grader。
 5. 增加 T3 seed repos：小型 CLI、React/Vite、Next、Python package，按 pass^k 和成本统计。
 6. 将 eval report 接入 dashboard/morning review，让人看到 harness 质量趋势，而不只是当前 feature 状态。

@@ -23,6 +23,7 @@
             "evidence_quality",
             "artifact_integrity",
             "artifact_digest",
+            "dashboard_artifact_preview",
             "review_lane_result",
             "orchestrator_trace",
             "state_atomic_write"

@@ -1,0 +1,36 @@
+{
+  "id": "m16-dashboard-refs-only-preview.trap",
+  "tier": "t1",
+  "mode": "M16_dashboard_artifact_preview",
+  "generality_level": "general",
+  "given": {
+    "artifactDigests": [
+      {
+        "artifactRef": ".devns/artifacts/browser-smoke/PKT-001/run.json",
+        "kind": "browser_smoke",
+        "status": "warn",
+        "summary": "Browser smoke .devns/artifacts/browser-smoke/PKT-001/run.json; exit code: 0; rich artifacts: 4; screenshots: 1; traces: 1; console entries: 3; console errors: 1; network requests: 4; network failures: 1",
+        "browserSmoke": {
+          "exitCode": 0,
+          "richArtifactCount": 4,
+          "screenshots": 1,
+          "traces": 1,
+          "consoleEntries": 3,
+          "consoleErrors": 1,
+          "networkRequests": 4,
+          "networkFailures": 1,
+          "sampleUrls": ["http://127.0.0.1:5173/", "https://api.example.test/session"],
+          "policyFindings": ["Browser smoke console artifact contains console error(s): 1, over budget 0."]
+        }
+      }
+    ],
+    "visibleText": "Artifacts 1 ref .devns/artifacts/browser-smoke/PKT-001/run.json"
+  },
+  "action": {
+    "gate": "dashboard_artifact_preview"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "missing semantic token"
+  }
+}

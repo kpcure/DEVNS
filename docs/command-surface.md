@@ -108,6 +108,7 @@ In a target repository, this alias may not exist yet. Agents should inspect `pac
 
 `npm run devns:dashboard` starts the local human control plane at `http://127.0.0.1:5173/`.
 The dashboard reads the latest morning review from `/api/reviews/latest`; review packets can show browser-smoke artifact digests with screenshot/trace/console/network counts, sample URLs, and policy findings instead of refs-only evidence.
+The `dashboard_artifact_preview` eval gate can grade DOM text, OCR text, or accessibility text snapshots captured by a browser lane against those digests, so projects can use Playwright, Cypress, or another local browser runner without changing DEVNS core.
 
 `npm run devns:run` is the agent-facing loop entry. It detects bootstrap, active, claimable, blocked, and empty-queue modes. By default it claims the next approved feature when no feature is active; pass `--no-claim` to inspect without mutating state. When a feature is active or claimed, JSON output includes `workerHandoff`, a compact contract for running that one feature in an isolated worker/subagent or fresh implementation context when the host supports it.
 

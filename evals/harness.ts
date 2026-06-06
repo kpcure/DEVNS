@@ -4,7 +4,8 @@ import path from "node:path";
 import { evaluateCompletionGate } from "../packages/core/src/harness/completion-gate";
 import { evaluateEvidenceQuality } from "../packages/core/src/harness/evidence-quality";
 import { evaluateArtifactIntegrity } from "../packages/core/src/harness/artifact-integrity";
-import { buildArtifactDigests } from "../packages/core/src/harness/artifact-digest";
+import { buildArtifactDigests, type ArtifactDigest } from "../packages/core/src/harness/artifact-digest";
+import { auditDashboardArtifactPreview } from "../packages/core/src/harness/dashboard-artifact-preview";
 import { runScopeGuard } from "../packages/core/src/harness/builtin-lanes";
 import { findingBlocksCompletion, type LaneFinding, type LaneResult } from "../packages/core/src/harness/lane-runner";
 import { auditOrchestratorTraces, type OrchestratorTraceRecord } from "../packages/core/src/harness/orchestrator-trace";
@@ -31,6 +32,7 @@ export type EvalCase = {
       | "evidence_quality"
       | "artifact_integrity"
       | "artifact_digest"
+      | "dashboard_artifact_preview"
       | "review_lane_result"
       | "orchestrator_trace"
       | "state_atomic_write";
@@ -329,6 +331,17 @@ async function evaluateArtifactDigestGate(given: Record<string, unknown>) {
   }
 }
 
+function evaluateDashboardArtifactPreviewGate(given: Record<string, unknown>) {
+  const audit = auditDashboardArtifactPreview({
+    artifactDigests: (given.artifactDigests ?? []) as ArtifactDigest[],
+    visibleText: String(given.visibleText ?? "")
+  });
+  return {
+    decision: audit.decision === "allow" ? ("allowed" as const) : ("blocked" as const),
+    reason: audit.summary
+  };
+}
+
 export async function runT1Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
   let result: { decision: EvalDecision; reason: string };
 
@@ -347,6 +360,8 @@ export async function runT1Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
     result = await evaluateArtifactIntegrityGate(testCase.given, testCase.action.args);
   } else if (testCase.action.gate === "artifact_digest") {
     result = await evaluateArtifactDigestGate(testCase.given);
+  } else if (testCase.action.gate === "dashboard_artifact_preview") {
+    result = evaluateDashboardArtifactPreviewGate(testCase.given);
   } else if (testCase.action.gate === "orchestrator_trace") {
     result = evaluateOrchestratorTrace(testCase.given);
   } else if (testCase.action.gate === "state_atomic_write") {
