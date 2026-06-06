@@ -91,6 +91,31 @@ Command lanes produce a structured result envelope with command, exit code, dura
 
 Browser smoke checks are project-specific because teams use different browser runners. `devns init` installs `.devns/adapters/browser-smoke.sh`; copy `templates/devns/lanes/browser-smoke.json` into `.devns/lanes/browser-smoke.json` and replace `DEVNS_BROWSER_SMOKE_COMMAND` with the project command, such as `npx playwright test` or `npm run e2e`. The adapter emits `DEVNS_ARTIFACT=...` lines that command lanes capture as artifact refs.
 
+## Artifact Integrity
+
+Project-level browser artifact policy lives under `artifactIntegrity.browserSmoke`:
+
+```json
+{
+  "artifactIntegrity": {
+    "browserSmoke": {
+      "requireRichBrowserArtifacts": true,
+      "failOnConsoleError": true,
+      "consoleErrorBudget": 0,
+      "failOnNetworkError": true,
+      "networkFailureBudget": 0,
+      "networkFailureStatus": 500,
+      "networkAllowedUrls": ["http://127.0.0.1/*"],
+      "networkBlockedUrls": ["https://analytics.example.com/*"]
+    }
+  }
+}
+```
+
+`devns validate` applies this policy to browser-smoke `run.json` artifact refs. URL patterns support exact/substring matching and `*` wildcards. Keep budgets explicit when the project intentionally tolerates known development noise; otherwise prefer zero-budget policies.
+
+Review packets and morning review reports reuse the same browser-smoke artifact refs to produce artifact digests: exit code, rich artifact counts, screenshot/trace counts, console entry/error counts, network request/failure counts, sample URLs, and policy findings. This keeps human and review-agent surfaces inspectable without requiring readers to manually open every `run.json` first.
+
 The config schema is fixed in:
 
 ```text

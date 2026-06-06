@@ -22,6 +22,7 @@
             "scope_guard",
             "evidence_quality",
             "artifact_integrity",
+            "artifact_digest",
             "review_lane_result",
             "orchestrator_trace",
             "state_atomic_write"

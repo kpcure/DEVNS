@@ -1,0 +1,69 @@
+{
+  "id": "m13-browser-url-policy-clean.clean",
+  "tier": "t1",
+  "mode": "M13_browser_policy_budget_allowlist",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "ARTIFACT-008",
+      "title": "Browser policy budgets and allowlist",
+      "description": "Browser evidence stays inside declared URL policy and configured budgets.",
+      "status": "done",
+      "priority": "P0",
+      "milestone": "Artifact Quality",
+      "acceptanceCriteria": ["Browser artifacts respect project policy budgets and URL boundaries."],
+      "evidence": [
+        {
+          "type": "browser",
+          "summary": "Browser smoke captured policy-compliant console and network artifacts.",
+          "verificationType": "browser_smoke",
+          "artifactRefs": [".devns/artifacts/browser-smoke/ARTIFACT-008/run.json"]
+        }
+      ]
+    },
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-008/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "artifactDir": ".devns/artifacts/browser-smoke/ARTIFACT-008",
+          "stdout": ".devns/artifacts/browser-smoke/ARTIFACT-008/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/ARTIFACT-008/stderr.log",
+          "artifacts": [
+            { "kind": "console", "path": ".devns/artifacts/browser-smoke/ARTIFACT-008/console.ndjson" },
+            { "kind": "network", "path": ".devns/artifacts/browser-smoke/ARTIFACT-008/network.ndjson" }
+          ]
+        }
+      },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-008/stdout.log", "content": "browser ok\n" },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-008/stderr.log", "content": "" },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-008/console.ndjson",
+        "content": "{\"type\":\"error\",\"text\":\"known tolerated dev warning\"}\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-008/network.ndjson",
+        "content": "{\"method\":\"GET\",\"url\":\"http://127.0.0.1/api\",\"status\":200}\n"
+      }
+    ]
+  },
+  "action": {
+    "gate": "artifact_integrity",
+    "args": {
+      "requireRichBrowserArtifacts": true,
+      "failOnConsoleError": true,
+      "consoleErrorBudget": 1,
+      "failOnNetworkError": true,
+      "networkFailureStatus": 500,
+      "networkAllowedUrls": ["http://127.0.0.1/*"],
+      "networkBlockedUrls": ["https://analytics.example.com/*"]
+    }
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "Artifact integrity passed"
+  }
+}

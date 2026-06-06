@@ -1,0 +1,68 @@
+{
+  "id": "m14-config-browser-policy-clean.clean",
+  "tier": "t1",
+  "mode": "M14_project_browser_policy_config",
+  "generality_level": "general",
+  "given": {
+    "config": {
+      "version": 1,
+      "features": ".devns/features.json",
+      "artifactIntegrity": {
+        "browserSmoke": {
+          "requireRichBrowserArtifacts": true,
+          "failOnConsoleError": true,
+          "consoleErrorBudget": 1,
+          "failOnNetworkError": true,
+          "networkFailureBudget": 0,
+          "networkAllowedUrls": ["http://127.0.0.1/*"]
+        }
+      }
+    },
+    "feature": {
+      "id": "ARTIFACT-012",
+      "title": "Configured browser policy clean",
+      "description": "Project config allows one tolerated console error and localhost network requests.",
+      "status": "done",
+      "priority": "P0",
+      "milestone": "Artifact Quality",
+      "acceptanceCriteria": ["Browser artifacts respect configured project policy."],
+      "evidence": [
+        {
+          "type": "browser",
+          "summary": "Browser smoke captured configured policy artifacts.",
+          "verificationType": "browser_smoke",
+          "artifactRefs": [".devns/artifacts/browser-smoke/ARTIFACT-012/run.json"]
+        }
+      ]
+    },
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-012/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "artifactDir": ".devns/artifacts/browser-smoke/ARTIFACT-012",
+          "stdout": ".devns/artifacts/browser-smoke/ARTIFACT-012/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/ARTIFACT-012/stderr.log",
+          "artifacts": [
+            { "kind": "console", "path": ".devns/artifacts/browser-smoke/ARTIFACT-012/console.ndjson" },
+            { "kind": "network", "path": ".devns/artifacts/browser-smoke/ARTIFACT-012/network.ndjson" }
+          ]
+        }
+      },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-012/stdout.log", "content": "browser ok\n" },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-012/stderr.log", "content": "" },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-012/console.ndjson", "content": "{\"type\":\"error\",\"text\":\"known tolerated warning\"}\n" },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-012/network.ndjson", "content": "{\"url\":\"http://127.0.0.1/api\",\"status\":200}\n" }
+    ]
+  },
+  "action": {
+    "gate": "artifact_integrity"
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "Artifact integrity passed"
+  }
+}

@@ -48,6 +48,9 @@ OpenAI 的 agent eval 指南把 trace、grader、dataset、eval run 作为 agent
 - 新增 `artifact_integrity` 检查：本地 evidence artifact refs 必须存在，browser-smoke `run.json` 必须是可识别 manifest 并指向存在的 stdout/stderr；`M10_artifact_integrity` 覆盖 manifest clean 和缺失 log trap。
 - Browser-smoke adapter 现在会向被包装命令暴露 artifact 目录，并自动把截图、trace、`console.ndjson`、`network.ndjson` 等 rich artifacts 写入 manifest；`M11_artifact_content_quality` 检查 rich artifacts 存在、图片格式基本可信、console/network JSON/JSONL 可解析。
 - `artifact_integrity` 新增可选严格策略：`failOnConsoleError` 会阻断 console error，`failOnNetworkError` 会阻断 failed/error 标记或默认 500+ 状态码；`M12_browser_policy_quality` 覆盖健康 browser artifact、console error trap、network 5xx trap。
+- Browser policy 进一步支持 `consoleErrorBudget`、`networkFailureBudget`、`networkAllowedUrls`、`networkBlockedUrls`；`M13_browser_policy_budget_allowlist` 覆盖预算内通过、console 预算超限、network allowlist 越界、blocklist 命中。
+- `artifactIntegrity.browserSmoke` 进入 `.devns/devns.config.json` schema 和 `devns validate`；`M14_project_browser_policy_config` 覆盖项目配置直接驱动 browser artifact policy。
+- 新增 `artifact-digest`：review packet 和 morning review 会把 browser-smoke refs 转成可读摘要，包含 rich artifact 数、截图/trace、console entries/errors、network requests/failures、sample URLs 和 policy findings；`M15_artifact_digest_review_surface` 覆盖 digest clean/missing case。
 
 ### 3. Evidence Must Match Verification Type
 
@@ -85,9 +88,9 @@ DEVNS 的核心风险不是“没有跑命令”，而是 evidence 看起来很�
 
 1. T2 已接入 frozen review-result golden，但还没有把 frozen review packet + model adapter 的完整 prompt 校准纳入 runner。
 2. T3 seed repository 还没有 pass^k、成本、耗时和失败分类。
-3. Browser smoke lane 已有通用 adapter/template、smoke 覆盖、dashboard/morning review artifact refs 展示、rich artifact manifest 和基础 console/network policy grader；截图语义断言、network allowlist/budget 和 dashboard 富预览还没有形成统一约定。
+3. Browser smoke lane 已有通用 adapter/template、smoke 覆盖、dashboard/morning review artifact refs 展示、rich artifact manifest、项目级 console/network policy、预算和 URL allow/block-list，以及 review packet/morning review artifact digest；截图语义断言和 dashboard 富预览还没有形成统一约定。
 4. Orchestrator trace 已覆盖 handoff、lane run、review ingest、complete 的连续性；worker result 和 repair loop 还没有进入同一 trace。
-5. Eval schema 和 T1 cases 已能表达 trace continuity、semantic artifact requirements、browser-smoke manifest integrity、基础 rich artifact parseability 和 console/network policy trap，但还没有 UI 截图语义断言、console error budget、network allowlist 这类更细的内容级 grader。
+5. Eval schema 和 T1 cases 已能表达 trace continuity、semantic artifact requirements、browser-smoke manifest integrity、基础 rich artifact parseability、console/network policy trap、预算和 URL allow/block-list、artifact digest，但还没有 UI 截图语义断言和 dashboard 富展示这类更高阶内容级 grader。
 6. CI 目前能跑 T1/T2，但没有 nightly/release 级别的 T3。
 
 ## 建议顺序
@@ -95,6 +98,6 @@ DEVNS 的核心风险不是“没有跑命令”，而是 evidence 看起来很�
 1. 完成 T1 控制面 eval 覆盖：domain drift、scope、review independence、evidence quality、review finding grounding。
 2. 扩展 T2 frozen review packets：用固定 diff 注入 correctness/security/test/scope bug，要求 review agent 返回结构化 findings，再用 `review_lane_result` golden grader 校验。
 3. 扩展 local trace record：当前已记录 orchestrate claim/handoff/review-routing、lane run、review result、complete；下一步把 worker result 和 repair loop 串进同一 workflow trace。
-4. 扩展 browser smoke artifact 体验：当前 adapter 已产出 run/stdout/stderr 和可选截图/trace/console/network artifact refs，并已在 evidence-quality、artifact-integrity、morning review/dashboard 中使用 refs；下一步补 UI 截图语义断言、console error budget、network allowlist 和 dashboard 富展示。
+4. 扩展 browser smoke artifact 体验：当前 adapter 已产出 run/stdout/stderr 和可选截图/trace/console/network artifact refs，并已在 evidence-quality、artifact-integrity、morning review/dashboard 中使用 refs；下一步补 UI 截图语义断言和 dashboard 富展示。
 5. 增加 T3 seed repos：小型 CLI、React/Vite、Next、Python package，按 pass^k 和成本统计。
 6. 将 eval report 接入 dashboard/morning review，让人看到 harness 质量趋势，而不只是当前 feature 状态。

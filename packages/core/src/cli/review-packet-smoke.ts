@@ -13,6 +13,35 @@ import type { Feature } from "../harness/types";
 
 const execFileAsync = promisify(execFile);
 
+async function writeBrowserSmokeArtifact(cwd: string) {
+  const artifactDir = path.join(cwd, ".devns", "artifacts", "browser-smoke", "PKT-001");
+  await mkdir(artifactDir, { recursive: true });
+  await writeFile(
+    path.join(artifactDir, "run.json"),
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        type: "browser_smoke",
+        command: "npx playwright test",
+        exitCode: 0,
+        artifactDir: ".devns/artifacts/browser-smoke/PKT-001",
+        stdout: ".devns/artifacts/browser-smoke/PKT-001/stdout.log",
+        stderr: ".devns/artifacts/browser-smoke/PKT-001/stderr.log",
+        artifacts: [
+          { kind: "console", path: ".devns/artifacts/browser-smoke/PKT-001/console.ndjson" },
+          { kind: "network", path: ".devns/artifacts/browser-smoke/PKT-001/network.ndjson" }
+        ]
+      },
+      null,
+      2
+    )}\n`
+  );
+  await writeFile(path.join(artifactDir, "stdout.log"), "browser ok\n");
+  await writeFile(path.join(artifactDir, "stderr.log"), "");
+  await writeFile(path.join(artifactDir, "console.ndjson"), '{"type":"log","text":"ready"}\n');
+  await writeFile(path.join(artifactDir, "network.ndjson"), '{"url":"http://127.0.0.1/api","status":200}\n');
+}
+
 function doneFeature(): Feature {
   return {
     id: "PKT-001",
@@ -25,6 +54,12 @@ function doneFeature(): Feature {
     acceptanceCriteria: ["Packet includes diff and evidence quality"],
     evidence: [
       { type: "lane:test", summary: "Packet smoke passed." },
+      {
+        type: "browser",
+        summary: "Browser smoke captured inspectable artifacts.",
+        verificationType: "browser_smoke",
+        artifactRefs: [".devns/artifacts/browser-smoke/PKT-001/run.json"]
+      },
       { type: "git", summary: "Implementation commit recorded." }
     ],
     changedFiles: ["src/review.ts"],
@@ -74,6 +109,7 @@ async function main() {
     committed.features[0].commit = head;
     committed.features[0].implementationCommit = head;
     await writeInventory(cwd, config, committed);
+    await writeBrowserSmokeArtifact(cwd);
 
     await appendExecutionHistory(cwd, config, {
       featureId: "PKT-001",
@@ -95,8 +131,12 @@ async function main() {
     const result = await writeReviewPacket(cwd, { featureId: "PKT-001", format: "prompt", write: true, commit: head });
     assert.equal(result.packet.feature.id, "PKT-001");
     assert.equal(result.packet.evidenceQuality.decision, "allow");
+    assert.equal(result.packet.artifactDigests[0]?.browserSmoke?.networkRequests, 1);
     assert.match(result.packet.git.diff, /reviewed/);
-    assert.match(await readFile(path.join(cwd, result.promptPath), "utf8"), /DEVNS Review Agent Packet/);
+    const prompt = await readFile(path.join(cwd, result.promptPath), "utf8");
+    assert.match(prompt, /DEVNS Review Agent Packet/);
+    assert.match(prompt, /Artifact Digests/);
+    assert.match(prompt, /networkRequests/);
 
     process.stdout.write("Review packet smoke passed.\n");
   } finally {

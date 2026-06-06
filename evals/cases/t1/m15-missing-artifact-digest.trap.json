@@ -1,0 +1,17 @@
+{
+  "id": "m15-missing-artifact-digest.trap",
+  "tier": "t1",
+  "mode": "M15_artifact_digest_review_surface",
+  "generality_level": "general",
+  "given": {
+    "artifactRefs": [".devns/artifacts/browser-smoke/MISSING/run.json"],
+    "artifacts": []
+  },
+  "action": {
+    "gate": "artifact_digest"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "Missing browser smoke artifact"
+  }
+}

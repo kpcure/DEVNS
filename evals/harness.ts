@@ -4,11 +4,12 @@ import path from "node:path";
 import { evaluateCompletionGate } from "../packages/core/src/harness/completion-gate";
 import { evaluateEvidenceQuality } from "../packages/core/src/harness/evidence-quality";
 import { evaluateArtifactIntegrity } from "../packages/core/src/harness/artifact-integrity";
+import { buildArtifactDigests } from "../packages/core/src/harness/artifact-digest";
 import { runScopeGuard } from "../packages/core/src/harness/builtin-lanes";
 import { findingBlocksCompletion, type LaneFinding, type LaneResult } from "../packages/core/src/harness/lane-runner";
 import { auditOrchestratorTraces, type OrchestratorTraceRecord } from "../packages/core/src/harness/orchestrator-trace";
 import { readJsonFile, writeJsonFile } from "../packages/core/src/harness/state";
-import type { CandidateFeature, Feature, ReviewDecision } from "../packages/core/src/harness/types";
+import type { CandidateFeature, DevnsConfig, Feature, ReviewDecision } from "../packages/core/src/harness/types";
 import { validateSchema } from "../packages/core/src/harness/schema-validator";
 import evalCaseSchema from "../tools/schema/eval-case.schema.json";
 import laneResultSchema from "../tools/schema/lane-result.schema.json";
@@ -29,6 +30,7 @@ export type EvalCase = {
       | "scope_guard"
       | "evidence_quality"
       | "artifact_integrity"
+      | "artifact_digest"
       | "review_lane_result"
       | "orchestrator_trace"
       | "state_atomic_write";
@@ -274,15 +276,53 @@ async function evaluateArtifactIntegrityGate(given: Record<string, unknown>, arg
             : `${JSON.stringify(artifact.content, null, 2)}\n`;
       await writeFile(artifactPath, content);
     }
+    const configPolicy = (given.config as DevnsConfig | undefined)?.artifactIntegrity?.browserSmoke ?? {};
     const report = await evaluateArtifactIntegrity(cwd, given.feature as Feature, {
-      requireRichBrowserArtifacts: Boolean(args.requireRichBrowserArtifacts),
-      failOnConsoleError: Boolean(args.failOnConsoleError),
-      failOnNetworkError: Boolean(args.failOnNetworkError),
-      networkFailureStatus: typeof args.networkFailureStatus === "number" ? args.networkFailureStatus : undefined
+      ...configPolicy,
+      requireRichBrowserArtifacts:
+        args.requireRichBrowserArtifacts === undefined ? configPolicy.requireRichBrowserArtifacts : Boolean(args.requireRichBrowserArtifacts),
+      failOnConsoleError: args.failOnConsoleError === undefined ? configPolicy.failOnConsoleError : Boolean(args.failOnConsoleError),
+      consoleErrorBudget: typeof args.consoleErrorBudget === "number" ? args.consoleErrorBudget : configPolicy.consoleErrorBudget,
+      failOnNetworkError: args.failOnNetworkError === undefined ? configPolicy.failOnNetworkError : Boolean(args.failOnNetworkError),
+      networkFailureBudget: typeof args.networkFailureBudget === "number" ? args.networkFailureBudget : configPolicy.networkFailureBudget,
+      networkFailureStatus: typeof args.networkFailureStatus === "number" ? args.networkFailureStatus : configPolicy.networkFailureStatus,
+      networkAllowedUrls: Array.isArray(args.networkAllowedUrls)
+        ? args.networkAllowedUrls.filter((value): value is string => typeof value === "string")
+        : configPolicy.networkAllowedUrls,
+      networkBlockedUrls: Array.isArray(args.networkBlockedUrls)
+        ? args.networkBlockedUrls.filter((value): value is string => typeof value === "string")
+        : configPolicy.networkBlockedUrls
     });
     return {
       decision: report.decision === "block" ? ("blocked" as const) : ("allowed" as const),
       reason: report.summary
+    };
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+}
+
+async function evaluateArtifactDigestGate(given: Record<string, unknown>) {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-eval-artifact-digest-"));
+  try {
+    for (const artifact of (given.artifacts ?? []) as Array<{ path: string; content: string | Record<string, unknown>; encoding?: "base64" }>) {
+      const artifactPath = path.join(cwd, artifact.path);
+      await mkdir(path.dirname(artifactPath), { recursive: true });
+      const content =
+        artifact.encoding === "base64" && typeof artifact.content === "string"
+          ? Buffer.from(artifact.content, "base64")
+          : typeof artifact.content === "string"
+            ? artifact.content
+            : `${JSON.stringify(artifact.content, null, 2)}\n`;
+      await writeFile(artifactPath, content);
+    }
+    const refs = (given.artifactRefs ?? []) as string[];
+    const policy = (given.config as DevnsConfig | undefined)?.artifactIntegrity?.browserSmoke;
+    const digests = await buildArtifactDigests(cwd, refs, policy);
+    const reason = digests.map((digest) => digest.summary).join(" ");
+    return {
+      decision: digests.some((digest) => digest.status === "missing") ? ("blocked" as const) : ("allowed" as const),
+      reason
     };
   } finally {
     await rm(cwd, { recursive: true, force: true });
@@ -305,6 +345,8 @@ export async function runT1Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
     result = evaluateEvidenceQualityGate(testCase.given);
   } else if (testCase.action.gate === "artifact_integrity") {
     result = await evaluateArtifactIntegrityGate(testCase.given, testCase.action.args);
+  } else if (testCase.action.gate === "artifact_digest") {
+    result = await evaluateArtifactDigestGate(testCase.given);
   } else if (testCase.action.gate === "orchestrator_trace") {
     result = evaluateOrchestratorTrace(testCase.given);
   } else if (testCase.action.gate === "state_atomic_write") {

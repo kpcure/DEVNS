@@ -1,0 +1,59 @@
+{
+  "id": "m13-network-blocklist.trap",
+  "tier": "t1",
+  "mode": "M13_browser_policy_budget_allowlist",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "ARTIFACT-011",
+      "title": "Network blocklist match",
+      "description": "Browser evidence contains a request matching the project URL blocklist.",
+      "status": "done",
+      "priority": "P0",
+      "milestone": "Artifact Quality",
+      "acceptanceCriteria": ["Browser artifacts never request blocked URLs."],
+      "evidence": [
+        {
+          "type": "browser",
+          "summary": "Browser smoke captured network artifacts.",
+          "verificationType": "browser_smoke",
+          "artifactRefs": [".devns/artifacts/browser-smoke/ARTIFACT-011/run.json"]
+        }
+      ]
+    },
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-011/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "artifactDir": ".devns/artifacts/browser-smoke/ARTIFACT-011",
+          "stdout": ".devns/artifacts/browser-smoke/ARTIFACT-011/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/ARTIFACT-011/stderr.log",
+          "artifacts": [
+            { "kind": "network", "path": ".devns/artifacts/browser-smoke/ARTIFACT-011/network.ndjson" }
+          ]
+        }
+      },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-011/stdout.log", "content": "browser ok\n" },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-011/stderr.log", "content": "" },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-011/network.ndjson",
+        "content": "{\"method\":\"POST\",\"url\":\"https://analytics.example.com/collect\",\"status\":204}\n"
+      }
+    ]
+  },
+  "action": {
+    "gate": "artifact_integrity",
+    "args": {
+      "requireRichBrowserArtifacts": true,
+      "networkBlockedUrls": ["https://analytics.example.com/*"]
+    }
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "blocked URL policy"
+  }
+}

@@ -30,11 +30,15 @@ type BrowserSmokeManifest = {
   artifacts?: unknown;
 };
 
-type ArtifactIntegrityOptions = {
+export type ArtifactIntegrityOptions = {
   requireRichBrowserArtifacts?: boolean;
   failOnConsoleError?: boolean;
+  consoleErrorBudget?: number;
   failOnNetworkError?: boolean;
+  networkFailureBudget?: number;
   networkFailureStatus?: number;
+  networkAllowedUrls?: string[];
+  networkBlockedUrls?: string[];
 };
 
 type BrowserSmokeArtifact = {
@@ -154,16 +158,16 @@ function structuredValueMatches(value: unknown, predicate: (record: Record<strin
   return nestedValues.some((nested) => structuredValueMatches(nested, predicate, seen));
 }
 
-function containsConsoleError(records: unknown[]) {
+function countConsoleErrors(records: unknown[]) {
   const errorTokens = new Set(["error", "exception", "pageerror", "uncaught"]);
-  return records.some((record) =>
+  return records.filter((record) =>
     structuredValueMatches(record, (entry) =>
       ["type", "level", "severity", "name"].some((field) => {
         const value = normalizedString(entry[field]);
         return value ? errorTokens.has(value) : false;
       })
     )
-  );
+  ).length;
 }
 
 function hasFailureValue(value: unknown) {
@@ -172,8 +176,8 @@ function hasFailureValue(value: unknown) {
   return typeof value === "object" && value !== null;
 }
 
-function containsNetworkFailure(records: unknown[], statusThreshold: number) {
-  return records.some((record) =>
+function countNetworkFailures(records: unknown[], statusThreshold: number) {
+  return records.filter((record) =>
     structuredValueMatches(record, (entry) => {
       for (const field of ["status", "statusCode", "responseStatus"]) {
         const status = normalizedNumber(entry[field]);
@@ -182,11 +186,79 @@ function containsNetworkFailure(records: unknown[], statusThreshold: number) {
       if (entry.failed === true) return true;
       return ["failure", "error", "errorText", "failureText"].some((field) => hasFailureValue(entry[field]));
     })
-  );
+  ).length;
 }
 
 function networkFailureStatus(options: ArtifactIntegrityOptions) {
   return typeof options.networkFailureStatus === "number" && options.networkFailureStatus > 0 ? options.networkFailureStatus : 500;
+}
+
+function allowedBudget(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function urlStrings(value: unknown, seen = new WeakSet<object>()): string[] {
+  if (typeof value !== "object" || value === null) return [];
+  if (seen.has(value)) return [];
+  seen.add(value);
+
+  if (Array.isArray(value)) return value.flatMap((item) => urlStrings(item, seen));
+  const record = value as Record<string, unknown>;
+  const current = typeof record.url === "string" && record.url.trim() ? [record.url.trim()] : [];
+  return current.concat(Object.values(record).flatMap((item) => urlStrings(item, seen)));
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function wildcardMatches(pattern: string, value: string) {
+  const regex = new RegExp(`^${pattern.split("*").map(escapeRegex).join(".*")}$`, "i");
+  return regex.test(value);
+}
+
+function urlPatternMatches(pattern: string, value: string) {
+  const normalizedPattern = pattern.trim();
+  if (!normalizedPattern) return false;
+  if (normalizedPattern.includes("*")) return wildcardMatches(normalizedPattern, value);
+  if (value.toLowerCase().includes(normalizedPattern.toLowerCase())) return true;
+  try {
+    const url = new URL(value);
+    return url.hostname.toLowerCase() === normalizedPattern.toLowerCase();
+  } catch {
+    return false;
+  }
+}
+
+function networkUrlPolicyFindings(artifactRef: string, records: unknown[], options: ArtifactIntegrityOptions): ArtifactIntegrityFinding[] {
+  const findings: ArtifactIntegrityFinding[] = [];
+  const urls = Array.from(new Set(records.flatMap((record) => urlStrings(record))));
+  const allowed = (options.networkAllowedUrls ?? []).filter((pattern) => pattern.trim());
+  const blocked = (options.networkBlockedUrls ?? []).filter((pattern) => pattern.trim());
+
+  if (allowed.length) {
+    const unexpected = urls.filter((url) => !allowed.some((pattern) => urlPatternMatches(pattern, url)));
+    if (unexpected.length) {
+      findings.push({
+        severity: "error",
+        artifactRef,
+        message: `Browser smoke network artifact ${artifactRef} contains request outside allowed URL policy: ${unexpected.slice(0, 3).join(", ")}.`
+      });
+    }
+  }
+
+  if (blocked.length) {
+    const matched = urls.filter((url) => blocked.some((pattern) => urlPatternMatches(pattern, url)));
+    if (matched.length) {
+      findings.push({
+        severity: "error",
+        artifactRef,
+        message: `Browser smoke network artifact ${artifactRef} contains request matching blocked URL policy: ${matched.slice(0, 3).join(", ")}.`
+      });
+    }
+  }
+
+  return findings;
 }
 
 async function validateStructuredArtifact(
@@ -214,12 +286,24 @@ async function validateStructuredArtifact(
       return [{ severity: "error", artifactRef, message: `Browser smoke ${kind} artifact ${artifactRef} is not valid JSON/JSONL.` }];
     }
 
-    if (kind === "console" && options.failOnConsoleError && containsConsoleError(records)) {
-      findings.push({ severity: "error", artifactRef, message: `Browser smoke console artifact ${artifactRef} contains console error.` });
+    if (kind === "console" && options.failOnConsoleError) {
+      const errorCount = countConsoleErrors(records);
+      const budget = allowedBudget(options.consoleErrorBudget);
+      if (errorCount > budget) {
+        findings.push({ severity: "error", artifactRef, message: `Browser smoke console artifact ${artifactRef} contains console error(s): ${errorCount}, over budget ${budget}.` });
+      }
     }
 
-    if (kind === "network" && options.failOnNetworkError && containsNetworkFailure(records, networkFailureStatus(options))) {
-      findings.push({ severity: "error", artifactRef, message: `Browser smoke network artifact ${artifactRef} contains failed request.` });
+    if (kind === "network" && options.failOnNetworkError) {
+      const failureCount = countNetworkFailures(records, networkFailureStatus(options));
+      const budget = allowedBudget(options.networkFailureBudget);
+      if (failureCount > budget) {
+        findings.push({ severity: "error", artifactRef, message: `Browser smoke network artifact ${artifactRef} contains failed request(s): ${failureCount}, over budget ${budget}.` });
+      }
+    }
+
+    if (kind === "network") {
+      findings.push(...networkUrlPolicyFindings(artifactRef, records, options));
     }
   }
 

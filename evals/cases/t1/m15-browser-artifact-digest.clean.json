@@ -1,0 +1,50 @@
+{
+  "id": "m15-browser-artifact-digest.clean",
+  "tier": "t1",
+  "mode": "M15_artifact_digest_review_surface",
+  "generality_level": "general",
+  "given": {
+    "artifactRefs": [".devns/artifacts/browser-smoke/ARTIFACT-014/run.json"],
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-014/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "artifactDir": ".devns/artifacts/browser-smoke/ARTIFACT-014",
+          "stdout": ".devns/artifacts/browser-smoke/ARTIFACT-014/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/ARTIFACT-014/stderr.log",
+          "artifacts": [
+            { "kind": "screenshot", "path": ".devns/artifacts/browser-smoke/ARTIFACT-014/screenshot.png" },
+            { "kind": "console", "path": ".devns/artifacts/browser-smoke/ARTIFACT-014/console.ndjson" },
+            { "kind": "network", "path": ".devns/artifacts/browser-smoke/ARTIFACT-014/network.ndjson" }
+          ]
+        }
+      },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-014/stdout.log", "content": "browser ok\n" },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-014/stderr.log", "content": "" },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-014/screenshot.png",
+        "encoding": "base64",
+        "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-014/console.ndjson",
+        "content": "{\"type\":\"error\",\"text\":\"known dev warning\"}\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-014/network.ndjson",
+        "content": "{\"url\":\"http://127.0.0.1/api\",\"status\":200}\n{\"url\":\"http://127.0.0.1/oops\",\"status\":500}\n"
+      }
+    ]
+  },
+  "action": {
+    "gate": "artifact_digest"
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "console errors: 1"
+  }
+}

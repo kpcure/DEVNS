@@ -1,0 +1,60 @@
+{
+  "id": "m13-console-budget.trap",
+  "tier": "t1",
+  "mode": "M13_browser_policy_budget_allowlist",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "ARTIFACT-009",
+      "title": "Console budget overflow",
+      "description": "Browser evidence exceeds the declared console error budget.",
+      "status": "done",
+      "priority": "P0",
+      "milestone": "Artifact Quality",
+      "acceptanceCriteria": ["Browser artifacts stay within console error budget."],
+      "evidence": [
+        {
+          "type": "browser",
+          "summary": "Browser smoke captured console artifacts.",
+          "verificationType": "browser_smoke",
+          "artifactRefs": [".devns/artifacts/browser-smoke/ARTIFACT-009/run.json"]
+        }
+      ]
+    },
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-009/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "artifactDir": ".devns/artifacts/browser-smoke/ARTIFACT-009",
+          "stdout": ".devns/artifacts/browser-smoke/ARTIFACT-009/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/ARTIFACT-009/stderr.log",
+          "artifacts": [
+            { "kind": "console", "path": ".devns/artifacts/browser-smoke/ARTIFACT-009/console.ndjson" }
+          ]
+        }
+      },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-009/stdout.log", "content": "browser ok\n" },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-009/stderr.log", "content": "" },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-009/console.ndjson",
+        "content": "{\"type\":\"error\",\"text\":\"first\"}\n{\"level\":\"error\",\"text\":\"second\"}\n"
+      }
+    ]
+  },
+  "action": {
+    "gate": "artifact_integrity",
+    "args": {
+      "requireRichBrowserArtifacts": true,
+      "failOnConsoleError": true,
+      "consoleErrorBudget": 1
+    }
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "over budget 1"
+  }
+}

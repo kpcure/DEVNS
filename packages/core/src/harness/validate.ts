@@ -273,7 +273,7 @@ async function validateState(cwd: string, config: DevnsConfig, inventory: Featur
       );
     }
 
-    const artifactIntegrity = await evaluateArtifactIntegrity(cwd, feature);
+    const artifactIntegrity = await evaluateArtifactIntegrity(cwd, feature, config.artifactIntegrity?.browserSmoke);
     check(
       checks,
       "state",

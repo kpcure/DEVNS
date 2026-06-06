@@ -1,0 +1,59 @@
+{
+  "id": "m13-network-outside-allowlist.trap",
+  "tier": "t1",
+  "mode": "M13_browser_policy_budget_allowlist",
+  "generality_level": "general",
+  "given": {
+    "feature": {
+      "id": "ARTIFACT-010",
+      "title": "Network outside allowlist",
+      "description": "Browser evidence contains a request outside the project URL allowlist.",
+      "status": "done",
+      "priority": "P0",
+      "milestone": "Artifact Quality",
+      "acceptanceCriteria": ["Browser artifacts only request allowed URLs."],
+      "evidence": [
+        {
+          "type": "browser",
+          "summary": "Browser smoke captured network artifacts.",
+          "verificationType": "browser_smoke",
+          "artifactRefs": [".devns/artifacts/browser-smoke/ARTIFACT-010/run.json"]
+        }
+      ]
+    },
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-010/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "artifactDir": ".devns/artifacts/browser-smoke/ARTIFACT-010",
+          "stdout": ".devns/artifacts/browser-smoke/ARTIFACT-010/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/ARTIFACT-010/stderr.log",
+          "artifacts": [
+            { "kind": "network", "path": ".devns/artifacts/browser-smoke/ARTIFACT-010/network.ndjson" }
+          ]
+        }
+      },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-010/stdout.log", "content": "browser ok\n" },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-010/stderr.log", "content": "" },
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-010/network.ndjson",
+        "content": "{\"method\":\"GET\",\"url\":\"https://api.thirdparty.example.com/session\",\"status\":200}\n"
+      }
+    ]
+  },
+  "action": {
+    "gate": "artifact_integrity",
+    "args": {
+      "requireRichBrowserArtifacts": true,
+      "networkAllowedUrls": ["http://127.0.0.1/*"]
+    }
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "outside allowed URL policy"
+  }
+}

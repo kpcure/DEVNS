@@ -1,0 +1,62 @@
+{
+  "id": "m14-config-browser-policy-block.trap",
+  "tier": "t1",
+  "mode": "M14_project_browser_policy_config",
+  "generality_level": "general",
+  "given": {
+    "config": {
+      "version": 1,
+      "features": ".devns/features.json",
+      "artifactIntegrity": {
+        "browserSmoke": {
+          "requireRichBrowserArtifacts": true,
+          "networkBlockedUrls": ["https://analytics.example.com/*"]
+        }
+      }
+    },
+    "feature": {
+      "id": "ARTIFACT-013",
+      "title": "Configured browser policy block",
+      "description": "Project config blocks analytics requests in browser smoke evidence.",
+      "status": "done",
+      "priority": "P0",
+      "milestone": "Artifact Quality",
+      "acceptanceCriteria": ["Browser artifacts do not request blocked analytics endpoints."],
+      "evidence": [
+        {
+          "type": "browser",
+          "summary": "Browser smoke captured configured policy artifacts.",
+          "verificationType": "browser_smoke",
+          "artifactRefs": [".devns/artifacts/browser-smoke/ARTIFACT-013/run.json"]
+        }
+      ]
+    },
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/ARTIFACT-013/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "artifactDir": ".devns/artifacts/browser-smoke/ARTIFACT-013",
+          "stdout": ".devns/artifacts/browser-smoke/ARTIFACT-013/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/ARTIFACT-013/stderr.log",
+          "artifacts": [
+            { "kind": "network", "path": ".devns/artifacts/browser-smoke/ARTIFACT-013/network.ndjson" }
+          ]
+        }
+      },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-013/stdout.log", "content": "browser ok\n" },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-013/stderr.log", "content": "" },
+      { "path": ".devns/artifacts/browser-smoke/ARTIFACT-013/network.ndjson", "content": "{\"url\":\"https://analytics.example.com/collect\",\"status\":204}\n" }
+    ]
+  },
+  "action": {
+    "gate": "artifact_integrity"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "blocked URL policy"
+  }
+}

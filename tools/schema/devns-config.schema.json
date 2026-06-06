@@ -13,6 +13,32 @@
     "history": { "type": "string" },
     "traces": { "type": "string" },
     "policies": { "type": "string" },
+    "artifactIntegrity": {
+      "type": "object",
+      "properties": {
+        "browserSmoke": {
+          "type": "object",
+          "properties": {
+            "requireRichBrowserArtifacts": { "type": "boolean" },
+            "failOnConsoleError": { "type": "boolean" },
+            "consoleErrorBudget": { "type": "number", "minimum": 0 },
+            "failOnNetworkError": { "type": "boolean" },
+            "networkFailureBudget": { "type": "number", "minimum": 0 },
+            "networkFailureStatus": { "type": "number", "minimum": 100, "maximum": 599 },
+            "networkAllowedUrls": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "networkBlockedUrls": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "completionPolicy": {
       "type": "object",
       "properties": {

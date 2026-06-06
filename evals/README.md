@@ -50,5 +50,8 @@ T1 and T2 cases are deterministic regression fixtures for the DEVNS control plan
 - `M10_artifact_integrity`: browser-smoke artifact refs must resolve to a valid manifest and log files.
 - `M11_artifact_content_quality`: rich browser artifacts such as screenshots and structured console/network logs must be parseable.
 - `M12_browser_policy_quality`: optional strict browser policies block console errors and failed network requests.
+- `M13_browser_policy_budget_allowlist`: browser policies can enforce console/network budgets and URL allow/block lists.
+- `M14_project_browser_policy_config`: project config can drive browser artifact policy without per-eval arguments.
+- `M15_artifact_digest_review_surface`: browser artifact refs are converted into review-facing digests instead of staying refs-only.
 
 This keeps the eval suite focused on the behaviors that make DEVNS trustworthy as an agent harness: intent provenance, scope control, independent review, and evidence that matches the acceptance criterion's verification type.

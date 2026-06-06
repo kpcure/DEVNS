@@ -248,6 +248,17 @@ export type FeatureInventory = {
   researchSources?: unknown[];
 };
 
+export type BrowserSmokeArtifactPolicy = {
+  requireRichBrowserArtifacts?: boolean;
+  failOnConsoleError?: boolean;
+  consoleErrorBudget?: number;
+  failOnNetworkError?: boolean;
+  networkFailureBudget?: number;
+  networkFailureStatus?: number;
+  networkAllowedUrls?: string[];
+  networkBlockedUrls?: string[];
+};
+
 export type DevnsConfig = {
   $schema?: string;
   version: number;
@@ -280,6 +291,9 @@ export type DevnsConfig = {
     [key: string]: string | undefined;
   };
   policies?: string;
+  artifactIntegrity?: {
+    browserSmoke?: BrowserSmokeArtifactPolicy;
+  };
   review?: {
     mode?: "html";
     outputDir?: string;

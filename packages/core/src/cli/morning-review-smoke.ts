@@ -13,6 +13,38 @@ import type { Feature } from "../harness/types";
 
 const execFileAsync = promisify(execFile);
 
+async function writeBrowserSmokeArtifact(cwd: string, id: string) {
+  const artifactDir = path.join(cwd, ".devns", "artifacts", "browser-smoke", id);
+  await mkdir(artifactDir, { recursive: true });
+  await writeFile(
+    path.join(artifactDir, "run.json"),
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        type: "browser_smoke",
+        command: "npx playwright test",
+        exitCode: 0,
+        artifactDir: `.devns/artifacts/browser-smoke/${id}`,
+        stdout: `.devns/artifacts/browser-smoke/${id}/stdout.log`,
+        stderr: `.devns/artifacts/browser-smoke/${id}/stderr.log`,
+        artifacts: [
+          { kind: "console", path: `.devns/artifacts/browser-smoke/${id}/console.ndjson` },
+          { kind: "network", path: `.devns/artifacts/browser-smoke/${id}/network.ndjson` }
+        ]
+      },
+      null,
+      2
+    )}\n`
+  );
+  await writeFile(path.join(artifactDir, "stdout.log"), "browser ok\n");
+  await writeFile(path.join(artifactDir, "stderr.log"), "");
+  await writeFile(path.join(artifactDir, "console.ndjson"), '{"type":"error","text":"known dev warning"}\n');
+  await writeFile(
+    path.join(artifactDir, "network.ndjson"),
+    '{"url":"http://127.0.0.1/api","status":200}\n{"url":"http://127.0.0.1/oops","status":500}\n'
+  );
+}
+
 function doneFeature(id: string, changedFiles: string[], commit?: string): Feature {
   return {
     id,
@@ -79,6 +111,8 @@ async function main() {
     await execFileAsync("git", ["add", "."], { cwd });
     await execFileAsync("git", ["commit", "-m", "REV-001: implement morning review smoke"], { cwd });
     const head = (await execFileAsync("git", ["rev-parse", "HEAD"], { cwd })).stdout.trim();
+    await writeBrowserSmokeArtifact(cwd, "REV-001");
+    await writeBrowserSmokeArtifact(cwd, "REV-002");
 
     inventory.features = [
       doneFeature("REV-001", ["src/shared.ts", "src/a.ts"], head),
@@ -112,6 +146,8 @@ async function main() {
     assert.ok((rev001?.diff?.filesChanged ?? 0) > 0);
     assert.ok(rev001?.artifactRefs.includes(".devns/artifacts/browser-smoke/REV-001/run.json"));
     assert.ok(rev001?.artifactRefs.includes(".devns/evidence/REV-001.json"));
+    assert.equal(rev001?.artifactDigests.find((digest) => digest.artifactRef.endsWith("/run.json"))?.browserSmoke?.consoleErrors, 1);
+    assert.equal(rev001?.artifactDigests.find((digest) => digest.artifactRef.endsWith("/run.json"))?.browserSmoke?.networkFailures, 1);
 
     const configless = await readInventory(cwd, config);
     delete configless.features[0].commit;
@@ -126,6 +162,8 @@ async function main() {
     const markdown = await readFile(path.join(cwd, result.markdownPath), "utf8");
     assert.match(markdown, /Morning Review 2026-05-30/);
     assert.match(markdown, /\.devns\/artifacts\/browser-smoke\/REV-001\/run\.json/);
+    assert.match(markdown, /console errors: 1/);
+    assert.match(markdown, /network failures: 1/);
 
     process.stdout.write("Morning review smoke passed.\n");
   } finally {

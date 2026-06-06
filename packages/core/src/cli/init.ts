@@ -281,6 +281,9 @@ export async function main(inputOptions?: InitOptions) {
         history: ".devns/history",
         traces: ".devns/traces",
         policies: ".devns/policies",
+        artifactIntegrity: {
+          browserSmoke: {}
+        },
         review: {
           mode: "html",
           outputDir: ".devns/reviews"

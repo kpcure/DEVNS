@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import { buildArtifactDigests, type ArtifactDigest } from "./artifact-digest";
 import { evaluateEvidenceQuality, type EvidenceQualityReport } from "./evidence-quality";
 import { historyPathForFeature, readExecutionHistoryRecords } from "./history";
 import { readConfig, readInventory, resolveFromCwd } from "./state";
@@ -40,6 +41,7 @@ export type FeatureReviewPacket = {
   reviewStatus: ReviewCompletionStatus;
   evidence: string[];
   artifactRefs: string[];
+  artifactDigests: ArtifactDigest[];
   acceptanceCoverage: Array<{
     criterion: string;
     evidence: string[];
@@ -192,6 +194,7 @@ export async function buildFeatureReviewPacket(
   const flattened = flattenHistory(history.records);
   const evidence = evidenceSummaries(feature);
   const artifactRefs = featureArtifactRefs(feature);
+  const artifactDigests = await buildArtifactDigests(cwd, artifactRefs, config.artifactIntegrity?.browserSmoke);
   const diff = await diffForFeature(cwd, feature);
   const evidenceQuality = evaluateEvidenceQuality(feature);
   const reviewStatus: ReviewCompletionStatus = hasReviewEvidence(feature) ? "review_completed" : diff ? "review_packet_ready" : "missing";
@@ -213,6 +216,7 @@ export async function buildFeatureReviewPacket(
     reviewStatus,
     evidence,
     artifactRefs,
+    artifactDigests,
     acceptanceCoverage: evidenceQuality.coverage.map((item) => ({
       criterion: item.criterion,
       evidence: item.evidence.map(formatEvidence)
@@ -265,6 +269,14 @@ function markdownList(items: string[], empty = "None") {
   return items.length ? items.map((item) => `- ${item}`).join("\n") : `- ${empty}`;
 }
 
+function artifactDigestLines(packet: FeatureReviewPacket) {
+  return packet.artifactDigests.flatMap((digest) => [
+    `${digest.status}: ${digest.summary}`,
+    ...(digest.browserSmoke?.sampleUrls.length ? [`sample URLs: ${digest.browserSmoke.sampleUrls.join(", ")}`] : []),
+    ...(digest.browserSmoke?.policyFindings.length ? digest.browserSmoke.policyFindings.map((finding) => `policy: ${finding}`) : [])
+  ]);
+}
+
 export function renderMorningReviewMarkdown(report: MorningReviewReport) {
   const packetSections = report.packets.map((packet) =>
     [
@@ -283,6 +295,9 @@ export function renderMorningReviewMarkdown(report: MorningReviewReport) {
       "",
       "### Artifacts",
       markdownList(packet.artifactRefs),
+      "",
+      "### Artifact Digests",
+      markdownList(artifactDigestLines(packet)),
       "",
       "### Decisions And Lessons",
       markdownList([...packet.decisions, ...packet.lessons]),

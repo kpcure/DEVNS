@@ -36,6 +36,9 @@ export const defaultConfig: DevnsConfig = {
   history: ".devns/history",
   traces: ".devns/traces",
   policies: ".devns/policies",
+  artifactIntegrity: {
+    browserSmoke: {}
+  },
   review: {
     mode: "html",
     outputDir: ".devns/reviews"

@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
+import { buildArtifactDigests, type ArtifactDigest } from "./artifact-digest";
 import { evaluateEvidenceQuality, type EvidenceQualityReport } from "./evidence-quality";
 import { historyPathForFeature, readExecutionHistoryRecords } from "./history";
 import { readConfig, readInventory, resolveFromCwd } from "./state";
@@ -40,6 +41,8 @@ export type ReviewPacket = {
   };
   evidenceQuality: EvidenceQualityReport;
   evidence: Feature["evidence"];
+  artifactRefs: string[];
+  artifactDigests: ArtifactDigest[];
   history: ExecutionHistoryRecord[];
   projectRules: Array<{
     path: string;
@@ -89,6 +92,16 @@ function selectedFeature(features: Feature[], featureId?: string) {
   return features.find((feature) => feature.status === "in_progress") ?? features.find((feature) => feature.status === "done");
 }
 
+function unique(values: string[]) {
+  return [...new Set(values.filter(Boolean))];
+}
+
+function featureArtifactRefs(feature: Feature) {
+  const featureRefs = Object.values(feature.artifactRefs ?? {}).filter((value): value is string => Boolean(value));
+  const evidenceRefs = (feature.evidence ?? []).flatMap((item) => item.artifactRefs ?? []);
+  return unique([...featureRefs, ...evidenceRefs]);
+}
+
 async function readProjectRules(cwd: string, maxBytes: number) {
   const candidates = ["AGENTS.md", ".devns/index.md", ".devns/project.md", ".devns/policies/default.md"];
   const rules: ReviewPacket["projectRules"] = [];
@@ -129,6 +142,7 @@ export async function buildReviewPacket(
   const rawDiff = await git(cwd, diffArgs);
   const diff = trimToBytes(rawDiff, Math.floor(maxBytes * 0.6));
   const status = await git(cwd, ["status", "--short"]);
+  const artifactRefs = featureArtifactRefs(feature);
 
   return {
     schemaVersion: 1,
@@ -160,6 +174,8 @@ export async function buildReviewPacket(
     },
     evidenceQuality: evaluateEvidenceQuality(feature),
     evidence: feature.evidence ?? [],
+    artifactRefs,
+    artifactDigests: await buildArtifactDigests(cwd, artifactRefs, config.artifactIntegrity?.browserSmoke),
     history: await historyFor(cwd, config, feature),
     projectRules: await readProjectRules(cwd, Math.floor(maxBytes * 0.15)),
     reviewInstructions: [
@@ -189,6 +205,9 @@ export function renderReviewPacketPrompt(packet: ReviewPacket) {
     "",
     "## Evidence Quality",
     JSON.stringify(packet.evidenceQuality, null, 2),
+    "",
+    "## Artifact Digests",
+    JSON.stringify(packet.artifactDigests, null, 2),
     "",
     "## Git Status",
     "```text",

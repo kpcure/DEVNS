@@ -11,6 +11,7 @@ async function main() {
   try {
     const defaultOnly = await loadConfig(cwd);
     assert.equal(defaultOnly.config.features, ".devns/features.json");
+    assert.deepEqual(defaultOnly.config.artifactIntegrity?.browserSmoke, {});
     assert.equal(defaultOnly.config.completionPolicy?.whenNoActiveFeature, "claim_next");
     assert.equal(defaultOnly.config.completionPolicy?.requireCommit, true);
     assert.deepEqual(defaultOnly.sources.map((source) => source.name), ["built-in"]);
@@ -32,6 +33,18 @@ async function main() {
         {
           version: 1,
           features: "custom/features.json",
+          artifactIntegrity: {
+            browserSmoke: {
+              requireRichBrowserArtifacts: true,
+              failOnConsoleError: true,
+              consoleErrorBudget: 1,
+              failOnNetworkError: true,
+              networkFailureBudget: 0,
+              networkFailureStatus: 500,
+              networkAllowedUrls: ["http://127.0.0.1/*"],
+              networkBlockedUrls: ["https://analytics.example.com/*"]
+            }
+          },
           hooks: {
             stop: {
               retryBudget: 9
@@ -74,6 +87,9 @@ async function main() {
     assert.deepEqual(resolved.sources.map((source) => source.name), ["built-in", "plugin", "project", "extensions", "cli"]);
     assert.equal(resolved.config.features, "override/features.json");
     assert.equal(resolved.config.candidates, "plugin/candidates.json");
+    assert.equal(resolved.config.artifactIntegrity?.browserSmoke?.requireRichBrowserArtifacts, true);
+    assert.equal(resolved.config.artifactIntegrity?.browserSmoke?.consoleErrorBudget, 1);
+    assert.deepEqual(resolved.config.artifactIntegrity?.browserSmoke?.networkAllowedUrls, ["http://127.0.0.1/*"]);
     assert.equal(resolved.config.hooks?.stop?.mode, "gate");
     assert.equal(resolved.config.hooks?.stop?.retryBudget, 9);
     assert.equal(resolved.config.hooks?.stop?.blockOn?.pluginGate, true);
