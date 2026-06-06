@@ -4,7 +4,7 @@ These contracts are the prompt-level part of DEVNS. Commands and JSON schemas ma
 
 ## Stop Hook Continuation
 
-The Stop hook is a lifecycle gate, not the implementation worker. It should read persisted state and return one concise instruction packet. It may run configured missing read-only Review Agent lanes, but those lanes must receive a bounded packet and return lane-result JSON instead of editing files or continuing implementation.
+The Stop hook is a lifecycle gate and safety net, not the implementation worker and not the normal queue loop. It should read persisted state and return one concise instruction packet. It may run configured missing read-only Review Agent lanes, but those lanes must receive a bounded packet and return lane-result JSON instead of editing files or continuing implementation.
 
 The continuation packet should include:
 
@@ -19,7 +19,7 @@ It must not ask the agent to run broad discovery, long tests, browser checks, pa
 
 ## Feature Worker Handoff
 
-After RFC clarification and before implementation, prefer an isolated worker/subagent or fresh implementation context when the host supports it. This prevents one long Stop-hook-driven main context from accumulating every feature's details.
+After RFC clarification and before implementation, use Orchestrator Mode when the host supports it. The main agent keeps queue/evidence/review/commit responsibility and launches an isolated worker/subagent or fresh implementation context for one feature. This prevents one long context from accumulating every feature's details.
 
 Worker input:
 
@@ -37,7 +37,7 @@ Worker output:
 - blockers or human-review questions
 - suggested commit message
 
-The Stop hook claim-next prompt should not ask the current orchestration context to implement directly. It should instruct the host to start a Sub Agent, isolated worker, or fresh implementation context with the worker handoff. The main context should keep queue orchestration, evidence aggregation, and Stop hook decisions. The worker should implement exactly one feature.
+The normal orchestrator prompt should not ask the main context to implement directly. It should instruct the host to start a Sub Agent, isolated worker, or fresh implementation context with the worker handoff. The main context should keep queue orchestration, evidence aggregation, review routing, completion, and commits. The worker should implement exactly one feature.
 
 ## Code Review Lane
 

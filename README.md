@@ -36,7 +36,7 @@ Install from npm with the scoped package name. The unscoped `devns` name on npm 
 npx @kpcure/devns doctor
 npx @kpcure/devns init --project-name "Example Project" --project-description "Describe the migration or feature goal."
 npx @kpcure/devns discover --json
-npx @kpcure/devns run --json
+npx @kpcure/devns orchestrate --host codex --json
 npx @kpcure/devns stop-log --tail 20
 npx @kpcure/devns dashboard
 ```
@@ -54,11 +54,12 @@ flowchart LR
   A["Project goal"] --> B["Discovery candidates"]
   B --> C["RFC clarification"]
   C --> D["Approved feature"]
-  D --> E["Agent implementation"]
-  E --> F["Lanes and evidence"]
-  F --> G["Review packet"]
-  G --> H["Feature commit"]
-  H --> I["Morning review"]
+  D --> E["Main orchestrator"]
+  E --> F["Implementation subagent"]
+  F --> G["Lanes and evidence"]
+  G --> H["Review subagent"]
+  H --> I["Feature commit"]
+  I --> J["Morning review"]
 ```
 
 This project is inspired by the May 20, 2026 Claude blog article, [Using Claude Code: The unreasonable effectiveness of HTML](https://claude.com/blog/using-claude-code-the-unreasonable-effectiveness-of-html), which argues that HTML is unusually effective as a human-in-the-loop interface for agent work because it is easier to inspect, navigate, and interact with than plain Markdown for many review tasks.
@@ -106,10 +107,10 @@ npx @kpcure/devns init --project-name "Example Project" --project-description "D
 
 Then use the `devns-init` skill to discover candidate features. Candidates are not executable work yet. A candidate must go through the `devns-rfc` skill and receive human approval before it can become a ready feature.
 
-For an existing DEVNS workspace, ask the agent to use the `devns-run` skill or run:
+For an existing DEVNS workspace, ask the agent to use the `devns-run` skill or run Orchestrator Mode:
 
 ```sh
-npx @kpcure/devns run --json
+npx @kpcure/devns orchestrate --host codex --json
 ```
 
 Humans can open the dashboard with:
@@ -133,11 +134,12 @@ Humans should usually interact with the HTML dashboard and reports. Agents shoul
 1. A human starts with `npm run devns -- doctor`, the dashboard, or a DEVNS skill.
 2. Discovery writes candidate features into JSON.
 3. The RFC skill clarifies requirements, validation, and unknowns before work becomes ready.
-4. An agent reads `AGENTS.md`, claims one approved feature, implements it, verifies it, and commits exactly one feature.
-5. Review lanes and the evidence-quality gate persist static, dynamic, and optional read-only review-agent evidence.
-6. `devns complete` records implementation commit metadata and durable history for that feature.
-7. A single stop-hook orchestrator gates unfinished active work, can run missing read-only Review Agent lanes, reads structured evidence, then claims the next approved feature when policy allows.
-8. The dashboard and reports render human-facing review by feature, risk, evidence, and diff.
+4. The main agent runs `devns orchestrate`, claims one approved feature, and stays as queue/evidence orchestrator.
+5. The main agent delegates implementation to one feature subagent, then runs deterministic lanes.
+6. The main agent delegates read-only review to a review subagent or configured review lane.
+7. `devns complete` records implementation commit metadata and durable history for that feature, then the main agent creates exactly one feature commit.
+8. Stop hooks remain installed as safety nets for unsafe shutdown, not as the primary work loop.
+9. The dashboard and reports render human-facing review by feature, risk, evidence, and diff.
 
 ## Repository Shape
 
@@ -145,6 +147,7 @@ Humans should usually interact with the HTML dashboard and reports. Agents shoul
 - `docs/repository-structure.md`: open-source file layout and ignored local workbench policy.
 - `docs/getting-started.md`: first-run setup.
 - `docs/command-surface.md`: local runtime command surface rationale.
+- `docs/orchestrator-mode.md`: main-agent plus subagent execution model.
 - `docs/configuration.md`: DEVNS config reference.
 - `docs/devns-workspace.md`: `.devns/` workspace contract.
 - `docs/feature-schema.md`: feature inventory format.

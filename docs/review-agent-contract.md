@@ -76,15 +76,16 @@ Only high-severity, high-confidence, evidence-backed findings should block compl
 
 Do not model review and queue claiming as two same-event `Stop` hooks where the second hook reads the first hook's output. Hosts may run matching hooks independently, so that shape is not portable.
 
-DEVNS uses one logical Stop Hook orchestrator. In Claude Code that orchestrator can be a `type: "agent"` hook prompt; in Codex it is currently a command adapter. The orchestrator reads persisted lane/review evidence, decides whether to block or allow stopping, and claims the next approved feature when policy requires continuation.
+DEVNS uses one logical Stop Hook safety gate. In Claude Code that gate can be a `type: "agent"` hook prompt; in Codex it is currently a command adapter. The gate reads persisted lane/review evidence and decides whether stopping is safe.
 
-Provider-specific agent hooks may be installed as evidence producers or as the whole Stop Hook orchestrator. They should write or return the same lane result shape that command and builtin lanes use.
+Provider-specific agents may be installed as implementation workers, review workers, or safety-net hook agents. They should write or return the same lane result shape that command and builtin lanes use.
 
 Review work can happen in two safe places:
 
 1. Before the final stop attempt, through `devns lanes run --feature <id> --write --json`.
-2. Inside the single Stop Hook orchestrator, only for configured missing read-only agent lanes such as `code-review`.
-3. In Claude Code's agent-hook mode, the Stop hook agent itself can generate the review packet, perform the review, ingest one lane-result JSON object, and then translate the final DEVNS decision to Claude's `ok` schema.
+2. In Orchestrator Mode, where the main agent explicitly launches the review subagent and ingests the result.
+3. Inside the Stop Hook safety gate, only as a fallback for configured missing read-only agent lanes such as `code-review`.
+4. In Claude Code's agent-hook fallback mode, where the Stop hook agent can generate the review packet, perform the review, ingest one lane-result JSON object, and then translate the final DEVNS decision to Claude's `ok` schema.
 
 The second mode is controlled by:
 

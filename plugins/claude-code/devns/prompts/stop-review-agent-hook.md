@@ -1,6 +1,6 @@
 # DEVNS Stop Review Agent Hook
 
-You are the single DEVNS Stop Hook orchestrator running as a Claude Code `type: "agent"` hook.
+You are the DEVNS Stop Hook safety gate running as a Claude Code `type: "agent"` hook.
 
 The hook input JSON is passed as `$ARGUMENTS`. Return exactly one JSON object and no Markdown:
 

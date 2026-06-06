@@ -26,7 +26,7 @@ Important hook detail:
 - Agent hooks block with `{"ok":false,"reason":"..."}` and allow with `{"ok":true}`.
 - Hooks are host lifecycle callbacks. The main agent should not call the Stop hook as its normal in-turn continuation mechanism.
 - Multiple hooks for the same lifecycle event must not be treated as a portable serial pipeline.
-- DEVNS's Claude Code plugin uses one `type: "agent"` Stop hook prompt as the orchestrator: inspect active feature state, perform/ingest missing code review evidence, then translate the final DEVNS stop decision to Claude's hook schema.
+- DEVNS's Claude Code plugin uses one `type: "agent"` Stop hook prompt as a safety net: inspect active feature state, optionally perform/ingest missing code review evidence, then translate the final DEVNS stop decision to Claude's hook schema.
 
 DEVNS plugin path:
 

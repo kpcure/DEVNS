@@ -93,6 +93,10 @@ async function main() {
     const reviewLane = JSON.parse(await readFile(path.join(cwd, ".devns", "lanes", "code-review.json"), "utf8"));
     assert.equal(reviewLane.type, "agent");
     assert.equal(reviewLane.command, "bash .devns/adapters/code-review.codex.sh");
+    const codexWorker = await readFile(path.join(cwd, ".codex", "agents", "devns_feature_worker.toml"), "utf8");
+    assert.match(codexWorker, /name = "devns_feature_worker"/);
+    const codexReviewer = await readFile(path.join(cwd, ".codex", "agents", "devns_code_reviewer.toml"), "utf8");
+    assert.match(codexReviewer, /lane-result JSON/);
 
     const emptyRfc = JSON.parse(await runDevns(repoRoot, cwd, "rfc", "check", "--all", "--json"));
     assert.deepEqual(emptyRfc, { results: [], ready: true });
@@ -145,6 +149,10 @@ async function main() {
     const claudeReviewLane = JSON.parse(await readFile(path.join(claudeCwd, ".devns", "lanes", "code-review.json"), "utf8"));
     assert.equal(claudeReviewLane.type, "agent");
     assert.equal(claudeReviewLane.command, "bash .devns/adapters/code-review.claude.sh");
+    const claudeWorker = await readFile(path.join(claudeCwd, ".claude", "agents", "feature-worker.md"), "utf8");
+    assert.match(claudeWorker, /name: devns-feature-worker/);
+    const claudeReviewer = await readFile(path.join(claudeCwd, ".claude", "agents", "code-reviewer.md"), "utf8");
+    assert.match(claudeReviewer, /name: devns-code-reviewer/);
 
     process.stdout.write("Install dogfood smoke passed.\n");
   } finally {

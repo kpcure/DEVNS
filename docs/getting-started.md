@@ -46,7 +46,7 @@ This creates:
   policies/
 ```
 
-By default `init` uses `--host auto`: when it is run inside Codex or Claude Code it also writes the matching local host adapter. Use `--host codex`, `--host claude`, `--host both`, or `--host none` to be explicit. The Codex adapter writes `.codex/hooks.json` with an absolute hook command, installs `plugins/codex/devns/`, marks `plugins/codex/devns/scripts/devns-stop-hook.sh` executable, and prepares `.devns/adapters/code-review.codex.sh` plus `.devns/lanes/code-review.json` for read-only review-agent lanes. The Claude adapter writes `.claude/settings.json` as a `type: "agent"` Stop hook; its prompt reads active DEVNS state, performs/ingests missing `code-review` evidence, and returns Claude's `ok` hook schema.
+By default `init` uses `--host auto`: when it is run inside Codex or Claude Code it also writes the matching local host adapter. Use `--host codex`, `--host claude`, `--host both`, or `--host none` to be explicit. The Codex adapter writes `.codex/hooks.json` with an absolute hook command, installs `.codex/agents/*.toml`, marks `plugins/codex/devns/scripts/devns-stop-hook.sh` executable, and prepares `.devns/adapters/code-review.codex.sh` plus `.devns/lanes/code-review.json`. The Claude adapter writes `.claude/settings.json` as a safety-net `type: "agent"` Stop hook and installs `.claude/agents/*.md` for normal orchestrator-mode subagents.
 
 Then use the `devns-init` skill to scan repository context and fill `.devns/candidates.json`.
 
@@ -80,11 +80,13 @@ npx @kpcure/devns discover --json
 ```
 
 2. Ask an agent to use the `devns-rfc` skill for selected candidates. Only approved RFCs can become ready features.
-3. Start or inspect the implementation loop:
+3. Start or inspect the implementation loop with Orchestrator Mode:
 
 ```sh
-npx @kpcure/devns run --json
+npx @kpcure/devns orchestrate --host codex --json
 ```
+
+Use `--host claude` inside Claude Code. The returned packet tells the main agent which implementation and review subagents to launch and what prompts to send.
 
 1. Open the dashboard when you want the human view:
 
@@ -146,6 +148,6 @@ The Claude Code Stop hook uses:
 
 The Stop hook is triggered by the host when the client is about to stop. Do not use it as the normal command an agent calls to keep working.
 
-Run review/test lanes before the final stop attempt and persist evidence in `.devns/history/` and `.devns/features.json` when possible. In Claude Code, the Stop hook agent may perform the missing read-only code review itself and ingest one lane result before translating the final DEVNS stop decision to `{"ok":true}` or `{"ok":false,"reason":"..."}`.
+Run the normal loop through `devns orchestrate`. Stop hooks are safety nets for unsafe shutdown. In Claude Code, the Stop hook agent may perform missing read-only code review as a fallback, but it should not replace the main orchestrator plus per-feature subagents.
 
 DEVNS does not provide an LLM provider. Claude subagents, Codex tasks, CI jobs, local scripts, or humans can act as review workers if they produce the DEVNS lane-result contract.

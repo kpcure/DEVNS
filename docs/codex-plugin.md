@@ -77,7 +77,20 @@ npm run devns -- stop-log --tail 20
 
 The adapter records whether it was invoked and which stop command it selected. The core records the decision mode, selected feature, and blocker reasons. Hook stdout remains reserved for the host protocol: empty output allows stop, and `{"decision":"block","reason":"..."}` blocks stop with the continuation reason.
 
-When the core claims the next feature, the block reason includes a compact worker handoff: feature context, requirements, acceptance criteria, RFC validation plan, configured lanes, and whether a semantic agent lane is available. This is intentionally richer than a one-line prompt so hosts that continue from the block reason have enough context to start the next feature loop.
+`devns orchestrate --host codex --json` is the preferred long-run path. It returns explicit launch instructions for Codex custom agents. Stop-hook claim-next remains a safety-net fallback, not the primary loop.
+
+When the core claims the next feature, the block reason includes a compact worker handoff: feature context, requirements, acceptance criteria, RFC validation plan, configured lanes, and whether a semantic agent lane is available. This is intentionally richer than a one-line prompt so hosts that continue from the block reason have enough context to recover.
+
+## Codex Custom Agents
+
+`devns init --host codex` installs:
+
+```text
+.codex/agents/devns_feature_worker.toml
+.codex/agents/devns_code_reviewer.toml
+```
+
+Codex custom agents must be explicitly requested by the parent prompt. DEVNS orchestrator packets therefore include launch instructions that say to spawn `devns_feature_worker` for implementation and `devns_code_reviewer` for read-only review.
 
 ## Code Review Agent Lane
 
@@ -86,6 +99,7 @@ When the core claims the next feature, the block reason includes a compact worke
 ```text
 .devns/adapters/code-review.codex.sh
 .devns/lanes/code-review.json
+.codex/agents/devns_code_reviewer.toml
 ```
 
 The lane command is:

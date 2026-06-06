@@ -7,8 +7,8 @@ DEVNS 是一个面向长时间 Agent 开发的本地优先 harness。它让 Agen
 - JSON 是对 Agent 和 LLM 友好的事实源，生成快、可编辑、可被前端消费。
 - Markdown 用来沉淀项目知识、设计理由、踩坑记录和长期上下文。
 - HTML 看板是人的控制台，用来查看功能点、证据、风险、diff 和 morning review。
-- 每次 Agent 只领取一个已批准 RFC 的功能点，完成实现、验证、记录证据并提交一个 commit。
-- 单一 Stop hook 编排器负责在 Agent 自然结束后接管流程：检查当前功能点状态、按配置触发缺失的只读审查、决定是否继续领取下一个功能点。
+- 主 Agent 作为 orchestrator，只负责领取一个已批准 RFC 的功能点、派发实现/审查 subagent、聚合证据并提交一个 commit。
+- Stop hook 退回安全兜底：在 Agent 自然结束时检查当前功能点状态，防止半成品静默结束。
 - DEVNS 不提供 LLM Provider，也不试图替代 Claude Code、Codex、Cursor 等宿主；它提供可插拔的流程、状态、提示词、hook、review agent 契约和 dashboard。
 
 ## 解决什么问题
@@ -46,10 +46,10 @@ npx @kpcure/devns init --project-name "Example Project" --project-description "D
 
 然后让 Agent 使用 `devns-init` skill 发现候选功能点。候选功能点还不能直接开发，必须先通过 `devns-rfc` skill 做需求澄清，并由人批准 RFC 后才会进入可领取队列。
 
-已有 DEVNS 工作区时，可以让 Agent 使用 `devns-run` skill，或者运行：
+已有 DEVNS 工作区时，可以让 Agent 使用 `devns-run` skill，或者运行 Orchestrator Mode：
 
 ```sh
-npm run devns -- run --json
+npm run devns -- orchestrate --host codex --json
 ```
 
 打开人类看板：
@@ -70,12 +70,12 @@ http://127.0.0.1:5173/
 2. Discovery 根据项目背景和仓库内容生成候选功能点。
 3. RFC 阶段澄清需求、验收标准、验证方式、风险和未知项。
 4. 人批准 RFC 后，功能点进入 ready 队列。
-5. Agent 读取 `AGENTS.md` 和 `.devns/` 状态，只领取一个 ready 功能点。
-6. Agent 实现功能、运行静态和动态验证、记录 evidence。
-7. 只读 Review Agent 或人工审查补充 review evidence。
-8. `devns complete` 记录 commit、diff、证据质量和执行历史。
-9. Stop hook 在 Agent 自然结束后检查状态，并按策略决定是否继续下一个功能点。
-10. 人通过 morning review 查看整晚结果，而不是逐个 commit 猜意图。
+5. 主 Agent 运行 `devns orchestrate --host <codex|claude> --json`，只领取一个 ready 功能点。
+6. 主 Agent 显式派发实现 subagent；实现 subagent 只负责这一个功能点。
+7. 主 Agent 运行静态/动态 lanes，显式派发只读 Review subagent。
+8. 主 Agent 聚合 evidence/history，必要时把修复任务再派给实现 subagent。
+9. `devns complete` 记录 commit、diff、证据质量和执行历史，主 Agent 提交一个 feature commit。
+10. Stop hook 只做兜底检查；人通过 morning review 查看整晚结果，而不是逐个 commit 猜意图。
 
 ## 重要目录
 
@@ -89,6 +89,7 @@ http://127.0.0.1:5173/
 - `apps/dashboard/`：本地 HTML review plane。
 - `docs/feature-schema.md`：功能点和证据 schema。
 - `docs/prompt-contracts.md`：提示词契约。
+- `docs/orchestrator-mode.md`：主 Agent + subagent 的正常执行模式。
 - `docs/review-agent-contract.md`：只读 Review Agent 契约。
 - `docs/claude-code-hooks.md`：Claude Code Stop hook 集成说明。
 - `docs/codex-plugin.md`：Codex 插件说明。
@@ -136,7 +137,7 @@ Claude Code、Codex 等宿主负责运行 Agent；DEVNS 负责提供：
 - RFC、需求澄清、实现 handoff、history 写入等 prompt contract。
 - dashboard 和 morning review 的数据结构。
 
-Stop hook 不是 Agent 主动调用的命令，而是宿主在 Agent 自然结束一轮 query 后触发的 hook。DEVNS 的 hook 逻辑会读取结构化状态、必要时通过一个统一编排器补跑缺失的只读 Review Agent lane、检查是否可以 complete、是否继续领取下一个功能点。Claude Code 下这个编排器可以是原生 `type: "agent"` Stop hook：prompt 里先读 active feature，再生成 review packet、执行 code review、写入 lane-result evidence，最后返回 Claude 的 `{"ok":false,"reason":"..."}` 或 `{"ok":true}`。不要把状态检查和 review 检查拆成两个同事件 hook；宿主可能并发运行它们，导致返回结果冲突。
+Stop hook 不是 Agent 主动调用的命令，而是宿主在 Agent 自然结束一轮 query 后触发的 hook。现在 DEVNS 的主路线不是靠 Stop hook 续跑，而是靠当前主会话作为 orchestrator，显式派发每个功能点的实现 subagent 和只读 review subagent。Stop hook 保留为安全兜底：当 active feature 缺 evidence/review/commit 时阻止静默结束。不要把状态检查和 review 检查拆成两个同事件 hook；宿主可能并发运行它们，导致返回结果冲突。
 
 ## 本地开发
 

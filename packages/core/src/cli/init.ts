@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { chmod, copyFile, cp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, copyFile, cp, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeAgentsIndex } from "../harness/agents-index";
@@ -159,6 +159,33 @@ async function writeReviewAgentLane(cwd: string, adapter: "codex" | "claude", fo
     blocksCompletion: true
   };
   return writeNewFile(path.join(cwd, ".devns", "lanes", "code-review.json"), `${JSON.stringify(lane, null, 2)}\n`, force);
+}
+
+async function writeHostSubagents(cwd: string, adapter: "codex" | "claude", force: boolean) {
+  const sourceDir =
+    adapter === "codex"
+      ? path.join(packageRoot, "plugins", "codex", "devns", "agents")
+      : path.join(packageRoot, "plugins", "claude-code", "devns", "agents");
+  const destinationDir = adapter === "codex" ? path.join(cwd, ".codex", "agents") : path.join(cwd, ".claude", "agents");
+  const copied: Array<{ path: string; written: boolean }> = [];
+
+  let entries: string[] = [];
+  try {
+    entries = await readdir(sourceDir);
+  } catch {
+    return copied;
+  }
+
+  for (const entry of entries.filter((item) => item.endsWith(adapter === "codex" ? ".toml" : ".md"))) {
+    const destinationPath = path.join(destinationDir, entry);
+    const didCopy = await copyNewFile(path.join(sourceDir, entry), destinationPath, force);
+    copied.push({
+      path: path.relative(cwd, destinationPath),
+      written: didCopy
+    });
+  }
+
+  return copied;
 }
 
 async function readPackageScripts(cwd: string) {
@@ -414,6 +441,10 @@ export async function main(inputOptions?: InitOptions) {
       (didCopyHook ? written : skipped).push(".codex/hooks.json");
 
       await chmod(path.join(cwd, "plugins", "codex", "devns", "scripts", "devns-stop-hook.sh"), 0o755);
+
+      for (const item of await writeHostSubagents(cwd, "codex", options.force)) {
+        (item.written ? written : skipped).push(item.path);
+      }
     } else if (adapter === "claude") {
       const didCopyPlugin = await copyNewDirectory(
         path.join(packageRoot, "plugins", "claude-code", "devns"),
@@ -428,6 +459,10 @@ export async function main(inputOptions?: InitOptions) {
         options.force
       );
       (didCopySettings ? written : skipped).push(".claude/settings.json");
+
+      for (const item of await writeHostSubagents(cwd, "claude", options.force)) {
+        (item.written ? written : skipped).push(item.path);
+      }
     }
   }
 

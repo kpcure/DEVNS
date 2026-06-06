@@ -53,7 +53,7 @@ DEVNS configuration lives in:
 }
 ```
 
-`reviewAgent.mode = "run_missing"` lets the single Stop Hook orchestrator run configured missing read-only `type: "agent"` lanes before returning its final decision. Set it to `"off"` when review must only happen before the stop attempt.
+`reviewAgent.mode = "run_missing"` lets the Stop Hook safety gate run configured missing read-only `type: "agent"` lanes before returning its final decision. Set it to `"off"` when review must only happen through Orchestrator Mode before the stop attempt.
 
 ## Review Lanes
 
@@ -112,4 +112,4 @@ Long stop-hook continuation loops should avoid carrying an ever-growing context.
 }
 ```
 
-The current runtime exposes this in `devns run --json` handoff. Hosts can use it to start a fresh worker/subagent per feature while keeping detailed history in `.devns/history/`.
+The current runtime exposes this in `devns orchestrate --json` handoff. Hosts can use it to start a fresh worker/subagent per feature while keeping detailed history in `.devns/history/`.

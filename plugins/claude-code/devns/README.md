@@ -5,8 +5,8 @@ This plugin installs:
 - a `Stop` hook using Claude Code's `type: "agent"` mode
 - `devns-init` skill for initial feature discovery
 - `devns-rfc` skill for requirement clarification before implementation
-- `devns-run` skill for the feature implementation loop
-- a code-review subagent template
+- `devns-run` skill for Orchestrator Mode
+- project subagent templates for feature implementation and read-only code review
 - prompt contracts under `prompts/`
 
 Recommended first check after installation, when the target project exposes it:
@@ -33,4 +33,5 @@ Claude Code details:
 - Stop hooks are lifecycle callbacks triggered by Claude Code, not normal commands the main agent should call mid-turn.
 - Do not depend on two same-event Stop hooks as a serial pipeline.
 - The DEVNS Claude hook is one agent prompt: it reads active feature state, generates/reads a review packet, performs code review, ingests one lane-result JSON object, then translates the final DEVNS stop decision to Claude's `ok` schema.
+- Normal long-run work should start from `devns orchestrate --host claude --json`; the main agent should explicitly use `devns-feature-worker` and `devns-code-reviewer` subagents from the returned packet.
 - DEVNS does not provide an LLM provider. Claude subagents are optional read-only workers behind the provider-neutral DEVNS lane-result contract.

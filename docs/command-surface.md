@@ -55,7 +55,7 @@ npx @kpcure/devns <command>
 
 Use the scoped npm package `@kpcure/devns`. The unscoped `devns` package name on npm belongs to another project.
 
-The command argument is intentionally small and prompt-friendly: `doctor`, `init`, `run`, `dashboard`, `validate`, `discover`, `rfc`, `queue`, `lanes`, `review`, `complete`, `stop-log`, or `stop`. Skills and hooks may call more specific internal scripts, but humans and general agents should start with this single entrypoint. In this source checkout, `npm run devns -- <command>` is the local development equivalent.
+The command argument is intentionally small and prompt-friendly: `doctor`, `init`, `run`, `orchestrate`, `dashboard`, `validate`, `discover`, `rfc`, `queue`, `lanes`, `review`, `complete`, `stop-log`, or `stop`. Skills and hooks may call more specific internal scripts, but humans and general agents should start with this single entrypoint. In this source checkout, `npm run devns -- <command>` is the local development equivalent.
 
 The current repository also exposes thin npm-backed internal development commands:
 
@@ -63,6 +63,7 @@ The current repository also exposes thin npm-backed internal development command
 npx @kpcure/devns doctor [--json]
 npx @kpcure/devns init --project-name "Project" --project-description "Goal" [--host auto|codex|claude|both|none]
 npx @kpcure/devns run [--json] [--no-claim]
+npx @kpcure/devns orchestrate [--host generic|codex|claude] [--json] [--no-claim]
 npx @kpcure/devns stop-log [--tail 20] [--json]
 npx @kpcure/devns dashboard
 npx @kpcure/devns validate [--json] [--strict] [--fix]
@@ -73,6 +74,7 @@ npm run devns:doctor [-- --json]
 npm run devns:status [-- --json]
 npm run devns:dashboard
 npm run devns:run [-- --json] [-- --no-claim]
+npm run devns:orchestrate [-- --host codex] [-- --json] [-- --no-claim]
 npm run devns:discover [-- --json] [-- --force]
 npm run devns:lanes -- run [--feature <feature-id>] [--write] [--json]
 npm run devns:lanes -- ingest --feature <feature-id> --result <lane-result.json> [--actor review-agent:<name>] [--json]
@@ -93,7 +95,7 @@ npm run harness:validate [-- --json] [-- --strict] [-- --fix]
 npm run harness:stop
 ```
 
-`npm run devns:init` creates `.devns/` with the files that skills, hooks, the dashboard, and agents share. It is the deterministic substrate under the `devns-init` skill. Host adapters can be installed at the same time with `--host codex`, `--host claude`, or `--host both`; the default `--host auto` detects Codex or Claude environment variables and installs the matching adapter.
+`npm run devns:init` creates `.devns/` with the files that skills, hooks, the dashboard, and agents share. It is the deterministic substrate under the `devns-init` skill. Host adapters can be installed at the same time with `--host codex`, `--host claude`, or `--host both`; the default `--host auto` detects Codex or Claude environment variables and installs the matching adapter. Claude init installs project subagents under `.claude/agents/*.md`; Codex init installs custom agents under `.codex/agents/*.toml`.
 
 `npm run devns:doctor` is the first command to run after install. It checks whether the workspace exists, validates that the feature inventory can load, reports the current mode, and prints the next action.
 
@@ -107,13 +109,15 @@ In a target repository, this alias may not exist yet. Agents should inspect `pac
 
 `npm run devns:run` is the agent-facing loop entry. It detects bootstrap, active, claimable, blocked, and empty-queue modes. By default it claims the next approved feature when no feature is active; pass `--no-claim` to inspect without mutating state. When a feature is active or claimed, JSON output includes `workerHandoff`, a compact contract for running that one feature in an isolated worker/subagent or fresh implementation context when the host supports it.
 
+`npm run devns:orchestrate` is the preferred long-run entrypoint. It keeps the main agent as orchestrator and returns a complete packet for one feature: implementation subagent name/prompt, read-only review subagent name/prompt, worker handoff, required lanes, and main-agent next steps. Stop hooks become safety nets instead of the primary work loop. See `docs/orchestrator-mode.md`.
+
 `npm run harness:validate` and `npx @kpcure/devns validate` are deterministic health checks. They inspect workspace shape, schema validity, RFC readiness, evidence quality, lane evidence records, hook wiring, and curated history/review artifacts. They are intentionally fast and do not run a model-based semantic review. Semantic validation must come from configured `type: "agent"` review lanes, browser/human evidence, or project-specific command lanes.
 
 `npm run devns:discover` is the deterministic substrate under the `devns-init` skill. It reads a conservative set of project signals and writes candidate features to `.devns/candidates.json`. It never creates claimable features.
 
 `npm run devns:lanes -- run` executes configured review lanes. Command lanes capture exit code, duration, stdout/stderr digests, evidence, and a decision of `allow`, `warn`, `needs_human_review`, or `block`. Pass `--write` to append the full lane result envelope to feature history and store concise lane evidence on the active feature.
 
-Agent lanes are review-worker adapters. For a lane such as `code-review`, DEVNS writes a review packet and prompt, injects `DEVNS_REVIEW_PROMPT`, `DEVNS_REVIEW_PACKET`, `DEVNS_FEATURE_ID`, `DEVNS_DIFF_BASE`, and `DEVNS_REPO`, then executes the lane command. The command must return one `tools/schema/lane-result.schema.json` object. `devns init --host codex` installs `.devns/adapters/code-review.codex.sh` and `.devns/lanes/code-review.json` so Codex projects have a ready read-only review worker. `devns init --host claude` installs a Claude Code `type: "agent"` Stop hook prompt that can act as the review worker directly and ingest the same lane-result contract.
+Agent lanes are review-worker adapters. For a lane such as `code-review`, DEVNS writes a review packet and prompt, injects `DEVNS_REVIEW_PROMPT`, `DEVNS_REVIEW_PACKET`, `DEVNS_FEATURE_ID`, `DEVNS_DIFF_BASE`, and `DEVNS_REPO`, then executes the lane command. The command must return one `tools/schema/lane-result.schema.json` object. `devns init --host codex` installs `.devns/adapters/code-review.codex.sh`, `.devns/lanes/code-review.json`, and `.codex/agents/devns_code_reviewer.toml`. `devns init --host claude` installs `.claude/agents/code-reviewer.md` and a Claude Code `type: "agent"` Stop hook prompt that can act as a safety-net reviewer.
 
 A browser smoke check can be wired as a command lane, for example by copying `templates/devns/lanes/browser-smoke.json` into `.devns/lanes/browser-smoke.json` and changing the command to the project's Playwright/Cypress/browser script. Browser evidence should be recorded with `verificationType: "browser_smoke"`.
 

@@ -112,7 +112,7 @@ export function featureWorkerPrompt(feature: Feature, verb: "Continue" | "Implem
     `${verb} feature ${feature.id}: ${feature.title}.`,
     "Read its approved RFC, context files, and latest evidence before editing.",
     "After RFC clarification, prefer an isolated worker/subagent or fresh context for this single feature when the host supports it.",
-    "Keep the main context responsible for orchestration, evidence aggregation, and stop-hook decisions.",
+    "Keep the main context responsible for orchestration, evidence aggregation, review routing, completion, and commits. Stop hooks are safety nets.",
     "Do technical implementation analysis inside the feature loop.",
     "Implement the smallest coherent change, run verification, update evidence/history, then commit exactly this feature."
   ].join(" ");
