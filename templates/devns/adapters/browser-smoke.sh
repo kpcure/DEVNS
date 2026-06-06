@@ -47,10 +47,14 @@ function walk(dir, prefix = "") {
 
 function kindFor(file) {
   const lower = file.toLowerCase();
+  const textLike = /\.(txt|text|html?|json|jsonl|ndjson)$/.test(lower);
   if (/\.(png|jpe?g|webp)$/.test(lower)) return "screenshot";
   if (/trace.*\.zip$/.test(lower) || /\.trace\.zip$/.test(lower)) return "trace";
   if (/console.*\.(ndjson|jsonl|json)$/.test(lower)) return "console";
   if (/(network|requests?|har).*\.(ndjson|jsonl|json|har)$/.test(lower)) return "network";
+  if (textLike && /(^|[/._-])(dom|visible[-_]?text|page[-_]?text|text[-_]?snapshot|dom[-_]?snapshot)([/._-]|$)/.test(lower)) return "dom_snapshot";
+  if (textLike && /(^|[/._-])(accessibility|a11y|aria)([/._-]|$)/.test(lower)) return "accessibility_snapshot";
+  if (textLike && /(^|[/._-])ocr([/._-]|$)/.test(lower)) return "ocr_text";
   if (/\.(webm|mp4|mov)$/.test(lower)) return "video";
   if (/\.log$/.test(lower)) return "log";
   return "other";

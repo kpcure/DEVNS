@@ -116,6 +116,8 @@ Project-level browser artifact policy lives under `artifactIntegrity.browserSmok
 
 Review packets and morning review reports reuse the same browser-smoke artifact refs to produce artifact digests: exit code, rich artifact counts, screenshot/trace counts, console entry/error counts, network request/failure counts, sample URLs, and policy findings. This keeps human and review-agent surfaces inspectable without requiring readers to manually open every `run.json` first.
 
+Browser lanes can also write semantic text artifacts into the same artifact directory. The adapter recognizes DOM text, accessibility-tree text, and OCR text files such as `visible-text.txt`, `accessibility.json`, and `ocr.txt` as `dom_snapshot`, `accessibility_snapshot`, and `ocr_text`. The `dashboard_artifact_preview` eval gate can read those artifacts from `run.json` and verify that dashboard/browser previews expose artifact digest status, metrics, sample URLs, and policy findings rather than refs-only evidence.
+
 The config schema is fixed in:
 
 ```text

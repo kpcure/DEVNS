@@ -1,0 +1,78 @@
+{
+  "id": "m17-browser-semantic-snapshots.clean",
+  "tier": "t1",
+  "mode": "M17_browser_semantic_snapshot_ingestion",
+  "generality_level": "general",
+  "given": {
+    "artifactRefs": [".devns/artifacts/browser-smoke/PKT-002/run.json"],
+    "config": {
+      "artifactIntegrity": {
+        "browserSmoke": {
+          "failOnConsoleError": true,
+          "failOnNetworkError": true
+        }
+      }
+    },
+    "visibleText": "Artifacts 1 ref",
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/PKT-002/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "stdout": ".devns/artifacts/browser-smoke/PKT-002/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/PKT-002/stderr.log",
+          "artifacts": [
+            { "kind": "screenshot", "path": ".devns/artifacts/browser-smoke/PKT-002/screenshot.png" },
+            { "kind": "trace", "path": ".devns/artifacts/browser-smoke/PKT-002/trace.zip" },
+            { "kind": "console", "path": ".devns/artifacts/browser-smoke/PKT-002/console.ndjson" },
+            { "kind": "network", "path": ".devns/artifacts/browser-smoke/PKT-002/network.ndjson" },
+            { "kind": "dom_snapshot", "path": ".devns/artifacts/browser-smoke/PKT-002/visible-text.txt" },
+            { "kind": "accessibility_snapshot", "path": ".devns/artifacts/browser-smoke/PKT-002/accessibility.json" },
+            { "kind": "ocr_text", "path": ".devns/artifacts/browser-smoke/PKT-002/ocr.txt" }
+          ]
+        }
+      },
+      { "path": ".devns/artifacts/browser-smoke/PKT-002/stdout.log", "content": "browser ok\n" },
+      { "path": ".devns/artifacts/browser-smoke/PKT-002/stderr.log", "content": "" },
+      {
+        "path": ".devns/artifacts/browser-smoke/PKT-002/screenshot.png",
+        "encoding": "base64",
+        "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
+      },
+      { "path": ".devns/artifacts/browser-smoke/PKT-002/trace.zip", "content": "zip" },
+      {
+        "path": ".devns/artifacts/browser-smoke/PKT-002/console.ndjson",
+        "content": "{\"type\":\"error\",\"text\":\"known warning\"}\n{\"type\":\"log\",\"text\":\"ready\"}\n{\"type\":\"log\",\"text\":\"done\"}\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/PKT-002/network.ndjson",
+        "content": "{\"url\":\"http://127.0.0.1:5173/\",\"status\":200}\n{\"url\":\"https://api.example.test/session\",\"status\":200}\n{\"url\":\"https://api.example.test/oops\",\"status\":500}\n{\"url\":\"http://127.0.0.1/assets\",\"status\":200}\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/PKT-002/visible-text.txt",
+        "content": "PKT-002/run.json warn\n1 shot 1 net fail\nconsole 1/3\nnetwork 1/4\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/PKT-002/accessibility.json",
+        "content": {
+          "role": "main",
+          "name": "traces 1 http://127.0.0.1:5173/"
+        }
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/PKT-002/ocr.txt",
+        "content": "https://api.example.test/session\nhttps://api.example.test/oops\nBrowser smoke console artifact .devns/artifacts/browser-smoke/PKT-002/console.ndjson contains console error(s): 1, over budget 0.\nBrowser smoke network artifact .devns/artifacts/browser-smoke/PKT-002/network.ndjson contains failed request(s): 1, over budget 0.\n"
+      }
+    ]
+  },
+  "action": {
+    "gate": "dashboard_artifact_preview"
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "Dashboard artifact preview passed"
+  }
+}

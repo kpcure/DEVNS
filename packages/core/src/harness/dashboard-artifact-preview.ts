@@ -1,4 +1,7 @@
-import type { ArtifactDigest } from "./artifact-digest";
+import { readFile } from "node:fs/promises";
+import { buildArtifactDigests, type ArtifactDigest } from "./artifact-digest";
+import type { ArtifactIntegrityOptions } from "./artifact-integrity";
+import { resolveFromCwd } from "./state";
 
 type TokenRequirement = {
   label: string;
@@ -16,6 +19,29 @@ export type DashboardArtifactPreviewInput = {
   visibleText: string;
 };
 
+export type DashboardArtifactPreviewArtifactAudit = DashboardArtifactPreviewAudit & {
+  artifactDigests: ArtifactDigest[];
+  visibleText: string;
+};
+
+export const DASHBOARD_PREVIEW_TEXT_ARTIFACT_KINDS = new Set([
+  "dom_snapshot",
+  "accessibility_snapshot",
+  "ocr_text",
+  "visible_text",
+  "semantic_snapshot"
+]);
+
+type BrowserSmokeManifest = {
+  type?: unknown;
+  artifacts?: unknown;
+};
+
+type BrowserSmokeArtifact = {
+  kind?: unknown;
+  path?: unknown;
+};
+
 function normalize(value: string) {
   return value.toLowerCase().replace(/\s+/g, " ").trim();
 }
@@ -27,6 +53,43 @@ function artifactRefLabel(ref: string) {
 
 function requirement(label: string, ...alternatives: string[]): TokenRequirement {
   return { label, alternatives: alternatives.filter(Boolean) };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+}
+
+function extractStrings(value: unknown, seen = new WeakSet<object>()): string[] {
+  if (typeof value === "string") return [value];
+  if (typeof value !== "object" || value === null) return [];
+  if (seen.has(value)) return [];
+  seen.add(value);
+  return (Array.isArray(value) ? value : Object.values(value)).flatMap((item) => extractStrings(item, seen));
+}
+
+async function readSemanticSnapshotArtifact(cwd: string, artifactPath: string) {
+  const content = await readFile(resolveFromCwd(cwd, artifactPath), "utf8");
+  try {
+    const parsed = JSON.parse(content) as unknown;
+    const strings = extractStrings(parsed);
+    return strings.length ? strings.join("\n") : content;
+  } catch {
+    return content;
+  }
+}
+
+async function browserSmokeSemanticSnapshotText(cwd: string, artifactRef: string) {
+  const manifest = JSON.parse(await readFile(resolveFromCwd(cwd, artifactRef), "utf8")) as BrowserSmokeManifest;
+  if (manifest.type !== "browser_smoke" || !Array.isArray(manifest.artifacts)) return "";
+
+  const snapshotArtifacts = (manifest.artifacts as unknown[])
+    .map((artifact) => asRecord(artifact))
+    .filter(
+      (artifact): artifact is { kind: string; path: string } =>
+        typeof artifact?.kind === "string" && DASHBOARD_PREVIEW_TEXT_ARTIFACT_KINDS.has(artifact.kind) && typeof artifact.path === "string"
+    );
+  const texts = await Promise.all(snapshotArtifacts.map((artifact) => readSemanticSnapshotArtifact(cwd, artifact.path).catch(() => "")));
+  return texts.filter(Boolean).join("\n");
 }
 
 function browserSmokeRequirements(digest: ArtifactDigest): TokenRequirement[] {
@@ -95,5 +158,31 @@ export function auditDashboardArtifactPreview(input: DashboardArtifactPreviewInp
     decision: "allow",
     summary: `Dashboard artifact preview passed for ${input.artifactDigests.length} artifact digest(s).`,
     missingTokens: []
+  };
+}
+
+export async function readDashboardArtifactPreviewText(cwd: string, artifactRefs: string[]) {
+  const texts = await Promise.all(
+    [...new Set(artifactRefs.filter((ref) => ref.endsWith("run.json")))].map((artifactRef) =>
+      browserSmokeSemanticSnapshotText(cwd, artifactRef).catch(() => "")
+    )
+  );
+  return texts.filter(Boolean).join("\n");
+}
+
+export async function auditDashboardArtifactPreviewArtifacts(
+  cwd: string,
+  artifactRefs: string[],
+  options: ArtifactIntegrityOptions = {},
+  visibleText = ""
+): Promise<DashboardArtifactPreviewArtifactAudit> {
+  const artifactDigests = await buildArtifactDigests(cwd, artifactRefs, options);
+  const snapshotText = await readDashboardArtifactPreviewText(cwd, artifactRefs);
+  const combinedText = [visibleText, snapshotText].filter(Boolean).join("\n");
+  const audit = auditDashboardArtifactPreview({ artifactDigests, visibleText: combinedText });
+  return {
+    ...audit,
+    artifactDigests,
+    visibleText: combinedText
   };
 }

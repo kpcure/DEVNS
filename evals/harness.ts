@@ -5,7 +5,10 @@ import { evaluateCompletionGate } from "../packages/core/src/harness/completion-
 import { evaluateEvidenceQuality } from "../packages/core/src/harness/evidence-quality";
 import { evaluateArtifactIntegrity } from "../packages/core/src/harness/artifact-integrity";
 import { buildArtifactDigests, type ArtifactDigest } from "../packages/core/src/harness/artifact-digest";
-import { auditDashboardArtifactPreview } from "../packages/core/src/harness/dashboard-artifact-preview";
+import {
+  auditDashboardArtifactPreview,
+  auditDashboardArtifactPreviewArtifacts
+} from "../packages/core/src/harness/dashboard-artifact-preview";
 import { runScopeGuard } from "../packages/core/src/harness/builtin-lanes";
 import { findingBlocksCompletion, type LaneFinding, type LaneResult } from "../packages/core/src/harness/lane-runner";
 import { auditOrchestratorTraces, type OrchestratorTraceRecord } from "../packages/core/src/harness/orchestrator-trace";
@@ -70,6 +73,12 @@ type FindingExpectation = {
   requirementIds?: string[];
   evidenceTypes?: string[];
   blocksCompletion?: boolean;
+};
+
+type EvalArtifact = {
+  path: string;
+  content: string | Record<string, unknown>;
+  encoding?: "base64";
 };
 
 function asDecision(blocked: boolean): EvalDecision {
@@ -331,7 +340,36 @@ async function evaluateArtifactDigestGate(given: Record<string, unknown>) {
   }
 }
 
-function evaluateDashboardArtifactPreviewGate(given: Record<string, unknown>) {
+async function writeEvalArtifacts(cwd: string, artifacts: EvalArtifact[]) {
+  for (const artifact of artifacts) {
+    const artifactPath = path.join(cwd, artifact.path);
+    await mkdir(path.dirname(artifactPath), { recursive: true });
+    const content =
+      artifact.encoding === "base64" && typeof artifact.content === "string"
+        ? Buffer.from(artifact.content, "base64")
+        : typeof artifact.content === "string"
+          ? artifact.content
+          : `${JSON.stringify(artifact.content, null, 2)}\n`;
+    await writeFile(artifactPath, content);
+  }
+}
+
+async function evaluateDashboardArtifactPreviewGate(given: Record<string, unknown>) {
+  if (Array.isArray(given.artifactRefs) || Array.isArray(given.artifacts)) {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-eval-dashboard-preview-"));
+    try {
+      await writeEvalArtifacts(cwd, (given.artifacts ?? []) as EvalArtifact[]);
+      const policy = (given.config as DevnsConfig | undefined)?.artifactIntegrity?.browserSmoke;
+      const audit = await auditDashboardArtifactPreviewArtifacts(cwd, (given.artifactRefs ?? []) as string[], policy, String(given.visibleText ?? ""));
+      return {
+        decision: audit.decision === "allow" ? ("allowed" as const) : ("blocked" as const),
+        reason: audit.summary
+      };
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  }
+
   const audit = auditDashboardArtifactPreview({
     artifactDigests: (given.artifactDigests ?? []) as ArtifactDigest[],
     visibleText: String(given.visibleText ?? "")
@@ -361,7 +399,7 @@ export async function runT1Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
   } else if (testCase.action.gate === "artifact_digest") {
     result = await evaluateArtifactDigestGate(testCase.given);
   } else if (testCase.action.gate === "dashboard_artifact_preview") {
-    result = evaluateDashboardArtifactPreviewGate(testCase.given);
+    result = await evaluateDashboardArtifactPreviewGate(testCase.given);
   } else if (testCase.action.gate === "orchestrator_trace") {
     result = evaluateOrchestratorTrace(testCase.given);
   } else if (testCase.action.gate === "state_atomic_write") {

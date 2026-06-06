@@ -21,6 +21,9 @@ async function main() {
     'fs.writeFileSync(dir + "/screenshot.png", Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII=", "base64"));',
     'fs.writeFileSync(dir + "/console.ndjson", JSON.stringify({ type: "log", text: "ready" }) + "\\n");',
     'fs.writeFileSync(dir + "/network.ndjson", JSON.stringify({ method: "GET", url: "http://127.0.0.1/", status: 200 }) + "\\n");',
+    'fs.writeFileSync(dir + "/visible-text.txt", "Dashboard artifact preview\\n");',
+    'fs.writeFileSync(dir + "/accessibility.json", JSON.stringify({ role: "main", name: "Dashboard artifact preview" }) + "\\n");',
+    'fs.writeFileSync(dir + "/ocr.txt", "Screenshot OCR dashboard artifact preview\\n");',
     'process.stdout.write("browser ok");'
   ].join(" ");
   const smokeCommand = `node -e ${JSON.stringify(smokeScript)}`;
@@ -53,6 +56,9 @@ async function main() {
     assert.ok(report.artifacts?.some((item) => item.kind === "screenshot" && item.path.endsWith("/screenshot.png")));
     assert.ok(report.artifacts?.some((item) => item.kind === "console" && item.path.endsWith("/console.ndjson")));
     assert.ok(report.artifacts?.some((item) => item.kind === "network" && item.path.endsWith("/network.ndjson")));
+    assert.ok(report.artifacts?.some((item) => item.kind === "dom_snapshot" && item.path.endsWith("/visible-text.txt")));
+    assert.ok(report.artifacts?.some((item) => item.kind === "accessibility_snapshot" && item.path.endsWith("/accessibility.json")));
+    assert.ok(report.artifacts?.some((item) => item.kind === "ocr_text" && item.path.endsWith("/ocr.txt")));
     const feature: Feature = {
       id: "BROWSER-001",
       title: "Browser smoke artifact",

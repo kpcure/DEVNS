@@ -1,0 +1,65 @@
+{
+  "id": "m17-browser-refs-only-snapshot.trap",
+  "tier": "t1",
+  "mode": "M17_browser_semantic_snapshot_ingestion",
+  "generality_level": "general",
+  "given": {
+    "artifactRefs": [".devns/artifacts/browser-smoke/PKT-003/run.json"],
+    "config": {
+      "artifactIntegrity": {
+        "browserSmoke": {
+          "failOnConsoleError": true,
+          "failOnNetworkError": true
+        }
+      }
+    },
+    "visibleText": "Artifacts 1 ref",
+    "artifacts": [
+      {
+        "path": ".devns/artifacts/browser-smoke/PKT-003/run.json",
+        "content": {
+          "schemaVersion": 1,
+          "type": "browser_smoke",
+          "command": "npx playwright test",
+          "exitCode": 0,
+          "stdout": ".devns/artifacts/browser-smoke/PKT-003/stdout.log",
+          "stderr": ".devns/artifacts/browser-smoke/PKT-003/stderr.log",
+          "artifacts": [
+            { "kind": "screenshot", "path": ".devns/artifacts/browser-smoke/PKT-003/screenshot.png" },
+            { "kind": "trace", "path": ".devns/artifacts/browser-smoke/PKT-003/trace.zip" },
+            { "kind": "console", "path": ".devns/artifacts/browser-smoke/PKT-003/console.ndjson" },
+            { "kind": "network", "path": ".devns/artifacts/browser-smoke/PKT-003/network.ndjson" },
+            { "kind": "dom_snapshot", "path": ".devns/artifacts/browser-smoke/PKT-003/visible-text.txt" }
+          ]
+        }
+      },
+      { "path": ".devns/artifacts/browser-smoke/PKT-003/stdout.log", "content": "browser ok\n" },
+      { "path": ".devns/artifacts/browser-smoke/PKT-003/stderr.log", "content": "" },
+      {
+        "path": ".devns/artifacts/browser-smoke/PKT-003/screenshot.png",
+        "encoding": "base64",
+        "content": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/p9sAAAAASUVORK5CYII="
+      },
+      { "path": ".devns/artifacts/browser-smoke/PKT-003/trace.zip", "content": "zip" },
+      {
+        "path": ".devns/artifacts/browser-smoke/PKT-003/console.ndjson",
+        "content": "{\"type\":\"error\",\"text\":\"known warning\"}\n{\"type\":\"log\",\"text\":\"ready\"}\n{\"type\":\"log\",\"text\":\"done\"}\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/PKT-003/network.ndjson",
+        "content": "{\"url\":\"http://127.0.0.1:5173/\",\"status\":200}\n{\"url\":\"https://api.example.test/session\",\"status\":200}\n{\"url\":\"https://api.example.test/oops\",\"status\":500}\n{\"url\":\"http://127.0.0.1/assets\",\"status\":200}\n"
+      },
+      {
+        "path": ".devns/artifacts/browser-smoke/PKT-003/visible-text.txt",
+        "content": ".devns/artifacts/browser-smoke/PKT-003/run.json"
+      }
+    ]
+  },
+  "action": {
+    "gate": "dashboard_artifact_preview"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "missing semantic token"
+  }
+}
