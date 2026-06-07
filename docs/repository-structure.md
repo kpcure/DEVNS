@@ -105,7 +105,7 @@ Contains:
 - deterministic T1 gate fixtures
 - frozen T2 review packets and gold findings later
 - local T3 seed repositories and hidden-oracle metadata
-- metrics and report helpers for precision, recall, F1, pass^k, and cost reporting
+- metrics and report helpers for precision, recall, F1, end-to-end pass^k, cost, project/risk grouping, and JSONL trend reporting
 
 ### `docs`
 

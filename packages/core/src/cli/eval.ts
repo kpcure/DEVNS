@@ -22,6 +22,9 @@ function parseArgs(argv: string[]): Options {
     } else if (arg === "--report") {
       options.reportPath = argv[index + 1];
       index += 1;
+    } else if (arg === "--history") {
+      options.historyPath = argv[index + 1];
+      index += 1;
     } else if (arg === "--json") {
       options.output = "json";
     }
@@ -37,9 +40,9 @@ function usage() {
       "  devns eval run --tier t2 [--mode M18_review_packet_quality] [--json]",
       "  devns eval run --mode M18_review_packet_quality [--json]",
       "  devns eval run --tier t3 [--json]",
-      "  devns eval run --all --report evals/out/report.md",
+      "  devns eval run --all --report evals/out/report.md [--history evals/out/eval-history.jsonl]",
       "",
-      "T1 deterministic gate evals, T2 frozen review-result/review-packet golden checks, and T3 local seed repositories run locally."
+      "T1 deterministic gate evals, T2 frozen review-result/review-packet golden checks, and T3 local seed repositories run locally. Use --history to append JSONL trend records for generated reports."
     ].join("\n") + "\n"
   );
 }
@@ -61,7 +64,8 @@ async function main() {
         `Eval cases: ${result.metrics.total}`,
         `Passed: ${result.metrics.passed}`,
         `Failed: ${result.metrics.failed}`,
-        ...(result.reportPath ? [`Report: ${result.reportPath}`] : [])
+        ...(result.reportPath ? [`Report: ${result.reportPath}`] : []),
+        ...(result.historyPath ? [`History: ${result.historyPath}`] : [])
       ].join("\n") + "\n"
     );
   }

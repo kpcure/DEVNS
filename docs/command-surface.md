@@ -70,7 +70,7 @@ npx @kpcure/devns validate [--json] [--strict] [--fix]
 npx @kpcure/devns eval run --tier t1 [--mode <mode>] [--json]
 npx @kpcure/devns eval run --tier t2 [--mode <mode>] [--json]
 npx @kpcure/devns eval run --tier t3 [--json]
-npx @kpcure/devns eval run --all [--json]
+npx @kpcure/devns eval run --all [--json] [--report evals/out/report.md] [--history evals/out/eval-history.jsonl]
 
 npm run devns:init
 npm run devns:doctor [-- --json]
@@ -85,7 +85,7 @@ npm run devns:evidence -- add --feature <feature-id> --type <type> --summary <te
 npm run devns:eval -- run --tier t1 [--mode <mode>] [--json] [--report evals/out/report.md]
 npm run devns:eval -- run --tier t2 [--mode <mode>] [--json] [--report evals/out/t2-report.md]
 npm run devns:eval -- run --tier t3 [--json] [--report evals/out/t3-report.md]
-npm run devns:eval -- run --all [--json] [--report evals/out/report.md]
+npm run devns:eval -- run --all [--json] [--report evals/out/report.md] [--history evals/out/eval-history.jsonl]
 npm run devns:trace [-- --tail 20] [-- --audit] [-- --json]
 npm run devns -- trace worker-result --feature <feature-id> --status implemented|blocked|failed [--changed-files <n>] [--commands <n>] [--artifacts <n>] [--blockers <n>] [--json]
 npm run devns -- trace repair --feature <feature-id> --phase requested|result [--status requested|implemented|blocked|failed] [--reason <text>] [--attempt <n>] [--json]
@@ -138,7 +138,7 @@ A browser smoke check is installed by `devns init` as `.devns/lanes/browser-smok
 
 `npm run devns:evidence -- add` records human, browser, review-agent, command, or static-review evidence without hand-editing `.devns/features.json`. Use `--covers-ac` and `--covers-req` to explicitly link the evidence to acceptance criteria or requirements.
 
-`npm run devns:eval -- run` executes DEVNS harness evaluation cases. T1 is deterministic and treats each gate as a classifier over trap/clean fixtures, reporting per-mode precision, recall, and F1. T2 freezes review packet/result goldens. T3 runs local seed repositories in temporary directories, verifies artifacts, and reports pass^k, elapsed time, estimated cost, project type, risk area, and failure taxonomy for release/nightly confidence.
+`npm run devns:eval -- run` executes DEVNS harness evaluation cases. T1 is deterministic and treats each gate as a classifier over trap/clean fixtures, reporting per-mode precision, recall, and F1. T2 freezes review packet/result goldens. T3 runs local seed repositories in temporary directories, verifies artifacts, and reports end-to-end pass^k, elapsed time, estimated cost, project type, risk area, and failure taxonomy for release/nightly confidence. Pass `--history evals/out/eval-history.jsonl` to append generated JSONL trend records; generated Markdown reports then include a Recent T3 Trend section.
 
 For robust review automation, run deterministic static and dynamic lanes first, then run any read-only review-agent lane against the Git diff, RFC, lane output, and relevant history. The Stop hook can also run configured missing read-only agent lanes through `hooks.stop.reviewAgent.mode = "run_missing"`. On Claude Code, the Stop hook may be a native agent hook prompt that performs and ingests code review itself. In every host, DEVNS still returns one unified decision from persisted state and should not be modeled as multiple same-event hooks.
 

@@ -635,7 +635,7 @@ async function evaluateSeedRepository(given: Record<string, unknown>, repoRoot =
     const k = Math.max(1, Math.floor(numberValue(seed.passK, 1)));
     const commands = (seed.commands ?? []) as SeedCommand[];
     const commandResults = [];
-    let successes = 0;
+    let commandSuccesses = 0;
 
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       const results = [];
@@ -644,16 +644,18 @@ async function evaluateSeedRepository(given: Record<string, unknown>, repoRoot =
       }
       commandResults.push({ attempt, results });
       if (results.every((result) => result.ok)) {
-        successes += 1;
+        commandSuccesses += 1;
       }
     }
 
     const artifactCheck = await evaluateSeedArtifacts(seedRepo, (seed.expectedArtifacts ?? []) as SeedExpectedArtifact[]);
+    const artifactPassed = artifactCheck.failures.length === 0;
+    const successes = artifactPassed ? commandSuccesses : 0;
     const commandFailureClasses = commandResults.flatMap((attempt) =>
       attempt.results.flatMap((result) => (result.failureClass ? [result.failureClass] : []))
     );
     const failureTaxonomy = [...new Set([...commandFailureClasses, ...artifactCheck.failureClasses])];
-    const blocked = successes < attempts || artifactCheck.failures.length > 0;
+    const blocked = successes < attempts;
     const elapsedMs = Date.now() - started;
     const passExponentK = passK(successes, attempts, Math.min(k, attempts));
     const estimatedCostUsd = numberValue(seed.estimatedCostUsd, 0);
@@ -664,6 +666,8 @@ async function evaluateSeedRepository(given: Record<string, unknown>, repoRoot =
         riskArea: stringValue(seed.riskArea) || "unknown",
         attempts,
         successes,
+        commandSuccesses,
+        artifactPassed,
         passK: passExponentK,
         k: Math.min(k, attempts),
         elapsedMs,
