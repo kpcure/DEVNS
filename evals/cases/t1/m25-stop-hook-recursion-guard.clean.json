@@ -1,0 +1,16 @@
+{
+  "id": "m25-stop-hook-recursion-guard-clean",
+  "tier": "t1",
+  "mode": "M25_stop_hook_review_agent",
+  "generality_level": "domain",
+  "given": {
+    "scenario": "recursion_guard"
+  },
+  "action": {
+    "gate": "stop_hook_review_agent"
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "recursion guard"
+  }
+}

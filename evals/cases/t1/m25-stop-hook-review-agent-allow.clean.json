@@ -1,0 +1,16 @@
+{
+  "id": "m25-stop-hook-review-agent-allow-clean",
+  "tier": "t1",
+  "mode": "M25_stop_hook_review_agent",
+  "generality_level": "domain",
+  "given": {
+    "scenario": "review_agent_allows"
+  },
+  "action": {
+    "gate": "stop_hook_review_agent"
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "allow orchestration passed"
+  }
+}

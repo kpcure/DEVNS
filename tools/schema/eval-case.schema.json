@@ -29,6 +29,7 @@
             "context_budget",
             "project_extension_config",
             "host_adapter_init",
+            "stop_hook_review_agent",
             "seed_repository",
             "orchestrator_trace",
             "state_atomic_write"

@@ -72,5 +72,6 @@ T1 and T2 cases are deterministic regression fixtures for the DEVNS control plan
 - `M22_t3_seed_repository`: T3 seed repositories run local commands, verify browser-smoke semantic artifacts, and report end-to-end pass^k, elapsed time, estimated cost, and failure taxonomy.
 - `M23_t3_project_shape_seeds`: T3 now includes paired CLI, React/Vite, and Python package seed repositories, covering JSON command contracts, frontend semantic surfaces, package import/contract failures, multi-attempt pass^k, and per-seed project type/risk metadata.
 - `M24_host_adapter_init`: host adapter init runs real `devns init --host codex|claude` in temporary projects and verifies installed Stop hooks, subagent files, read-only review lanes, adapter commands, and executable permissions.
+- `M25_stop_hook_review_agent`: Stop hook orchestration runs missing read-only Review Agent lanes inside one logical Stop hook decision, records lane evidence/history/reviewDecision, enforces blocking review output, and allows recursive hook invocation safely.
 
 This keeps the eval suite focused on the behaviors that make DEVNS trustworthy as an agent harness: intent provenance, scope control, independent review, and evidence that matches the acceptance criterion's verification type.

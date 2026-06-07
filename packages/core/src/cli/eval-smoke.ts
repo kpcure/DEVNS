@@ -25,6 +25,10 @@ async function main() {
   if (!hostInitMode || hostInitMode.total !== 4 || hostInitMode.failed !== 0) {
     throw new Error("Eval smoke expected M24 host adapter init evals to run 4 passing clean/trap cases.");
   }
+  const stopHookReviewMode = t1.metrics.perMode.find((metric) => metric.mode === "M25_stop_hook_review_agent");
+  if (!stopHookReviewMode || stopHookReviewMode.total !== 3 || stopHookReviewMode.failed !== 0) {
+    throw new Error("Eval smoke expected M25 stop hook review-agent evals to run 3 passing clean/trap cases.");
+  }
   if (failed > 0) {
     throw new Error(`Eval smoke failed: ${failed}/${total} case(s) failed.`);
   }

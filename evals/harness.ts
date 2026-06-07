@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
 import { main as initDevns } from "../packages/core/src/cli/init";
+import { evaluateClaudeStopHook } from "../packages/core/src/harness/claude-stop";
 import { evaluateCompletionGate } from "../packages/core/src/harness/completion-gate";
 import { evaluateEvidenceQuality } from "../packages/core/src/harness/evidence-quality";
 import { evaluateArtifactIntegrity } from "../packages/core/src/harness/artifact-integrity";
@@ -18,7 +19,7 @@ import { runScopeGuard } from "../packages/core/src/harness/builtin-lanes";
 import { findingBlocksCompletion, type LaneFinding, type LaneResult } from "../packages/core/src/harness/lane-runner";
 import { auditOrchestratorTraces, type OrchestratorTraceRecord } from "../packages/core/src/harness/orchestrator-trace";
 import { readJsonFile, writeJsonFile } from "../packages/core/src/harness/state";
-import type { CandidateFeature, DevnsConfig, Feature, ReviewDecision } from "../packages/core/src/harness/types";
+import type { CandidateFeature, DevnsConfig, Feature, FeatureInventory, ReviewDecision } from "../packages/core/src/harness/types";
 import { validateSchema } from "../packages/core/src/harness/schema-validator";
 import evalCaseSchema from "../tools/schema/eval-case.schema.json";
 import laneResultSchema from "../tools/schema/lane-result.schema.json";
@@ -49,6 +50,7 @@ export type EvalCase = {
       | "context_budget"
       | "project_extension_config"
       | "host_adapter_init"
+      | "stop_hook_review_agent"
       | "seed_repository"
       | "orchestrator_trace"
       | "state_atomic_write";
@@ -116,6 +118,8 @@ type HostAdapterInitMutation = {
   mode?: number;
   content?: string | Record<string, unknown>;
 };
+
+type StopHookReviewScenario = "review_agent_allows" | "review_agent_blocks" | "recursion_guard";
 
 function asDecision(blocked: boolean): EvalDecision {
   return blocked ? "blocked" : "allowed";
@@ -655,6 +659,344 @@ async function evaluateHostAdapterInit(given: Record<string, unknown>) {
   }
 }
 
+function evalApprovedRfc(summary = "Eval RFC"): Feature["rfc"] {
+  return {
+    status: "approved",
+    summary,
+    background: "Eval background",
+    featureDescription: "Eval feature",
+    expectedOutcome: "Eval outcome",
+    goals: ["Verify DEVNS stop hook orchestration"],
+    nonGoals: ["Do not run a real LLM provider"],
+    requirements: [
+      {
+        id: "REQ-001",
+        type: "explicit",
+        statement: "Stop hook must aggregate review-agent evidence before deciding.",
+        priority: "must"
+      }
+    ],
+    acceptanceCriteria: [
+      {
+        id: "AC-001",
+        requirementIds: ["REQ-001"],
+        statement: "Missing review-agent lane evidence is generated and ingested inside one Stop hook decision.",
+        verification: "stop hook review-agent eval",
+        verificationType: "review_agent"
+      }
+    ],
+    validationPlan: {
+      dynamic: ["npm run devns -- eval run --mode M25_stop_hook_review_agent --json"],
+      static: []
+    },
+    testCases: [
+      {
+        id: "TC-001",
+        acceptanceCriteriaIds: ["AC-001"],
+        type: "integration",
+        scenario: "Run stop hook with one missing review-agent lane.",
+        expected: "Review lane evidence is recorded before the final decision."
+      }
+    ],
+    unknowns: [],
+    risks: [],
+    humanDecision: {
+      status: "approved"
+    }
+  };
+}
+
+function evalFeature(id: string, patch: Partial<Feature> = {}): Feature {
+  return {
+    id,
+    title: `${id} stop hook eval`,
+    description: "Stop hook review-agent eval feature",
+    status: "in_progress",
+    priority: "P0",
+    milestone: "Eval",
+    risk: "medium",
+    acceptanceCriteria: ["Review Agent lane evidence is generated before final stop decision."],
+    verification: ["npm run devns -- eval run --mode M25_stop_hook_review_agent --json"],
+    evidence: [],
+    changedFiles: ["src/feature.ts"],
+    reviewDecision: "pending",
+    rfc: evalApprovedRfc(),
+    ...patch
+  };
+}
+
+async function writeStopHookReviewProject(cwd: string, input: { agentMode: "allow" | "block" }) {
+  await mkdir(path.join(cwd, ".devns"), { recursive: true });
+  await mkdir(path.join(cwd, "src"), { recursive: true });
+  await writeFile(path.join(cwd, "src", "feature.ts"), "export const feature = true;\n");
+  await writeFile(
+    path.join(cwd, "package.json"),
+    `${JSON.stringify(
+      {
+        type: "module",
+        scripts: {
+          smoke: "echo smoke"
+        }
+      },
+      null,
+      2
+    )}\n`
+  );
+  await writeFile(
+    path.join(cwd, ".devns", "devns.config.json"),
+    `${JSON.stringify(
+      {
+        version: 1,
+        features: ".devns/features.json",
+        history: ".devns/history",
+        completionPolicy: {
+          mode: "queue",
+          whenNoActiveFeature: "claim_next",
+          whenNoClaimableFeature: "allow_stop",
+          requireApprovedRfc: true,
+          requireEvidence: true,
+          requireReviewDecision: true,
+          requireCleanWorktree: false,
+          requireCommit: true
+        },
+        hooks: {
+          stop: {
+            mode: "gate",
+            blockOn: {
+              skippedRequiredVerification: true
+            },
+            reviewAgent: {
+              mode: "run_missing",
+              laneIds: ["code-review"],
+              requireDeterministicEvidence: false
+            }
+          }
+        },
+        reviewLanes: [
+          {
+            id: "smoke-lane",
+            type: "command",
+            command: "npm run smoke",
+            required: true,
+            blocksCompletion: true
+          },
+          {
+            id: "code-review",
+            type: "agent",
+            command: "node review-agent.mjs",
+            required: true,
+            blocksCompletion: true
+          }
+        ]
+      } satisfies DevnsConfig,
+      null,
+      2
+    )}\n`
+  );
+  await writeFile(
+    path.join(cwd, ".devns", "features.json"),
+    `${JSON.stringify(
+      {
+        project: {
+          name: "Stop Hook Review Agent Eval",
+          description: "Eval project for stop hook review-agent orchestration."
+        },
+        features: [evalFeature("M25-001")]
+      } satisfies FeatureInventory,
+      null,
+      2
+    )}\n`
+  );
+
+  const result =
+    input.agentMode === "allow"
+      ? {
+          lane: "code-review",
+          type: "agent",
+          status: "pass",
+          decision: "allow",
+          summary: "Review Agent eval pass.",
+          confidence: "high",
+          findings: [],
+          evidence: [
+            {
+              type: "review-context",
+              summary: "Reviewed RFC, feature state, diff context, lane output, and project rules."
+            }
+          ],
+          artifacts: [],
+          recommendedActions: ["No blocking issue found; remaining proof is the configured smoke lane and commit metadata."],
+          blocksCompletion: false,
+          required: true
+        }
+      : {
+          lane: "code-review",
+          type: "agent",
+          status: "fail",
+          decision: "block",
+          summary: "Review Agent eval found a blocking correctness issue.",
+          confidence: "high",
+          findings: [
+            {
+              severity: "error",
+              category: "correctness",
+              confidence: "high",
+              file: "src/feature.ts",
+              line: 1,
+              message: "Feature violates the approved RFC.",
+              evidence: [
+                {
+                  type: "diff",
+                  summary: "The touched file implements behavior outside the approved acceptance criterion."
+                }
+              ],
+              suggestedFix: "Align implementation with AC-001 before completion."
+            }
+          ],
+          evidence: [
+            {
+              type: "review-context",
+              summary: "Reviewed RFC and diff context before blocking."
+            }
+          ],
+          artifacts: [],
+          recommendedActions: ["Fix the correctness issue and rerun review."],
+          blocksCompletion: true,
+          required: true
+        };
+
+  await writeFile(path.join(cwd, "review-agent.mjs"), `process.stdout.write(${JSON.stringify(JSON.stringify(result))});\n`);
+}
+
+async function readEvalFeature(cwd: string, featureId: string) {
+  const inventory = await readJsonFile<FeatureInventory>(path.join(cwd, ".devns", "features.json"));
+  const found = inventory.features.find((feature) => feature.id === featureId);
+  if (!found) {
+    throw new Error(`Missing eval feature ${featureId}.`);
+  }
+  return found;
+}
+
+async function readEvalStopLog(cwd: string) {
+  try {
+    const raw = await readFile(path.join(cwd, ".devns", "history", "stop-hook.jsonl"), "utf8");
+    return raw
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+  } catch (error) {
+    if ((error as { code?: unknown }).code === "ENOENT") return [];
+    throw error;
+  }
+}
+
+async function evaluateStopHookReviewAgent(given: Record<string, unknown>) {
+  const scenario = stringValue(given.scenario) as StopHookReviewScenario;
+
+  if (scenario === "recursion_guard") {
+    const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-eval-stop-recursion-"));
+    try {
+      await writeStopHookReviewProject(cwd, { agentMode: "allow" });
+      const result = await evaluateClaudeStopHook({ cwd, stop_hook_active: true });
+      if (result.decision !== "allow" || !/already active/.test(result.reason)) {
+        return {
+          decision: "blocked" as const,
+          reason: `Stop hook recursion guard failed: ${result.decision} ${result.reason}`
+        };
+      }
+      return {
+        decision: "allowed" as const,
+        reason: "Stop hook recursion guard allowed recursive stop."
+      };
+    } finally {
+      await rm(cwd, { recursive: true, force: true });
+    }
+  }
+
+  if (!["review_agent_allows", "review_agent_blocks"].includes(scenario)) {
+    return {
+      decision: "blocked" as const,
+      reason: "Stop hook review-agent gate failed: scenario must be review_agent_allows, review_agent_blocks, or recursion_guard."
+    };
+  }
+
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-eval-stop-review-"));
+  try {
+    await writeStopHookReviewProject(cwd, {
+      agentMode: scenario === "review_agent_blocks" ? "block" : "allow"
+    });
+    const result = await evaluateClaudeStopHook({ cwd });
+    const feature = await readEvalFeature(cwd, "M25-001");
+    const stopLog = await readEvalStopLog(cwd);
+    const evidence = feature.evidence ?? [];
+    const hasCodeReviewEvidence = evidence.some(
+      (item) => item.type === "lane:code-review" && item.actor === "review-agent:code-review"
+    );
+    const ranMissingReview = stopLog.some(
+      (entry) =>
+        entry.source === "core" &&
+        entry.phase === "review_agent" &&
+        entry.mode === "run_missing" &&
+        entry.selectedFeatureId === "M25-001" &&
+        Array.isArray(entry.laneIds) &&
+        entry.laneIds.includes("code-review")
+    );
+
+    if (!ranMissingReview || !hasCodeReviewEvidence) {
+      return {
+        decision: "blocked" as const,
+        reason: "Stop hook Review Agent did not write missing code-review lane evidence."
+      };
+    }
+
+    if (scenario === "review_agent_allows") {
+      const issues = [];
+      if (result.decision !== "block") issues.push(`expected final stop decision block for remaining gates, got ${result.decision}`);
+      if (/Required lane evidence is missing: code-review/.test(result.reason)) {
+        issues.push("final reason still claims code-review evidence is missing");
+      }
+      if (/Review decision is still pending/.test(result.reason)) {
+        issues.push("final reason still claims review decision is pending");
+      }
+      if (feature.reviewDecision !== "approved") {
+        issues.push(`reviewDecision expected approved, got ${feature.reviewDecision ?? "missing"}`);
+      }
+      if (!/Required lane evidence is missing: smoke-lane/.test(result.reason)) {
+        issues.push("final reason should still report the remaining deterministic smoke-lane gate");
+      }
+
+      return {
+        decision: issues.length ? ("blocked" as const) : ("allowed" as const),
+        reason: issues.length
+          ? `Stop hook Review Agent allow orchestration failed: ${issues.join("; ")}.`
+          : "Stop hook Review Agent allow orchestration passed with one unified final decision."
+      };
+    }
+
+    const blockingEvidence = evidence.some((item) => item.type === "lane:code-review" && /Decision: block/.test(item.summary));
+    if (
+      result.decision === "block" &&
+      feature.reviewDecision === "needs_changes" &&
+      blockingEvidence &&
+      /Required lane code-review is not clear to pass/.test(result.reason) &&
+      /Review decision requires changes/.test(result.reason)
+    ) {
+      return {
+        decision: "blocked" as const,
+        reason: "Stop hook Review Agent lane blocked completion with grounded review evidence."
+      };
+    }
+
+    return {
+      decision: "allowed" as const,
+      reason: "Stop hook Review Agent blocking lane was not enforced."
+    };
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+}
+
 async function evaluateStateAtomicWrite(given: Record<string, unknown>) {
   const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-eval-state-"));
   try {
@@ -980,6 +1322,8 @@ export async function runT1Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
     result = await evaluateProjectExtensionConfig(testCase.given);
   } else if (testCase.action.gate === "host_adapter_init") {
     result = await evaluateHostAdapterInit(testCase.given);
+  } else if (testCase.action.gate === "stop_hook_review_agent") {
+    result = await evaluateStopHookReviewAgent(testCase.given);
   } else if (testCase.action.gate === "state_atomic_write") {
     result = await evaluateStateAtomicWrite(testCase.given);
   } else {
