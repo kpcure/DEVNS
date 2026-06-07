@@ -15,10 +15,10 @@ async function main() {
   if (modeLookup.metrics.total !== 2) {
     throw new Error(`Eval smoke expected mode lookup to find 2 M18 cases, got ${modeLookup.metrics.total}.`);
   }
-  if (t3.metrics.total !== 8) {
-    throw new Error(`Eval smoke expected T3 to run 8 multi-shape seed repository cases, got ${t3.metrics.total}.`);
+  if (t3.metrics.total !== 10) {
+    throw new Error(`Eval smoke expected T3 to run 10 multi-shape seed repository cases, got ${t3.metrics.total}.`);
   }
-  if (t3.metrics.t3.total !== 8 || t3.metrics.t3.byProjectType.length < 4 || t3.metrics.t3.byRiskArea.length < 3) {
+  if (t3.metrics.t3.total !== 10 || t3.metrics.t3.byProjectType.length < 5 || t3.metrics.t3.byRiskArea.length < 4) {
     throw new Error("Eval smoke expected T3 metrics to include project type and risk-area aggregation.");
   }
   const hostInitMode = t1.metrics.perMode.find((metric) => metric.mode === "M24_host_adapter_init");
@@ -43,12 +43,12 @@ async function main() {
     if (!report.includes("## T3 Seed Summary") || !report.includes("## Recent T3 Trend")) {
       throw new Error("Eval smoke expected generated report to include T3 summary and trend sections.");
     }
-    if (!history.includes("\"total\":8") || !history.includes("\"byProjectType\"")) {
+    if (!history.includes("\"total\":10") || !history.includes("\"byProjectType\"")) {
       throw new Error("Eval smoke expected history JSONL to include T3 aggregate metrics.");
     }
     const healthyGate = await evaluateEvalTrendGate({
       historyPath,
-      minT3Cases: 8,
+      minT3Cases: 10,
       minT3PassRate: 1,
       minPassK: 0.5,
       maxPassKDrop: 0
@@ -78,7 +78,7 @@ async function main() {
     await appendFile(historyPath, `${JSON.stringify(degraded)}\n`);
     const degradedGate = await evaluateEvalTrendGate({
       historyPath,
-      minT3Cases: 8,
+      minT3Cases: 10,
       minT3PassRate: 1,
       minPassK: 0.5,
       maxPassKDrop: 0

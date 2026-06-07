@@ -71,7 +71,7 @@ npx @kpcure/devns eval run --tier t1 [--mode <mode>] [--json]
 npx @kpcure/devns eval run --tier t2 [--mode <mode>] [--json]
 npx @kpcure/devns eval run --tier t3 [--json]
 npx @kpcure/devns eval run --all [--json] [--report evals/out/report.md] [--history evals/out/eval-history.jsonl]
-npx @kpcure/devns eval gate [--json] [--history evals/out/eval-history.jsonl] [--min-t3-cases 8] [--min-t3-pass-rate 1] [--max-pass-k-drop 0]
+npx @kpcure/devns eval gate [--json] [--history evals/out/eval-history.jsonl] [--min-t3-cases 10] [--min-t3-pass-rate 1] [--max-pass-k-drop 0]
 
 npm run devns:init
 npm run devns:doctor [-- --json]
@@ -87,7 +87,7 @@ npm run devns:eval -- run --tier t1 [--mode <mode>] [--json] [--report evals/out
 npm run devns:eval -- run --tier t2 [--mode <mode>] [--json] [--report evals/out/t2-report.md]
 npm run devns:eval -- run --tier t3 [--json] [--report evals/out/t3-report.md]
 npm run devns:eval -- run --all [--json] [--report evals/out/report.md] [--history evals/out/eval-history.jsonl]
-npm run devns:eval -- gate [--json] [--history evals/out/eval-history.jsonl] [--min-t3-cases 8] [--min-t3-pass-rate 1] [--max-pass-k-drop 0]
+npm run devns:eval -- gate [--json] [--history evals/out/eval-history.jsonl] [--min-t3-cases 10] [--min-t3-pass-rate 1] [--max-pass-k-drop 0]
 npm run devns:trace [-- --tail 20] [-- --audit] [-- --json]
 npm run devns -- trace worker-result --feature <feature-id> --status implemented|blocked|failed [--changed-files <n>] [--commands <n>] [--artifacts <n>] [--blockers <n>] [--json]
 npm run devns -- trace repair --feature <feature-id> --phase requested|result [--status requested|implemented|blocked|failed] [--reason <text>] [--attempt <n>] [--json]

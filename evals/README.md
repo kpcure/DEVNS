@@ -30,7 +30,7 @@ npm run devns -- eval run --all --report evals/out/report.md --history evals/out
 Use the trend gate after a history-producing run when a release or nightly job should fail on regression:
 
 ```sh
-npm run devns -- eval gate --history evals/out/eval-history.jsonl --min-t3-cases 8 --min-t3-pass-rate 1 --max-pass-k-drop 0
+npm run devns -- eval gate --history evals/out/eval-history.jsonl --min-t3-cases 10 --min-t3-pass-rate 1 --max-pass-k-drop 0
 ```
 
 The default gate checks that history exists, at least one T3 record exists, and the latest eval/T3 failed counts are zero. Stricter thresholds are explicit because T3 contains paired clean and trap seed repositories: trap cases should make the harness block, so aggregate seed attempt success and average pass^k are calibration signals, not the same thing as eval pass rate.
@@ -73,5 +73,6 @@ T1 and T2 cases are deterministic regression fixtures for the DEVNS control plan
 - `M23_t3_project_shape_seeds`: T3 now includes paired CLI, React/Vite, and Python package seed repositories, covering JSON command contracts, frontend semantic surfaces, package import/contract failures, multi-attempt pass^k, and per-seed project type/risk metadata.
 - `M24_host_adapter_init`: host adapter init runs real `devns init --host codex|claude` in temporary projects and verifies installed Stop hooks, subagent files, read-only review lanes, adapter commands, and executable permissions.
 - `M25_stop_hook_review_agent`: Stop hook orchestration runs missing read-only Review Agent lanes inside one logical Stop hook decision, records lane evidence/history/reviewDecision, enforces blocking review output, and allows recursive hook invocation safely.
+- `M26_host_adapter_execution_seed`: T3 runs real Codex host-adapter execution seeds after `devns init --host codex`, verifying adapter start/exec traces, stop command delegation, ready-feature claim behavior, and missing stop-command failure classification.
 
 This keeps the eval suite focused on the behaviors that make DEVNS trustworthy as an agent harness: intent provenance, scope control, independent review, and evidence that matches the acceptance criterion's verification type.

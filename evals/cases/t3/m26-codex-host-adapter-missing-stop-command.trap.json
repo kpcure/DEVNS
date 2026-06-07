@@ -1,0 +1,55 @@
+{
+  "id": "m26-codex-host-adapter-missing-stop-command-trap",
+  "tier": "t3",
+  "mode": "M26_host_adapter_execution_seed",
+  "generality_level": "general",
+  "given": {
+    "seedRepository": {
+      "id": "codex-host-adapter-missing-stop-command-seed",
+      "projectType": "host-adapter",
+      "riskArea": "host_adapter_execution",
+      "attempts": 1,
+      "passK": 1,
+      "estimatedCostUsd": 0,
+      "files": [
+        {
+          "path": "scripts/run-codex-host-adapter.mjs",
+          "content": "import { spawnSync } from 'node:child_process';\nimport fs from 'node:fs';\nimport path from 'node:path';\n\nconst repoRoot = process.env.DEVNS_ROOT;\nconst mode = process.env.DEVNS_HOST_ADAPTER_MODE || 'claim';\nconst outDir = path.join(process.cwd(), '.devns/artifacts/t3');\nfs.mkdirSync(outDir, { recursive: true });\n\nfunction spawn(command, args, options = {}) {\n  const result = spawnSync(command, args, {\n    cwd: process.cwd(),\n    encoding: 'utf8',\n    input: options.input,\n    timeout: 20000,\n    env: { ...process.env, ...(options.env || {}) }\n  });\n  return {\n    command: [command, ...args].join(' '),\n    status: result.status,\n    signal: result.signal,\n    stdout: result.stdout || '',\n    stderr: result.stderr || '',\n    error: result.error?.message\n  };\n}\n\nfunction approvedRfc() {\n  return {\n    status: 'approved',\n    summary: 'Host adapter execution seed RFC.',\n    background: 'The seed verifies that installed host adapter files are executable as a real stop hook path.',\n    featureDescription: 'Claim a ready feature through the Codex Stop Hook command adapter.',\n    expectedOutcome: 'The adapter delegates to devns:stop and records a claim_next_block decision.',\n    goals: ['Verify executable Codex Stop Hook adapter behavior'],\n    nonGoals: ['Do not call an external LLM provider'],\n    requirements: [{ id: 'REQ-001', type: 'explicit', statement: 'Codex Stop Hook adapter must execute the project stop command and claim approved ready work.', priority: 'must' }],\n    acceptanceCriteria: [{ id: 'AC-001', requirementIds: ['REQ-001'], statement: 'Ready feature is claimed by the adapter-backed stop hook.', verification: 'Run Codex Stop Hook adapter in seed repo.', verificationType: 'command' }],\n    validationPlan: { dynamic: ['node scripts/run-codex-host-adapter.mjs'], static: [] },\n    testCases: [{ id: 'TC-001', acceptanceCriteriaIds: ['AC-001'], type: 'integration', scenario: 'Run installed Codex Stop Hook adapter.', expected: 'Feature becomes in_progress and stop log records adapter exec plus core claim_next_block.' }],\n    unknowns: [],\n    risks: [],\n    humanDecision: { status: 'approved' }\n  };\n}\n\nfunction readyFeature() {\n  return {\n    id: 'HOST-EXEC-001',\n    title: 'Host adapter execution seed',\n    description: 'Ready feature used to verify Codex adapter execution.',\n    status: 'ready',\n    priority: 'P0',\n    milestone: 'T3',\n    risk: 'medium',\n    acceptanceCriteria: ['Ready feature is claimed by Codex Stop Hook adapter.'],\n    verification: ['node scripts/run-codex-host-adapter.mjs'],\n    evidence: [],\n    changedFiles: ['src/host-adapter.ts'],\n    reviewDecision: 'pending',\n    rfc: approvedRfc()\n  };\n}\n\nif (!repoRoot) {\n  throw new Error('DEVNS_ROOT is required.');\n}\n\nconst tsx = path.join(repoRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'tsx.cmd' : 'tsx');\nconst initCli = path.join(repoRoot, 'packages/core/src/cli/init.ts');\nconst stopCli = path.join(repoRoot, 'packages/core/src/cli/stop-hook.ts');\nconst scripts = mode === 'claim' ? { 'devns:stop': `${tsx} ${stopCli}` } : {};\n\nfs.writeFileSync(path.join(process.cwd(), 'package.json'), `${JSON.stringify({ type: 'module', scripts }, null, 2)}\\n`);\nconst init = spawn(tsx, [initCli, '--force', '--project-name', 'Host Adapter Execution Seed', '--project-description', 'Evaluate Codex Stop Hook adapter execution.', '--host', 'codex']);\n\nlet hook = null;\nlet parsedHook = null;\nlet inventory = null;\nlet stopLog = [];\nif (init.status === 0) {\n  fs.writeFileSync(path.join(process.cwd(), '.devns/features.json'), `${JSON.stringify({ project: { name: 'Host Adapter Execution Seed', description: 'Evaluate Codex Stop Hook adapter execution.' }, features: [readyFeature()] }, null, 2)}\\n`);\n  const hookScript = path.join(process.cwd(), 'plugins/codex/devns/scripts/devns-stop-hook.sh');\n  hook = spawn('bash', [hookScript], { input: JSON.stringify({ cwd: process.cwd() }) });\n  try {\n    parsedHook = hook.stdout.trim() ? JSON.parse(hook.stdout.trim()) : null;\n  } catch {}\n  try {\n    inventory = JSON.parse(fs.readFileSync(path.join(process.cwd(), '.devns/features.json'), 'utf8'));\n  } catch {}\n  try {\n    stopLog = fs.readFileSync(path.join(process.cwd(), '.devns/history/stop-hook.jsonl'), 'utf8').split('\\n').filter(Boolean).map((line) => JSON.parse(line));\n  } catch {}\n}\n\nconst feature = inventory?.features?.find((item) => item.id === 'HOST-EXEC-001');\nconst adapterStart = stopLog.some((entry) => entry.source === 'adapter' && entry.phase === 'start');\nconst adapterExec = stopLog.some((entry) => entry.source === 'adapter' && entry.phase === 'exec');\nconst adapterMissingCommand = stopLog.some((entry) => entry.source === 'adapter' && entry.phase === 'missing_command');\nconst coreClaim = stopLog.some((entry) => entry.source === 'core' && entry.mode === 'claim_next_block' && entry.selectedFeatureId === 'HOST-EXEC-001');\nconst claimed = parsedHook?.decision === 'block' && /Claimed next feature HOST-EXEC-001/.test(parsedHook.reason || '') && feature?.status === 'in_progress';\nconst stopCommandFound = Boolean(scripts['devns:stop'] && adapterExec && !adapterMissingCommand);\nconst artifact = {\n  projectType: 'host-adapter',\n  riskArea: 'host_adapter_execution',\n  mode,\n  initStatus: init.status,\n  hookStatus: hook?.status,\n  hookDecision: parsedHook?.decision,\n  hookReason: parsedHook?.reason,\n  featureStatus: feature?.status || 'missing',\n  claimed,\n  stopCommandFound,\n  adapterStart,\n  adapterExec,\n  adapterMissingCommand,\n  coreClaim,\n  logModes: stopLog.map((entry) => entry.mode || entry.phase).filter(Boolean),\n  stdoutBytes: hook?.stdout?.length || 0,\n  stderrBytes: hook?.stderr?.length || 0,\n  errors: [init.error, hook?.error].filter(Boolean)\n};\nfs.writeFileSync(path.join(outDir, 'codex-host-adapter-execution.json'), `${JSON.stringify(artifact, null, 2)}\\n`);\n\nif (init.status !== 0 || hook?.status !== 0) {\n  process.exit(1);\n}\n"
+        }
+      ],
+      "commands": [
+        {
+          "command": "node",
+          "args": ["scripts/run-codex-host-adapter.mjs"],
+          "env": {
+            "DEVNS_ROOT": "${repoRoot}",
+            "DEVNS_HOST_ADAPTER_MODE": "missing_stop_command"
+          },
+          "expectedExitCode": 0,
+          "failureClass": "host_adapter_execution_command_failed"
+        }
+      ],
+      "expectedArtifacts": [
+        {
+          "path": ".devns/artifacts/t3/codex-host-adapter-execution.json",
+          "contains": [
+            "\"projectType\": \"host-adapter\"",
+            "\"riskArea\": \"host_adapter_execution\"",
+            "\"claimed\": true",
+            "\"stopCommandFound\": true",
+            "\"adapterExec\": true",
+            "\"coreClaim\": true"
+          ],
+          "failureClass": "host_adapter_stop_command_missing"
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "seed_repository"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "host_adapter_stop_command_missing"
+  }
+}
