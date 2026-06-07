@@ -39,6 +39,8 @@ npx @kpcure/devns discover --json
 npx @kpcure/devns orchestrate --host codex --json
 npx @kpcure/devns trace --audit --json
 npx @kpcure/devns stop-log --tail 20
+npx @kpcure/devns eval run --all --history evals/out/eval-history.jsonl
+npx @kpcure/devns eval gate --history evals/out/eval-history.jsonl --min-t3-cases 8 --min-t3-pass-rate 1
 npx @kpcure/devns dashboard
 ```
 
@@ -175,7 +177,7 @@ DEVNS is licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTI
 
 DEVNS is at the 1.0 hardening stage. The core workflow is implemented: doctor/init/discover/RFC/run/lanes/evidence/review/complete/stop, plugin packages, JSON schemas, a local dashboard, review packets, evidence quality gates, and smoke coverage.
 
-The stable surface is the local `devns` entrypoint, `.devns/` workspace contract, atomic feature/candidate state writes, feature/RFC/evidence schemas, command lanes, project-local policy/agent extension loading, browser-smoke artifact adapter, review packets, local orchestrator and worker/repair traces, T1/T2 harness evals, T3 browser-smoke/CLI/React-Vite/Python seed-repository checks, JSONL/Markdown/dashboard T3 trend reporting, and completion metadata. Areas still evolving are host adapter calibration, richer browser artifact display, trace-backed failure classification, Next/host-adapter T3 seeds, and release trend surfaces. See `ROADMAP.md`, `docs/1.0-hardening-roadmap.zh-CN.md`, and `docs/solidification-analysis.zh-CN.md`.
+The stable surface is the local `devns` entrypoint, `.devns/` workspace contract, atomic feature/candidate state writes, feature/RFC/evidence schemas, command lanes, project-local policy/agent extension loading, browser-smoke artifact adapter, review packets, local orchestrator and worker/repair traces, T1/T2 harness evals, T3 browser-smoke/CLI/React-Vite/Python seed-repository checks, JSONL/Markdown/dashboard T3 trend reporting, release/nightly eval trend gates, and completion metadata. Areas still evolving are host adapter calibration, richer browser artifact display, trace-backed failure classification, Next/host-adapter T3 seeds, and live-provider calibration. See `ROADMAP.md`, `docs/1.0-hardening-roadmap.zh-CN.md`, and `docs/solidification-analysis.zh-CN.md`.
 
 ## Local Development
 

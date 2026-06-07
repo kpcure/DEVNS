@@ -53,7 +53,7 @@ OpenAI 的 agent eval 指南把 trace、grader、dataset、eval run 作为 agent
 - `artifactIntegrity.browserSmoke` 进入 `.devns/devns.config.json` schema 和 `devns validate`；`M14_project_browser_policy_config` 覆盖项目配置直接驱动 browser artifact policy。
 - 新增 `artifact-digest`：review packet 和 morning review 会把 browser-smoke refs 转成可读摘要，包含 rich artifact 数、截图/trace、console entries/errors、network requests/failures、sample URLs 和 policy findings；`M15_artifact_digest_review_surface` 覆盖 digest clean/missing case。
 - project-local extension 基础接线已完成：`.devns/agents/*.json` 进入 `config.agents[id]`，`.devns/policies/*.json` 作为 schema 约束的 config patch 合并，`.devns/lanes/*.json` 继续按 lane id 合并进 `reviewLanes`；`M20_project_extension_config` 覆盖 clean/trap 回归。
-- T3 seed repository runner 已接入：`seed_repository` gate 会在临时 repo 中运行本地命令、检查 artifact、输出端到端 pass^k、耗时、估算成本和 failure taxonomy；`M22_t3_seed_repository` 用真实 browser-smoke adapter 覆盖 DOM/accessibility/console/network 语义 artifact clean/trap，`M23_t3_project_shape_seeds` 覆盖 CLI JSON command contract、React/Vite semantic surface 和 Python package contract 的 clean/trap 配对。`devns eval run --history` 会把 T3 聚合写入 JSONL，并在 report、morning review 和 dashboard 中按 project type、risk area 和 failure taxonomy 输出 Recent T3 Trend。
+- T3 seed repository runner 已接入：`seed_repository` gate 会在临时 repo 中运行本地命令、检查 artifact、输出端到端 pass^k、耗时、估算成本和 failure taxonomy；`M22_t3_seed_repository` 用真实 browser-smoke adapter 覆盖 DOM/accessibility/console/network 语义 artifact clean/trap，`M23_t3_project_shape_seeds` 覆盖 CLI JSON command contract、React/Vite semantic surface 和 Python package contract 的 clean/trap 配对。`devns eval run --history` 会把 T3 聚合写入 JSONL，并在 report、morning review 和 dashboard 中按 project type、risk area 和 failure taxonomy 输出 Recent T3 Trend；`devns eval gate` 会读取同一份 history，为 release/nightly 提供可失败的趋势门禁。
 
 ### 3. Evidence Must Match Verification Type
 
@@ -90,7 +90,7 @@ DEVNS 的核心风险不是“没有跑命令”，而是 evidence 看起来很�
 ## 当前缺口
 
 1. T2 已接入 frozen review-result golden 和 frozen review-packet quality golden；还没有把 live model adapter 的完整 prompt 校准纳入 runner。
-2. T3 seed repository 已有本地 runner、端到端 pass^k/耗时/估算成本/failure taxonomy、browser-smoke semantic artifact seed、第一组 CLI/React/Vite/Python package 多形态 seed，以及 JSONL trend history、Markdown trend report、morning review 和 dashboard trend 面；下一步是补 Next、真实 host adapter，并把趋势接入 release/nightly。
+2. T3 seed repository 已有本地 runner、端到端 pass^k/耗时/估算成本/failure taxonomy、browser-smoke semantic artifact seed、第一组 CLI/React/Vite/Python package 多形态 seed，以及 JSONL trend history、Markdown trend report、morning review/dashboard trend 面和 release/nightly trend gate；下一步是补 Next、真实 host adapter 和 live provider 校准。
 3. Browser smoke lane 已有通用 adapter/template、smoke 覆盖、dashboard/morning review artifact refs 展示、rich artifact manifest、项目级 console/network policy、预算和 URL allow/block-list、review packet/morning review artifact digest、dashboard artifact digest 富预览、dashboard artifact preview 的 DOM/文本快照语义 grader、从 browser-smoke manifest 读取 DOM/OCR/accessibility snapshot artifact 的 ingestion gate，以及 `devns init` 默认安装的 URL 驱动 Playwright semantic browser lane；T3 已能用真实 browser-smoke adapter 跑 semantic artifact clean/trap seed。
 4. Orchestrator trace 已覆盖 handoff、worker result、repair loop、lane run、review ingest、complete 的连续性；下一步是把这些 trace 和真实 host adapter/T3 seed repo 的运行结果关联起来。
 5. Eval schema 和 T1/T2/T3 cases 已能表达 trace continuity、semantic artifact requirements、browser-smoke manifest integrity、基础 rich artifact parseability、console/network policy trap、预算和 URL allow/block-list、artifact digest、dashboard artifact preview 语义快照、browser-smoke semantic snapshot ingestion、review packet 输入质量、context-budget reset 判断、project extension resolved-config 合并、worker/repair trace continuity、browser-smoke T3 artifact 分类，以及 CLI/React-Vite/Python 多形态 T3 项目契约；下一步是把 host adapter 校准放进真实 pass/fail 场景。
@@ -102,5 +102,5 @@ DEVNS 的核心风险不是“没有跑命令”，而是 evidence 看起来很�
 2. 扩展 T2 frozen review packets 到 live adapter calibration：用固定 diff 注入 correctness/security/test/scope bug，要求 review agent 返回结构化 findings，再用 `review_lane_result` golden grader 校验。
 3. 扩展 local trace record：当前已记录 orchestrate claim/handoff/review-routing、worker result、repair request/result、lane run、review result、complete；下一步把这些 trace 用在真实 host adapter/T3 seed repo 的失败分类里。
 4. 扩展 browser smoke artifact 体验：当前 adapter 已产出 run/stdout/stderr 和可选截图/trace/console/network/DOM/OCR/accessibility artifact refs，并已在 evidence-quality、artifact-integrity、morning review、review packet、dashboard artifact digest 预览、dashboard semantic snapshot grader 和 T3 seed repo 中使用；下一步接真实 Next/browser command seed。
-5. 增加更多 T3 seed repos：已覆盖小型 CLI、React/Vite、Python package，并已支持 JSONL/Markdown/morning-review/dashboard 趋势报告；下一步补 Next、host adapter，并把 pass^k、耗时、估算成本、项目类型、风险类型和 failure taxonomy 趋势接入 nightly/release。
-6. 将 eval report 接入 dashboard/morning review，让人看到 harness 质量趋势，而不只是当前 feature 状态。
+5. 增加更多 T3 seed repos：已覆盖小型 CLI、React/Vite、Python package，并已支持 JSONL/Markdown/morning-review/dashboard 趋势报告和 nightly/release trend gate；下一步补 Next、host adapter，并把 pass^k、耗时、估算成本、项目类型、风险类型和 failure taxonomy 与真实宿主失败分类关联起来。
+6. 将 eval report 和 trend gate 用作发布前质量证据，让人看到 harness 质量趋势，而不只是当前 feature 状态。

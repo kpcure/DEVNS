@@ -27,6 +27,14 @@ npm run devns -- eval run --all --report evals/out/report.md --history evals/out
 
 `evals/out/` is ignored because reports and JSONL trend history are generated artifacts. When `--history` is provided, the Markdown report includes a recent T3 trend table; the dashboard and morning review read the same JSONL history when it exists.
 
+Use the trend gate after a history-producing run when a release or nightly job should fail on regression:
+
+```sh
+npm run devns -- eval gate --history evals/out/eval-history.jsonl --min-t3-cases 8 --min-t3-pass-rate 1 --max-pass-k-drop 0
+```
+
+The default gate checks that history exists, at least one T3 record exists, and the latest eval/T3 failed counts are zero. Stricter thresholds are explicit because T3 contains paired clean and trap seed repositories: trap cases should make the harness block, so aggregate seed attempt success and average pass^k are calibration signals, not the same thing as eval pass rate.
+
 ## Adding Cases
 
 Each case must pass `tools/schema/eval-case.schema.json`. Add paired cases whenever possible:

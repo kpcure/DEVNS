@@ -1,8 +1,9 @@
 #!/usr/bin/env node
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { appendFile, mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { runEval } from "../../../../evals/runner";
+import { evaluateEvalTrendGate } from "../../../../evals/trend-gate";
 
 async function main() {
   const t1 = await runEval({ tier: "t1" });
@@ -36,6 +37,49 @@ async function main() {
     }
     if (!history.includes("\"total\":8") || !history.includes("\"byProjectType\"")) {
       throw new Error("Eval smoke expected history JSONL to include T3 aggregate metrics.");
+    }
+    const healthyGate = await evaluateEvalTrendGate({
+      historyPath,
+      minT3Cases: 8,
+      minT3PassRate: 1,
+      minPassK: 0.5,
+      maxPassKDrop: 0
+    });
+    if (healthyGate.decision !== "allow") {
+      throw new Error(`Eval smoke expected healthy trend gate to allow, got ${healthyGate.decision}.`);
+    }
+
+    const records = history
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
+    const latest = records.at(-1);
+    const degraded = {
+      ...latest,
+      generatedAt: "2026-06-07T00:00:00.000Z",
+      passed: latest.passed - 1,
+      failed: latest.failed + 1,
+      t3: {
+        ...latest.t3,
+        passed: latest.t3.passed - 1,
+        failed: latest.t3.failed + 1,
+        averagePassK: 0.25
+      }
+    };
+    await appendFile(historyPath, `${JSON.stringify(degraded)}\n`);
+    const degradedGate = await evaluateEvalTrendGate({
+      historyPath,
+      minT3Cases: 8,
+      minT3PassRate: 1,
+      minPassK: 0.5,
+      maxPassKDrop: 0
+    });
+    if (
+      degradedGate.decision !== "block" ||
+      !degradedGate.checks.some((check) => check.id === "trend.t3_pass_k_drop" && check.status === "fail")
+    ) {
+      throw new Error("Eval smoke expected degraded trend gate to block on pass^k regression.");
     }
   } finally {
     await rm(tempDir, { recursive: true, force: true });

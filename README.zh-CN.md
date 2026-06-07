@@ -64,6 +64,13 @@ npm run devns -- dashboard
 http://127.0.0.1:5173/
 ```
 
+生成评测趋势并运行发布/夜间门禁：
+
+```sh
+npm run devns -- eval run --all --history evals/out/eval-history.jsonl
+npm run devns -- eval gate --history evals/out/eval-history.jsonl --min-t3-cases 8 --min-t3-pass-rate 1
+```
+
 ## 推荐工作流
 
 1. 人通过 doctor、dashboard 或 DEVNS skill 启动流程。
@@ -157,6 +164,13 @@ npm run build
 
 ```sh
 npm run smoke
+```
+
+生成并检查 T3/全量评测趋势：
+
+```sh
+npm run devns -- eval run --all --history evals/out/eval-history.jsonl
+npm run devns -- eval gate --history evals/out/eval-history.jsonl --min-t3-cases 8 --min-t3-pass-rate 1
 ```
 
 校验当前 DEVNS 状态：

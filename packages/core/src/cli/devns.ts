@@ -53,6 +53,7 @@ function usage() {
     "  devns evidence add --feature <id> --type <type> --summary <text>",
     "  devns eval run --tier t1 [--mode <mode>] [--json]",
     "  devns eval run --all [--report evals/out/report.md] [--history evals/out/eval-history.jsonl]",
+    "  devns eval gate --history evals/out/eval-history.jsonl [--min-t3-cases 8] [--min-t3-pass-rate 1]",
     "  devns trace [--tail 20] [--audit] [--json]",
     "  devns trace worker-result --feature <id> --status implemented|blocked|failed [--json]",
     "  devns trace repair --feature <id> --phase requested|result [--reason <text>] [--json]",
