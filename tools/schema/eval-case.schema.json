@@ -28,6 +28,7 @@
             "review_packet_quality",
             "context_budget",
             "project_extension_config",
+            "host_adapter_init",
             "seed_repository",
             "orchestrator_trace",
             "state_atomic_write"

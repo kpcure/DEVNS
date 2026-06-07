@@ -1,8 +1,9 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { main as initDevns } from "../packages/core/src/cli/init";
 import { evaluateCompletionGate } from "../packages/core/src/harness/completion-gate";
 import { evaluateEvidenceQuality } from "../packages/core/src/harness/evidence-quality";
 import { evaluateArtifactIntegrity } from "../packages/core/src/harness/artifact-integrity";
@@ -47,6 +48,7 @@ export type EvalCase = {
       | "review_packet_quality"
       | "context_budget"
       | "project_extension_config"
+      | "host_adapter_init"
       | "seed_repository"
       | "orchestrator_trace"
       | "state_atomic_write";
@@ -106,6 +108,13 @@ type SeedExpectedArtifact = {
   path: string;
   contains?: string | string[];
   failureClass?: string;
+};
+
+type HostAdapterInitMutation = {
+  type: "remove" | "chmod" | "write";
+  path: string;
+  mode?: number;
+  content?: string | Record<string, unknown>;
 };
 
 function asDecision(blocked: boolean): EvalDecision {
@@ -419,6 +428,229 @@ async function evaluateProjectExtensionConfig(given: Record<string, unknown>) {
       reason: `Project extension config failed: ${error instanceof Error ? error.message : "unknown error"}`
     };
   } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+}
+
+async function withMutedStdout<T>(fn: () => Promise<T>) {
+  const originalWrite = process.stdout.write;
+  process.stdout.write = (() => true) as typeof process.stdout.write;
+  try {
+    return await fn();
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+}
+
+async function applyHostAdapterInitMutation(cwd: string, mutation: HostAdapterInitMutation) {
+  const target = path.join(cwd, mutation.path);
+  if (mutation.type === "remove") {
+    await rm(target, { recursive: true, force: true });
+    return;
+  }
+
+  if (mutation.type === "chmod") {
+    await chmod(target, mutation.mode ?? 0o644);
+    return;
+  }
+
+  await mkdir(path.dirname(target), { recursive: true });
+  await writeFile(
+    target,
+    typeof mutation.content === "string" ? mutation.content : `${JSON.stringify(mutation.content ?? {}, null, 2)}\n`
+  );
+}
+
+async function readRequiredText(cwd: string, relativePath: string, issues: string[]) {
+  try {
+    return await readFile(path.join(cwd, relativePath), "utf8");
+  } catch {
+    issues.push(`Missing required host adapter file: ${relativePath}.`);
+    return "";
+  }
+}
+
+async function readRequiredJson(cwd: string, relativePath: string, issues: string[]) {
+  const raw = await readRequiredText(cwd, relativePath, issues);
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    issues.push(`Host adapter file is not valid JSON: ${relativePath}.`);
+    return undefined;
+  }
+}
+
+async function requireExecutable(cwd: string, relativePath: string, label: string, issues: string[]) {
+  try {
+    const result = await stat(path.join(cwd, relativePath));
+    if (!result.isFile()) {
+      issues.push(`${label} is not a file: ${relativePath}.`);
+      return;
+    }
+    if (!Boolean(result.mode & 0o111)) {
+      issues.push(`${label} is not executable: ${relativePath}.`);
+    }
+  } catch {
+    issues.push(`Missing ${label}: ${relativePath}.`);
+  }
+}
+
+function expectTextContains(text: string, expected: string, label: string, issues: string[]) {
+  if (!text.includes(expected)) {
+    issues.push(`${label} must contain ${JSON.stringify(expected)}.`);
+  }
+}
+
+function nestedRecord(value: unknown) {
+  return typeof value === "object" && value !== null ? (value as Record<string, unknown>) : undefined;
+}
+
+function nestedArray(value: unknown) {
+  return Array.isArray(value) ? value : [];
+}
+
+function firstStopHook(settings: Record<string, unknown> | undefined) {
+  const hooks = nestedRecord(settings?.hooks);
+  const stop = nestedArray(hooks?.Stop);
+  const group = nestedRecord(stop[0]);
+  return nestedRecord(nestedArray(group?.hooks)[0]);
+}
+
+async function auditCodexHostAdapter(cwd: string, issues: string[]) {
+  const hooks = await readRequiredJson(cwd, ".codex/hooks.json", issues);
+  const stopHook = firstStopHook(hooks);
+  if (stopHook?.type !== "command") {
+    issues.push("Codex Stop hook must use type=command.");
+  }
+  const command = stringValue(stopHook?.command);
+  expectTextContains(command, "DEVNS_PROJECT_DIR=", "Codex Stop hook command", issues);
+  expectTextContains(command, "plugins/codex/devns/scripts/devns-stop-hook.sh", "Codex Stop hook command", issues);
+
+  await requireExecutable(cwd, "plugins/codex/devns/scripts/devns-stop-hook.sh", "Codex stop hook script", issues);
+  await requireExecutable(cwd, ".devns/adapters/code-review.codex.sh", "Codex code-review adapter", issues);
+
+  const lane = await readRequiredJson(cwd, ".devns/lanes/code-review.json", issues);
+  if (lane?.type !== "agent") {
+    issues.push("Codex code-review lane must be type=agent.");
+  }
+  if (lane?.command !== "bash .devns/adapters/code-review.codex.sh") {
+    issues.push("Codex code-review lane command must call .devns/adapters/code-review.codex.sh.");
+  }
+  if (lane?.blocksCompletion !== true) {
+    issues.push("Codex code-review lane must block completion.");
+  }
+
+  const worker = await readRequiredText(cwd, ".codex/agents/devns_feature_worker.toml", issues);
+  expectTextContains(worker, 'name = "devns_feature_worker"', "Codex feature worker agent", issues);
+  expectTextContains(worker, "implement exactly one feature", "Codex feature worker agent", issues);
+  expectTextContains(worker, "Do not claim", "Codex feature worker agent", issues);
+
+  const reviewer = await readRequiredText(cwd, ".codex/agents/devns_code_reviewer.toml", issues);
+  expectTextContains(reviewer, 'name = "devns_code_reviewer"', "Codex code reviewer agent", issues);
+  expectTextContains(reviewer, "lane-result JSON", "Codex code reviewer agent", issues);
+  expectTextContains(reviewer, "Do not edit", "Codex code reviewer agent", issues);
+}
+
+async function auditClaudeHostAdapter(cwd: string, issues: string[]) {
+  const settings = await readRequiredJson(cwd, ".claude/settings.json", issues);
+  const stopHook = firstStopHook(settings);
+  if (stopHook?.type !== "agent") {
+    issues.push("Claude Stop hook must use type=agent.");
+  }
+  const prompt = stringValue(stopHook?.prompt);
+  expectTextContains(prompt, "DEVNS Stop Review Agent", "Claude Stop hook prompt", issues);
+  expectTextContains(prompt, "DEVNS_STOP_AGENT_HOOK=claude", "Claude Stop hook prompt", issues);
+
+  const hookPrompt = await readRequiredText(cwd, "plugins/claude-code/devns/prompts/stop-review-agent-hook.md", issues);
+  expectTextContains(hookPrompt, "Return exactly one JSON object", "Claude Stop Review Agent prompt", issues);
+  expectTextContains(hookPrompt, "lanes ingest", "Claude Stop Review Agent prompt", issues);
+
+  await requireExecutable(cwd, ".devns/adapters/code-review.claude.sh", "Claude code-review adapter", issues);
+
+  const lane = await readRequiredJson(cwd, ".devns/lanes/code-review.json", issues);
+  if (lane?.type !== "agent") {
+    issues.push("Claude code-review lane must be type=agent.");
+  }
+  if (lane?.command !== "bash .devns/adapters/code-review.claude.sh") {
+    issues.push("Claude code-review lane command must call .devns/adapters/code-review.claude.sh.");
+  }
+  if (lane?.blocksCompletion !== true) {
+    issues.push("Claude code-review lane must block completion.");
+  }
+
+  const worker = await readRequiredText(cwd, ".claude/agents/feature-worker.md", issues);
+  expectTextContains(worker, "name: devns-feature-worker", "Claude feature worker agent", issues);
+  expectTextContains(worker, "implement exactly one feature", "Claude feature worker agent", issues);
+  expectTextContains(worker, "Do not claim", "Claude feature worker agent", issues);
+
+  const reviewer = await readRequiredText(cwd, ".claude/agents/code-reviewer.md", issues);
+  expectTextContains(reviewer, "name: devns-code-reviewer", "Claude code reviewer agent", issues);
+  expectTextContains(reviewer, "read-only reviewer", "Claude code reviewer agent", issues);
+  expectTextContains(reviewer, "Do not edit", "Claude code reviewer agent", issues);
+}
+
+async function evaluateHostAdapterInit(given: Record<string, unknown>) {
+  const host = stringValue(given.host);
+  if (!["codex", "claude", "both"].includes(host)) {
+    return {
+      decision: "blocked" as const,
+      reason: "Host adapter init gate failed: host must be codex, claude, or both."
+    };
+  }
+
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-eval-host-init-"));
+  const originalCwd = process.cwd();
+  try {
+    await writeFile(
+      path.join(cwd, "package.json"),
+      `${JSON.stringify(
+        {
+          name: "devns-host-init-eval",
+          version: "0.0.0",
+          scripts: {
+            test: "echo \"Error: no test specified\" && exit 1",
+            build: "echo build"
+          }
+        },
+        null,
+        2
+      )}\n`
+    );
+    process.chdir(cwd);
+    await withMutedStdout(() =>
+      initDevns({
+        force: false,
+        projectName: "Host Adapter Init Eval",
+        projectDescription: "Evaluate DEVNS host adapter initialization.",
+        host: host as "codex" | "claude" | "both"
+      })
+    );
+    process.chdir(originalCwd);
+
+    for (const mutation of (given.mutations ?? []) as HostAdapterInitMutation[]) {
+      await applyHostAdapterInitMutation(cwd, mutation);
+    }
+
+    const issues: string[] = [];
+    if (host === "codex" || host === "both") {
+      await auditCodexHostAdapter(cwd, issues);
+    }
+    if (host === "claude" || host === "both") {
+      await auditClaudeHostAdapter(cwd, issues);
+    }
+
+    return {
+      decision: issues.length ? ("blocked" as const) : ("allowed" as const),
+      reason: issues.length ? `Host adapter init failed: ${issues.join(" ")}` : "Host adapter init gate passed."
+    };
+  } catch (error) {
+    return {
+      decision: "blocked" as const,
+      reason: `Host adapter init failed: ${error instanceof Error ? error.message : "unknown error"}`
+    };
+  } finally {
+    process.chdir(originalCwd);
     await rm(cwd, { recursive: true, force: true });
   }
 }
@@ -746,6 +978,8 @@ export async function runT1Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
     result = evaluateContextBudgetGate(testCase.given);
   } else if (testCase.action.gate === "project_extension_config") {
     result = await evaluateProjectExtensionConfig(testCase.given);
+  } else if (testCase.action.gate === "host_adapter_init") {
+    result = await evaluateHostAdapterInit(testCase.given);
   } else if (testCase.action.gate === "state_atomic_write") {
     result = await evaluateStateAtomicWrite(testCase.given);
   } else {

@@ -21,6 +21,10 @@ async function main() {
   if (t3.metrics.t3.total !== 8 || t3.metrics.t3.byProjectType.length < 4 || t3.metrics.t3.byRiskArea.length < 3) {
     throw new Error("Eval smoke expected T3 metrics to include project type and risk-area aggregation.");
   }
+  const hostInitMode = t1.metrics.perMode.find((metric) => metric.mode === "M24_host_adapter_init");
+  if (!hostInitMode || hostInitMode.total !== 4 || hostInitMode.failed !== 0) {
+    throw new Error("Eval smoke expected M24 host adapter init evals to run 4 passing clean/trap cases.");
+  }
   if (failed > 0) {
     throw new Error(`Eval smoke failed: ${failed}/${total} case(s) failed.`);
   }

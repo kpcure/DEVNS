@@ -1,0 +1,16 @@
+{
+  "id": "m24-claude-host-adapter-init-clean",
+  "tier": "t1",
+  "mode": "M24_host_adapter_init",
+  "generality_level": "general",
+  "given": {
+    "host": "claude"
+  },
+  "action": {
+    "gate": "host_adapter_init"
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "passed"
+  }
+}

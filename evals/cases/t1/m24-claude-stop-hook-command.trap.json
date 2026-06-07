@@ -1,0 +1,36 @@
+{
+  "id": "m24-claude-stop-hook-command-trap",
+  "tier": "t1",
+  "mode": "M24_host_adapter_init",
+  "generality_level": "general",
+  "given": {
+    "host": "claude",
+    "mutations": [
+      {
+        "type": "write",
+        "path": ".claude/settings.json",
+        "content": {
+          "hooks": {
+            "Stop": [
+              {
+                "hooks": [
+                  {
+                    "type": "command",
+                    "command": "npm run devns -- stop"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  "action": {
+    "gate": "host_adapter_init"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "Claude Stop hook must use type=agent"
+  }
+}

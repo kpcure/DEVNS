@@ -1,0 +1,16 @@
+{
+  "id": "m24-codex-host-adapter-init-clean",
+  "tier": "t1",
+  "mode": "M24_host_adapter_init",
+  "generality_level": "general",
+  "given": {
+    "host": "codex"
+  },
+  "action": {
+    "gate": "host_adapter_init"
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "passed"
+  }
+}

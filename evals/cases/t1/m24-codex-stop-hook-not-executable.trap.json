@@ -1,0 +1,23 @@
+{
+  "id": "m24-codex-stop-hook-not-executable-trap",
+  "tier": "t1",
+  "mode": "M24_host_adapter_init",
+  "generality_level": "general",
+  "given": {
+    "host": "codex",
+    "mutations": [
+      {
+        "type": "chmod",
+        "path": "plugins/codex/devns/scripts/devns-stop-hook.sh",
+        "mode": 420
+      }
+    ]
+  },
+  "action": {
+    "gate": "host_adapter_init"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "Codex stop hook script is not executable"
+  }
+}
