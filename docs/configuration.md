@@ -143,7 +143,9 @@ Long stop-hook continuation loops should avoid carrying an ever-growing context.
 }
 ```
 
-The current runtime exposes this in `devns orchestrate --json` handoff. Hosts can use it to start a fresh worker/subagent per feature while keeping detailed history in `.devns/history/`.
+The runtime now evaluates this policy in both Orchestrator Mode and the Stop Hook safety gate. `devns orchestrate --json` includes a `contextBudget` report with history record counts, stop-hook continuation counts, whether a compact handoff is recommended, and a bounded handoff instruction. When an active feature is blocked and the policy threshold is exceeded, the Stop Hook continuation reason explicitly asks the host to reset to a fresh worker or compact implementation context and to rebuild context from the RFC, feature record, latest history, and lane/review evidence on disk.
+
+This follows the same shape as trace-context propagation: carry the identifiers and bounded state needed to continue the workflow, and keep detailed history/artifacts in durable local files rather than pasting the whole transcript forward.
 
 ## Local Traces
 

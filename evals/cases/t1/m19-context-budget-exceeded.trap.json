@@ -1,0 +1,38 @@
+{
+  "id": "m19-context-budget-exceeded.trap",
+  "tier": "t1",
+  "mode": "M19_context_budget",
+  "generality_level": "general",
+  "given": {
+    "config": {
+      "version": 1,
+      "features": ".devns/features.json",
+      "completionPolicy": {
+        "contextBudget": {
+          "preferFreshWorkerPerFeature": true,
+          "maxContinuationTurns": 3,
+          "handoffTokenBudget": 1200,
+          "resetWhenHistoryRecordsExceed": 2
+        }
+      }
+    },
+    "feature": {
+      "id": "CTX-002",
+      "title": "Context budget exceeded",
+      "description": "Context should be reset.",
+      "status": "in_progress",
+      "priority": "P1",
+      "milestone": "Context",
+      "acceptanceCriteria": ["Reset to a fresh worker after context budget is exceeded."]
+    },
+    "historyRecordCount": 4,
+    "continuationTurnCount": 3
+  },
+  "action": {
+    "gate": "context_budget"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "exceeding resetWhenHistoryRecordsExceed=2"
+  }
+}

@@ -1,11 +1,12 @@
 import type { ClaudeStopHookInput, Feature, DevnsConfig, StopHookDecision } from "./types";
 import { canClaimFeature, describeRfcBlock } from "./rfc";
 import { claimFeature } from "./task-queue";
+import { evaluateContextBudget } from "./context-budget";
 import { gitStatus } from "./git";
 import { appendExecutionHistory, buildChangedFileEvidence, laneResultsToChecks } from "./history";
 import { laneResultsToEvidence, runReviewLanes, type LaneDefinition, type LaneResult } from "./lane-runner";
 import { safeAppendStopHookTrace } from "./stop-log";
-import { stopHookWorkerContinuation } from "./worker-handoff";
+import { contextBudgetContinuationLines, stopHookWorkerContinuation } from "./worker-handoff";
 import {
   findBlockedReadyFeature,
   findNextReadyFeature,
@@ -236,10 +237,11 @@ async function completionReasons(cwd: string, feature: Feature, config: DevnsCon
   return reasons;
 }
 
-function activeContinuationReason(feature: Feature, reasons: string[]) {
+function activeContinuationReason(feature: Feature, reasons: string[], contextBudgetLines: string[] = []) {
   return [
     `Continue feature ${feature.id}: ${feature.title}.`,
     ...reasons,
+    ...contextBudgetLines,
     "Before stopping, finish the feature loop: verify, update evidence/history, record commit metadata when required, and commit exactly this feature."
   ].join(" ");
 }
@@ -303,15 +305,16 @@ export async function evaluateClaudeStopHook(input: ClaudeStopHookInput): Promis
   if (activeFeature) {
     const reviewedFeature = await runMissingReviewAgents(cwd, config, activeFeature);
     const reasons = await completionReasons(cwd, reviewedFeature, config);
+    const contextBudget = await evaluateContextBudget(cwd, config, reviewedFeature);
 
     if (reasons.length) {
       return finish(
         "active_block",
         {
           decision: "block",
-          reason: activeContinuationReason(reviewedFeature, reasons)
+          reason: activeContinuationReason(reviewedFeature, reasons, contextBudgetContinuationLines(contextBudget))
         },
-        { ...traceState, selectedFeatureId: reviewedFeature.id, reasons }
+        { ...traceState, selectedFeatureId: reviewedFeature.id, reasons: [...reasons, ...contextBudget.reasons] }
       );
     }
 

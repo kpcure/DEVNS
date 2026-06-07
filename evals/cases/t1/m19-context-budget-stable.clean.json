@@ -1,0 +1,38 @@
+{
+  "id": "m19-context-budget-stable.clean",
+  "tier": "t1",
+  "mode": "M19_context_budget",
+  "generality_level": "general",
+  "given": {
+    "config": {
+      "version": 1,
+      "features": ".devns/features.json",
+      "completionPolicy": {
+        "contextBudget": {
+          "preferFreshWorkerPerFeature": false,
+          "maxContinuationTurns": 10,
+          "handoffTokenBudget": 2000,
+          "resetWhenHistoryRecordsExceed": 20
+        }
+      }
+    },
+    "feature": {
+      "id": "CTX-001",
+      "title": "Context budget stable",
+      "description": "Context is still under budget.",
+      "status": "in_progress",
+      "priority": "P1",
+      "milestone": "Context",
+      "acceptanceCriteria": ["Do not force a context reset before the configured budget is exceeded."]
+    },
+    "historyRecordCount": 3,
+    "continuationTurnCount": 2
+  },
+  "action": {
+    "gate": "context_budget"
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "does not require a fresh worker"
+  }
+}

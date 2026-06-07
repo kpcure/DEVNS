@@ -158,6 +158,8 @@ async function main() {
     assert.equal(claim.implementationSubagent.name, "devns_feature_worker");
     assert.match(claim.implementationSubagent.launchInstruction, /Explicitly spawn/);
     assert.match(claim.implementationSubagent.prompt, /Worker handoff JSON/);
+    assert.equal(claim.contextBudget.compactHandoffRecommended, true);
+    assert.match(claim.contextBudget.instruction, /fresh worker|isolated implementation context/);
     assert.equal(claim.reviewSubagent.name, "devns_code_reviewer");
     assert.match(claim.reviewSubagent.prompt, /lane-result JSON/);
     assert.equal(claim.trace.path, ".devns/traces/orchestrator.jsonl");
@@ -179,6 +181,7 @@ async function main() {
     assert.equal(active.claimed, false);
     assert.equal(active.implementationSubagent.name, "devns-feature-worker");
     assert.match(active.implementationSubagent.launchInstruction, /Use the devns-feature-worker subagent/);
+    assert.equal(active.contextBudget.preferFreshWorker, true);
     assert.equal(active.reviewSubagent.name, "devns-code-reviewer");
     const activeTrace = await readTraceRecords(activeProject);
     assert.equal(activeTrace[0]?.mode, "continue_active");

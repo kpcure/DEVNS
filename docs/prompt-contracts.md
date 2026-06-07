@@ -14,6 +14,7 @@ The continuation packet should include:
 - next command or document to read
 - for claim-next, a worker handoff that tells the host to start a Sub Agent, isolated worker, or fresh implementation context before editing
 - required evidence to write before the next stop attempt
+- when `completionPolicy.contextBudget` is exceeded, a compact-handoff instruction that tells the host to start a fresh worker/context and rebuild from RFC, feature state, history, and evidence on disk
 
 It must not ask the agent to run broad discovery, long tests, browser checks, package installs, or arbitrary project commands inside the hook. Those are lanes that should finish before the stop attempt. Review Agent work is allowed only through configured `type: "agent"` lanes with a read-only adapter and structured output.
 
@@ -38,6 +39,8 @@ Worker output:
 - suggested commit message
 
 The normal orchestrator prompt should not ask the main context to implement directly. It should instruct the host to start a Sub Agent, isolated worker, or fresh implementation context with the worker handoff. The main context should keep queue orchestration, evidence aggregation, review routing, completion, and commits. The worker should implement exactly one feature.
+
+When `contextBudget.resetRecommended` is true, the main context should not keep repairing inside the same accumulated conversation. Start a fresh worker/context, keep the static instructions first, and pass only the bounded handoff plus links to durable history and artifacts.
 
 ## Code Review Lane
 

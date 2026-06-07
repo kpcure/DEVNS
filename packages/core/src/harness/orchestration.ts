@@ -1,4 +1,5 @@
 import { workerHandoff } from "./worker-handoff";
+import type { ContextBudgetReport } from "./context-budget";
 import type { DevnsConfig, Feature } from "./types";
 
 export type OrchestratorHost = "generic" | "claude" | "codex";
@@ -109,12 +110,20 @@ function reviewPrompt(config: DevnsConfig, feature: Feature, host: OrchestratorH
   ].join("\n");
 }
 
+function contextBudgetNextStep(report?: ContextBudgetReport) {
+  if (!report?.compactHandoffRecommended) return undefined;
+  return report.resetRecommended
+    ? "Context budget recommends a fresh worker or compact implementation context before more edits; read RFC/history/evidence from disk and use the bounded handoff."
+    : "Launch the implementation subagent or fresh worker with the bounded handoff instead of continuing implementation in the main context.";
+}
+
 export function orchestrationPacket(input: {
   mode: OrchestratorMode;
   host: OrchestratorHost;
   cwd: string;
   config?: DevnsConfig;
   feature?: Feature;
+  contextBudget?: ContextBudgetReport;
   claimed?: boolean;
   reasons?: string[];
   summary?: unknown;
@@ -137,13 +146,15 @@ export function orchestrationPacket(input: {
             launchInstruction: hostLaunchInstruction(input.host, reviewerName, "read-only code review"),
             prompt: reviewPrompt(input.config, input.feature, input.host)
           },
+          contextBudget: input.contextBudget,
           mainAgentNextSteps: [
+            contextBudgetNextStep(input.contextBudget),
             "Launch the implementation subagent with the implementation prompt.",
             "After the worker returns, run deterministic lanes with `npm run devns -- lanes run --feature <id> --write --json`.",
             "Launch the read-only review subagent with the review prompt or run the configured review lane.",
             "If review or lanes block, send a focused repair prompt back to the implementation subagent.",
             `When evidence, review, and commit gates are satisfied, run \`npm run devns -- complete --id ${input.feature.id} --json\` and create one feature commit.`
-          ]
+          ].filter((item): item is string => Boolean(item))
         }
       : undefined;
 

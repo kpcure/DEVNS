@@ -5,6 +5,7 @@ import { evaluateCompletionGate } from "../packages/core/src/harness/completion-
 import { evaluateEvidenceQuality } from "../packages/core/src/harness/evidence-quality";
 import { evaluateArtifactIntegrity } from "../packages/core/src/harness/artifact-integrity";
 import { buildArtifactDigests, type ArtifactDigest } from "../packages/core/src/harness/artifact-digest";
+import { evaluateContextBudgetFromCounts } from "../packages/core/src/harness/context-budget";
 import {
   auditDashboardArtifactPreview,
   auditDashboardArtifactPreviewArtifacts
@@ -38,6 +39,7 @@ export type EvalCase = {
       | "dashboard_artifact_preview"
       | "review_lane_result"
       | "review_packet_quality"
+      | "context_budget"
       | "orchestrator_trace"
       | "state_atomic_write";
     cmd?: string;
@@ -332,6 +334,17 @@ function evaluateOrchestratorTrace(given: Record<string, unknown>) {
   };
 }
 
+function evaluateContextBudgetGate(given: Record<string, unknown>) {
+  const report = evaluateContextBudgetFromCounts(given.config as DevnsConfig, given.feature as Feature, {
+    historyRecordCount: typeof given.historyRecordCount === "number" ? given.historyRecordCount : undefined,
+    continuationTurnCount: typeof given.continuationTurnCount === "number" ? given.continuationTurnCount : undefined
+  });
+  return {
+    decision: report.resetRecommended ? ("blocked" as const) : ("allowed" as const),
+    reason: report.resetRecommended ? report.reasons.join(" ") : report.instruction
+  };
+}
+
 async function evaluateStateAtomicWrite(given: Record<string, unknown>) {
   const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-eval-state-"));
   try {
@@ -496,6 +509,8 @@ export async function runT1Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
     result = await evaluateDashboardArtifactPreviewGate(testCase.given);
   } else if (testCase.action.gate === "orchestrator_trace") {
     result = evaluateOrchestratorTrace(testCase.given);
+  } else if (testCase.action.gate === "context_budget") {
+    result = evaluateContextBudgetGate(testCase.given);
   } else if (testCase.action.gate === "state_atomic_write") {
     result = await evaluateStateAtomicWrite(testCase.given);
   } else {

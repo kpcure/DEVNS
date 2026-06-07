@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { access } from "node:fs/promises";
 import { evaluateRfcReadiness } from "../harness/rfc";
+import { evaluateContextBudget } from "../harness/context-budget";
 import { orchestrationPacket, type OrchestratorHost } from "../harness/orchestration";
 import { appendOrchestratorTrace } from "../harness/orchestrator-trace";
 import { activeFeature, blockedReadyFeature, claimFeature, nextFeature, TaskQueueError } from "../harness/task-queue";
@@ -150,7 +151,8 @@ async function main() {
       host: options.host,
       cwd,
       config,
-      feature: active
+      feature: active,
+      contextBudget: await evaluateContextBudget(cwd, config, active)
     });
     await emit(cwd, config, payload, options);
     return;
@@ -171,6 +173,7 @@ async function main() {
       cwd,
       config,
       feature,
+      contextBudget: await evaluateContextBudget(cwd, config, feature),
       claimed: Boolean(result)
     });
     await emit(cwd, config, payload, options);
@@ -186,6 +189,7 @@ async function main() {
       cwd,
       config,
       feature: blocked.feature,
+      contextBudget: await evaluateContextBudget(cwd, config, blocked.feature),
       reasons
     });
     await emit(cwd, config, payload, options);

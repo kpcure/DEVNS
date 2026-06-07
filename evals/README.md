@@ -56,5 +56,6 @@ T1 and T2 cases are deterministic regression fixtures for the DEVNS control plan
 - `M16_dashboard_artifact_preview`: dashboard/browser semantic snapshots must expose artifact digest status, metrics, sample URLs, and policy findings instead of refs-only evidence.
 - `M17_browser_semantic_snapshot_ingestion`: browser-smoke manifests can carry DOM, OCR, or accessibility text artifacts that feed the M16 preview grader without hand-written visible text.
 - `M18_review_packet_quality`: frozen review packets must include approved RFC context, acceptance criteria, Git diff, evidence quality, evidence/artifact digest context, execution history, project rules, and read-only lane-result output instructions.
+- `M19_context_budget`: long continuation loops must recommend a fresh worker or compact implementation context once history or stop-hook turn budgets are exceeded.
 
 This keeps the eval suite focused on the behaviors that make DEVNS trustworthy as an agent harness: intent provenance, scope control, independent review, and evidence that matches the acceptance criterion's verification type.

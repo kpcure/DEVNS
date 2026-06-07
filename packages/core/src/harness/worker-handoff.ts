@@ -1,4 +1,5 @@
 import { historyPathForFeature } from "./history";
+import type { ContextBudgetReport } from "./context-budget";
 import type { DevnsConfig, Feature } from "./types";
 
 function compactList(values: string[] | undefined, limit = 6) {
@@ -156,4 +157,17 @@ export function stopHookWorkerContinuation(config: DevnsConfig, feature: Feature
     })}`,
     "Main context duty: orchestrate queue state, aggregate evidence, and let the worker return implementation results, blockers, verification output, and suggested commit message."
   ].join("\n");
+}
+
+export function contextBudgetContinuationLines(report?: ContextBudgetReport) {
+  if (!report?.compactHandoffRecommended) {
+    return [];
+  }
+
+  return [
+    "Context budget:",
+    `- ${report.instruction}`,
+    `- History records: ${report.historyRecordCount}; stop-hook continuation turns: ${report.continuationTurnCount}.`,
+    ...(report.reasons.length ? report.reasons.map((reason) => `- ${reason}`) : [])
+  ];
 }

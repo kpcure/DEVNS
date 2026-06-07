@@ -96,7 +96,7 @@ function feature(id: string, status: Feature["status"], patch: Partial<Feature> 
   };
 }
 
-async function makeProject(features: Feature[]) {
+async function makeProject(features: Feature[], patch: Partial<DevnsConfig> = {}) {
   const root = process.cwd();
   const tsxBin = path.join(root, "node_modules", ".bin", "tsx");
   const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-stop-smoke-"));
@@ -135,14 +135,16 @@ async function makeProject(features: Feature[]) {
           requireReviewDecision: true,
           requireCleanWorktree: false,
           requireCommit: true,
-          allowEmptyOutputWhenComplete: true
+          allowEmptyOutputWhenComplete: true,
+          ...(patch.completionPolicy ?? {})
         },
         hooks: {
           stop: {
             mode: "gate",
             blockOn: {
               skippedRequiredVerification: true
-            }
+            },
+            ...(patch.hooks?.stop ?? {})
           }
         },
         reviewLanes: [
@@ -263,6 +265,27 @@ async function main() {
   ]);
   const reviewAgentProject = await makeProject([feature("SMOKE-007", "in_progress")]);
   await installReviewAgentLane(reviewAgentProject);
+  const contextBudgetProject = await makeProject(
+    [feature("SMOKE-008", "in_progress")],
+    {
+      completionPolicy: {
+        contextBudget: {
+          preferFreshWorkerPerFeature: true,
+          maxContinuationTurns: 1,
+          handoffTokenBudget: 900,
+          resetWhenHistoryRecordsExceed: 1
+        }
+      }
+    }
+  );
+  await mkdir(path.join(contextBudgetProject, ".devns", "history"), { recursive: true });
+  await writeFile(
+    path.join(contextBudgetProject, ".devns", "history", "SMOKE-008.jsonl"),
+    [
+      JSON.stringify({ id: "SMOKE-008-1", featureId: "SMOKE-008", decisions: ["first attempt"], lessons: [] }),
+      JSON.stringify({ id: "SMOKE-008-2", featureId: "SMOKE-008", decisions: ["second attempt"], lessons: [] })
+    ].join("\n") + "\n"
+  );
 
   try {
     const recursive = await runHook(activeProject, JSON.stringify({ cwd: activeProject, stop_hook_active: true }));
@@ -354,6 +377,14 @@ async function main() {
           (entry.laneIds ?? []).includes("code-review")
       )
     );
+
+    const contextBudget = parseMaybeJson(await runHook(contextBudgetProject, JSON.stringify({ cwd: contextBudgetProject })));
+    assert.ok(contextBudget, "Context-budget project hook should block with JSON output.");
+    assert.equal(contextBudget.decision, "block");
+    assert.match(contextBudget.reason, /Context budget:/);
+    assert.match(contextBudget.reason, /fresh worker or compact implementation context/);
+    assert.match(contextBudget.reason, /exceeding resetWhenHistoryRecordsExceed=1/);
+    assert.match(contextBudget.reason, /900 token/);
     assert.ok(
       reviewAgentLog.some(
         (entry) =>
@@ -383,7 +414,7 @@ async function main() {
     assert.ok(emptyLog.some((entry) => entry.source === "core" && entry.mode === "empty_allow" && entry.decision === "allow"));
   } finally {
     await Promise.all(
-      [activeProject, claimProject, completeProject, emptyProject, multiActiveProject, reviewAgentProject].map((project) =>
+      [activeProject, claimProject, completeProject, emptyProject, multiActiveProject, reviewAgentProject, contextBudgetProject].map((project) =>
         rm(project, { recursive: true, force: true })
       )
     );
