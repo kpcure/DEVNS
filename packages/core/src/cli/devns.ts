@@ -53,6 +53,8 @@ function usage() {
     "  devns evidence add --feature <id> --type <type> --summary <text>",
     "  devns eval run --tier t1 [--mode <mode>] [--json]",
     "  devns trace [--tail 20] [--audit] [--json]",
+    "  devns trace worker-result --feature <id> --status implemented|blocked|failed [--json]",
+    "  devns trace repair --feature <id> --phase requested|result [--reason <text>] [--json]",
     "  devns stop-log [--tail 20] [--json]",
     "  devns review generate [--date YYYY-MM-DD] [--json]",
     "  devns review packet [--feature <id>] [--format json|prompt] [--write]",

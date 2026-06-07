@@ -81,6 +81,19 @@ The command returns:
 
 When tracing is enabled, `devns orchestrate` appends one bounded local record to `.devns/traces/orchestrator.jsonl`. The record follows a trace-like workflow shape: trace id, span id, workflow name, host, mode, selected feature, claim status, subagent names, events, reasons, and next-step labels. It does not store worker prompts, review prompts, diffs, model transcripts, or command stdout. Pass `--no-trace` for read-only inspection scripts that must avoid writing diagnostics.
 
+After an implementation worker returns, record a bounded worker result before running lanes:
+
+```sh
+npm run devns -- trace worker-result --feature <feature-id> --status implemented --changed-files <n> --commands <n> --artifacts <n> --blockers <n> --json
+```
+
+If lanes or review send the feature back for focused repair, record both sides of the loop:
+
+```sh
+npm run devns -- trace repair --feature <feature-id> --phase requested --reason "<blocker>" --json
+npm run devns -- trace repair --feature <feature-id> --phase result --status implemented --attempt <n> --json
+```
+
 Inspect and audit recent traces with:
 
 ```sh
@@ -88,7 +101,7 @@ npm run devns -- trace --tail 20
 npm run devns -- trace --audit --json
 ```
 
-The audit checks that claim traces include feature selection and claim events, feature orchestration traces include handoff events, empty-queue traces do not select a feature, and no prompt/diff/transcript/stdout/stderr markers were stored.
+The audit checks that claim traces include feature selection and claim events, feature orchestration traces include handoff events, empty-queue traces do not select a feature, completed features include lane/review/completion continuity, context reset traces include a later worker result, repair requests include a later repair result, and no prompt/diff/transcript/stdout/stderr markers were stored.
 
 ## Installed Subagents
 

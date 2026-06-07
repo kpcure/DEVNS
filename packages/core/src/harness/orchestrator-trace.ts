@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { DevnsConfig } from "./types";
 import type { OrchestratorHost, OrchestratorMode } from "./orchestration";
+import type { ContextBudgetReport } from "./context-budget";
 
 type TraceAttributes = Record<string, string | number | boolean>;
 type TraceEvent = {
@@ -17,6 +18,7 @@ type TracePacket = {
   claimed?: boolean;
   stopHookRole?: string;
   reasons?: string[];
+  contextBudget?: ContextBudgetReport;
   featureId?: string;
   title?: string;
   implementationSubagent?: {
@@ -28,12 +30,20 @@ type TracePacket = {
   mainAgentNextSteps?: string[];
 };
 
+type WorkflowTraceName =
+  | "devns.lanes.run"
+  | "devns.lanes.ingest"
+  | "devns.complete"
+  | "devns.worker.result"
+  | "devns.repair.loop";
+type TraceRecordName = "devns.orchestrate" | WorkflowTraceName;
+
 type BaseTraceRecord = {
   schemaVersion: 1;
   traceId: string;
   spanId: string;
   parentSpanId?: string;
-  name: "devns.orchestrate" | "devns.lanes.run" | "devns.lanes.ingest" | "devns.complete";
+  name: TraceRecordName;
   kind: "agent.workflow" | "tool.command";
   startedAt: string;
   completedAt: string;
@@ -59,17 +69,19 @@ export type OrchestratorTraceRecord = BaseTraceRecord & {
 };
 
 export type WorkflowTraceRecord = BaseTraceRecord & {
-  name: "devns.lanes.run" | "devns.lanes.ingest" | "devns.complete";
-  kind: "tool.command";
+  name: WorkflowTraceName;
+  kind: "tool.command" | "agent.workflow";
   reasons?: string[];
 };
 
 export type DevnsTraceRecord = OrchestratorTraceRecord | WorkflowTraceRecord;
 
 export type WorkflowTracePacket = {
-  name: WorkflowTraceRecord["name"];
+  name: WorkflowTraceName;
+  kind?: WorkflowTraceRecord["kind"];
   featureId?: string;
   featureTitle?: string;
+  traceId?: string;
   parentSpanId?: string;
   events: Array<{
     name: string;
@@ -107,6 +119,7 @@ function event(name: string, attributes?: TraceAttributes): TraceEvent {
 function baseRecord<Name extends DevnsTraceRecord["name"], Kind extends DevnsTraceRecord["kind"]>(packet: {
   name: Name;
   kind: Kind;
+  traceId?: string;
   featureId?: string;
   featureTitle?: string;
   parentSpanId?: string;
@@ -116,7 +129,7 @@ function baseRecord<Name extends DevnsTraceRecord["name"], Kind extends DevnsTra
   const startedAt = new Date().toISOString();
   return {
     schemaVersion: 1 as const,
-    traceId: randomUUID(),
+    traceId: packet.traceId ?? randomUUID(),
     spanId: randomUUID(),
     parentSpanId: packet.parentSpanId,
     name: packet.name,
@@ -160,6 +173,16 @@ export function buildOrchestratorTraceRecord(packet: TracePacket): OrchestratorT
     );
   }
 
+  if (packet.contextBudget?.resetRecommended) {
+    events.push(
+      event("context.reset.recommended", {
+        "devns.context_budget.history_records": packet.contextBudget.historyRecordCount,
+        "devns.context_budget.continuation_turns": packet.contextBudget.continuationTurnCount,
+        "devns.context_budget.handoff_tokens": packet.contextBudget.handoffTokenBudget ?? 0
+      })
+    );
+  }
+
   return {
     ...baseRecord({
       name: "devns.orchestrate",
@@ -192,7 +215,8 @@ export function buildWorkflowTraceRecord(packet: WorkflowTracePacket): WorkflowT
   return {
     ...baseRecord({
       name: packet.name,
-      kind: "tool.command",
+      kind: packet.kind ?? "tool.command",
+      traceId: packet.traceId,
       featureId: packet.featureId,
       featureTitle: packet.featureTitle,
       parentSpanId: packet.parentSpanId,
@@ -321,6 +345,14 @@ function auditWorkflowRecord(record: WorkflowTraceRecord) {
     findings.push({ severity: "error", traceId: record.traceId, message: "Completion trace must include feature.completed event." });
   }
 
+  if (record.name === "devns.worker.result" && !hasEvent(record, "worker.result")) {
+    findings.push({ severity: "error", traceId: record.traceId, message: "Worker-result trace must include worker.result event." });
+  }
+
+  if (record.name === "devns.repair.loop" && !hasEvent(record, "repair.requested") && !hasEvent(record, "repair.result")) {
+    findings.push({ severity: "error", traceId: record.traceId, message: "Repair-loop trace must include repair.requested or repair.result event." });
+  }
+
   return findings;
 }
 
@@ -358,6 +390,20 @@ function eventTime(record: DevnsTraceRecord, name: string) {
   return Number.isFinite(timestamp) ? timestamp : undefined;
 }
 
+function firstEventTime(records: DevnsTraceRecord[], name: string) {
+  const times = records
+    .map((record) => eventTime(record, name))
+    .filter((time): time is number => time !== undefined);
+  return times.length ? Math.min(...times) : undefined;
+}
+
+function latestEventTime(records: DevnsTraceRecord[], name: string) {
+  const times = records
+    .map((record) => eventTime(record, name))
+    .filter((time): time is number => time !== undefined);
+  return times.length ? Math.max(...times) : undefined;
+}
+
 function auditTraceContinuity(records: DevnsTraceRecord[]) {
   const findings: OrchestratorTraceAuditFinding[] = [];
   const byFeature = new Map<string, DevnsTraceRecord[]>();
@@ -374,6 +420,10 @@ function auditTraceContinuity(records: DevnsTraceRecord[]) {
     const hasHandoff = featureRecords.some((record) => hasEvent(record, "handoff.prepared"));
     const hasLaneEvidence = featureRecords.some((record) => hasEvent(record, "lane.run") || hasEvent(record, "lane.result.ingested"));
     const hasReviewDecision = featureRecords.some((record) => hasEvent(record, "review.decision") || hasEvent(record, "review.result"));
+    const resetRecommendedAt = firstEventTime(featureRecords, "context.reset.recommended");
+    const firstWorkerResult = firstEventTime(featureRecords, "worker.result");
+    const lastRepairRequested = latestEventTime(featureRecords, "repair.requested");
+    const lastRepairResult = latestEventTime(featureRecords, "repair.result");
 
     if (!hasHandoff) {
       findings.push({ severity: "error", traceId: completedRecords[0]?.traceId, message: `Completed feature ${featureId} trace must include handoff.prepared before completion.` });
@@ -385,6 +435,22 @@ function auditTraceContinuity(records: DevnsTraceRecord[]) {
 
     if (!hasReviewDecision) {
       findings.push({ severity: "error", traceId: completedRecords[0]?.traceId, message: `Completed feature ${featureId} trace must include review.decision or review.result before completion.` });
+    }
+
+    if (resetRecommendedAt !== undefined && (firstWorkerResult === undefined || firstWorkerResult <= resetRecommendedAt)) {
+      findings.push({
+        severity: "error",
+        traceId: completedRecords[0]?.traceId,
+        message: `Completed feature ${featureId} trace must include worker.result after context.reset.recommended.`
+      });
+    }
+
+    if (lastRepairRequested !== undefined && (lastRepairResult === undefined || lastRepairResult <= lastRepairRequested)) {
+      findings.push({
+        severity: "error",
+        traceId: completedRecords[0]?.traceId,
+        message: `Completed feature ${featureId} trace must include repair.result after the latest repair.requested event.`
+      });
     }
 
     const firstComplete = Math.min(...completedRecords.map((record) => eventTime(record, "feature.completed") ?? Number.POSITIVE_INFINITY));
@@ -401,6 +467,14 @@ function auditTraceContinuity(records: DevnsTraceRecord[]) {
 
     if (Number.isFinite(firstComplete) && Number.isFinite(firstReview) && firstReview > firstComplete) {
       findings.push({ severity: "error", traceId: completedRecords[0]?.traceId, message: `Completed feature ${featureId} trace records review decision after completion.` });
+    }
+
+    if (Number.isFinite(firstComplete) && firstWorkerResult !== undefined && firstWorkerResult > firstComplete) {
+      findings.push({ severity: "error", traceId: completedRecords[0]?.traceId, message: `Completed feature ${featureId} trace records worker.result after completion.` });
+    }
+
+    if (Number.isFinite(firstComplete) && lastRepairResult !== undefined && lastRepairResult > firstComplete) {
+      findings.push({ severity: "error", traceId: completedRecords[0]?.traceId, message: `Completed feature ${featureId} trace records repair.result after completion.` });
     }
   }
 

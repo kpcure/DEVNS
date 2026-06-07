@@ -81,6 +81,8 @@ npm run devns:lanes -- ingest --feature <feature-id> --result <lane-result.json>
 npm run devns:evidence -- add --feature <feature-id> --type <type> --summary <text> [--verification <kind>] [--covers-ac AC-001]
 npm run devns:eval -- run --tier t1 [--mode <mode>] [--json] [--report evals/out/report.md]
 npm run devns:trace [-- --tail 20] [-- --audit] [-- --json]
+npm run devns -- trace worker-result --feature <feature-id> --status implemented|blocked|failed [--changed-files <n>] [--commands <n>] [--artifacts <n>] [--blockers <n>] [--json]
+npm run devns -- trace repair --feature <feature-id> --phase requested|result [--status requested|implemented|blocked|failed] [--reason <text>] [--attempt <n>] [--json]
 npm run devns:stop-log [-- --tail 20] [-- --json]
 npm run devns:review -- generate [--date YYYY-MM-DD] [--json]
 npm run devns:review -- packet [--feature <feature-id>] [--commit <sha>] [--base <sha>] [--format json|prompt] [--write] [--json]
@@ -114,7 +116,7 @@ The `dashboard_artifact_preview` eval gate can grade DOM text, OCR text, or acce
 
 `npm run devns:orchestrate` is the preferred long-run entrypoint. It keeps the main agent as orchestrator and returns a complete packet for one feature: implementation subagent name/prompt, read-only review subagent name/prompt, worker handoff, required lanes, main-agent next steps, and a local trace summary. By default it appends a bounded workflow record to `.devns/traces/orchestrator.jsonl`; pass `--no-trace` for read-only inspection. Stop hooks become safety nets instead of the primary work loop. See `docs/orchestrator-mode.md`.
 
-`npm run devns:trace` reads `.devns/traces/orchestrator.jsonl`, the local workflow trace written by Orchestrator Mode and lifecycle commands. Use `--audit` to check that recent traces include required queue/feature/handoff events, that completed features have lane/review/completion continuity, and that traces do not contain forbidden prompt, diff, transcript, stdout, or stderr markers.
+`npm run devns:trace` reads `.devns/traces/orchestrator.jsonl`, the local workflow trace written by Orchestrator Mode and lifecycle commands. Use `--audit` to check that recent traces include required queue/feature/handoff events, that completed features have lane/review/completion continuity, that context-budget resets are followed by `worker.result`, that repair requests are followed by `repair.result`, and that traces do not contain forbidden prompt, diff, transcript, stdout, or stderr markers. Use `trace worker-result` after an isolated implementation worker returns, and `trace repair --phase requested|result` around focused repair loops triggered by lanes or review.
 
 `npm run harness:validate` and `npx @kpcure/devns validate` are deterministic health checks. They inspect workspace shape, schema validity, RFC readiness, evidence quality, lane evidence records, hook wiring, and curated history/review artifacts. They are intentionally fast and do not run a model-based semantic review. Semantic validation must come from configured `type: "agent"` review lanes, browser/human evidence, or project-specific command lanes.
 

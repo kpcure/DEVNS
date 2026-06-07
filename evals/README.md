@@ -58,5 +58,6 @@ T1 and T2 cases are deterministic regression fixtures for the DEVNS control plan
 - `M18_review_packet_quality`: frozen review packets must include approved RFC context, acceptance criteria, Git diff, evidence quality, evidence/artifact digest context, execution history, project rules, and read-only lane-result output instructions.
 - `M19_context_budget`: long continuation loops must recommend a fresh worker or compact implementation context once history or stop-hook turn budgets are exceeded.
 - `M20_project_extension_config`: project-local policy/agent/lane extension files must merge into resolved config, while schema-invalid policy patches are blocked.
+- `M21_worker_repair_trace_continuity`: context-reset traces must include a later worker result, and repair requests must close with a later repair result before completion.
 
 This keeps the eval suite focused on the behaviors that make DEVNS trustworthy as an agent harness: intent provenance, scope control, independent review, and evidence that matches the acceptance criterion's verification type.

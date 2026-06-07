@@ -103,6 +103,38 @@ async function main() {
       { name: "feature.completed", at: "2026-06-06T00:00:04.100Z" }
     ]
   });
+  const reset = record({
+    traceId: "trace-reset",
+    spanId: "span-reset",
+    events: [
+      { name: "queue.inspect", at: "2026-06-06T00:00:00.000Z" },
+      { name: "feature.selected", at: "2026-06-06T00:00:00.100Z" },
+      { name: "feature.claimed", at: "2026-06-06T00:00:00.200Z" },
+      { name: "handoff.prepared", at: "2026-06-06T00:00:00.300Z" },
+      { name: "context.reset.recommended", at: "2026-06-06T00:00:00.400Z" }
+    ]
+  });
+  const worker = workflowRecord({
+    traceId: "trace-worker",
+    spanId: "span-worker",
+    name: "devns.worker.result",
+    kind: "agent.workflow",
+    events: [{ name: "worker.result", at: "2026-06-06T00:00:01.000Z" }]
+  });
+  const repairRequested = workflowRecord({
+    traceId: "trace-repair-requested",
+    spanId: "span-repair-requested",
+    name: "devns.repair.loop",
+    kind: "agent.workflow",
+    events: [{ name: "repair.requested", at: "2026-06-06T00:00:01.500Z" }]
+  });
+  const repairResult = workflowRecord({
+    traceId: "trace-repair-result",
+    spanId: "span-repair-result",
+    name: "devns.repair.loop",
+    kind: "agent.workflow",
+    events: [{ name: "repair.result", at: "2026-06-06T00:00:01.900Z" }]
+  });
   const lonelyComplete = workflowRecord({
     traceId: "trace-6",
     spanId: "span-lonely-complete",
@@ -115,6 +147,9 @@ async function main() {
   assert.equal(auditOrchestratorTraceRecord(good).length, 0);
   assert.equal(auditOrchestratorTraceRecord(leaked).some((finding) => finding.message.includes("forbidden")), true);
   assert.equal(auditOrchestratorTraces([good, lane, review, complete]).decision, "pass");
+  assert.equal(auditOrchestratorTraces([reset, worker, repairRequested, repairResult, lane, review, complete]).decision, "pass");
+  assert.equal(auditOrchestratorTraces([reset, lane, review, complete]).decision, "fail");
+  assert.equal(auditOrchestratorTraces([good, repairRequested, lane, review, complete]).decision, "fail");
   assert.equal(auditOrchestratorTraces([lonelyComplete]).decision, "fail");
 
   const repoRoot = process.cwd();
@@ -124,17 +159,46 @@ async function main() {
     path.join(cwd, ".devns", "devns.config.json"),
     JSON.stringify({ version: 1, features: ".devns/features.json", traces: ".devns/traces" }, null, 2)
   );
-  await writeFile(path.join(cwd, ".devns", "features.json"), JSON.stringify({ project: { name: "Trace", description: "Trace" }, features: [] }, null, 2));
+  await writeFile(
+    path.join(cwd, ".devns", "features.json"),
+    JSON.stringify(
+      {
+        project: { name: "Trace", description: "Trace" },
+        features: [
+          {
+            id: "TRACE-CLI",
+            title: "Trace CLI feature",
+            description: "Trace CLI feature",
+            status: "in_progress",
+            priority: "P1",
+            milestone: "smoke",
+            acceptanceCriteria: ["Trace CLI records worker and repair events."]
+          }
+        ]
+      },
+      null,
+      2
+    )
+  );
   await writeFile(
     path.join(cwd, ".devns", "traces", "orchestrator.jsonl"),
     [good, lane, review, complete].map((item) => JSON.stringify(item)).join("\n") + "\n"
   );
 
+  const workerOutput = JSON.parse(
+    await runDevns(repoRoot, cwd, "trace", "worker-result", "--feature", "TRACE-CLI", "--status", "implemented", "--changed-files", "2", "--json")
+  ) as { featureId: string; trace: { eventCount: number } };
+  assert.equal(workerOutput.featureId, "TRACE-CLI");
+  assert.equal(workerOutput.trace.eventCount, 1);
+
+  await runDevns(repoRoot, cwd, "trace", "repair", "--feature", "TRACE-CLI", "--phase", "requested", "--reason", "review blocked", "--json");
+  await runDevns(repoRoot, cwd, "trace", "repair", "--feature", "TRACE-CLI", "--phase", "result", "--status", "implemented", "--attempt", "1", "--json");
+
   const output = JSON.parse(await runDevns(repoRoot, cwd, "trace", "--json", "--audit")) as {
     records: DevnsTraceRecord[];
     audit: { decision: "pass" | "fail" };
   };
-  assert.equal(output.records.length, 4);
+  assert.equal(output.records.length, 7);
   assert.equal(output.audit.decision, "pass");
 
   process.stdout.write("Trace smoke passed.\n");

@@ -44,6 +44,7 @@ OpenAI 的 agent eval 指南把 trace、grader、dataset、eval run 作为 agent
 - 状态写入使用加固后的 atomic JSON writer：随机临时文件、fsync、rename、异常清理，并新增 `M7_state_reliability` eval 覆盖 round-trip 和 temp leakage。
 - `devns init` 安装 `.devns/lanes/browser-smoke.json`、`.devns/adapters/browser-smoke.sh` 和 `.devns/adapters/playwright-semantic-smoke.mjs`；默认 lane 通过 `DEVNS_BROWSER_SMOKE_URL` 启用，启用后可采集 screenshot、trace、console、network、visible text、DOM HTML 和 accessibility/ARIA 文本 artifact refs。
 - `devns lanes run --write`、`devns lanes ingest` 和 `devns complete` 现在会向同一个 `.devns/traces/orchestrator.jsonl` 追加 lane/review/completion span；`M8_trace_continuity` 检查完成态 feature 是否具备 handoff、lane/review evidence 和 completion 的连续 trace。
+- worker/repair trace 进入同一 workflow：`devns trace worker-result` 记录 isolated worker 返回，`devns trace repair --phase requested|result` 记录修复循环；`M21_worker_repair_trace_continuity` 阻断 context reset 后缺 worker result、repair request 后缺 repair result 的完成态 trace。
 - `evidence_quality` 现在要求用于覆盖验收项的 browser/human/review 语义 evidence 带 `artifactRefs` 或 `url`；`M9_artifact_requirements` 覆盖可追溯语义证据 clean case 和无 artifact 自报 trap。
 - 新增 `artifact_integrity` 检查：本地 evidence artifact refs 必须存在，browser-smoke `run.json` 必须是可识别 manifest 并指向存在的 stdout/stderr；`M10_artifact_integrity` 覆盖 manifest clean 和缺失 log trap。
 - Browser-smoke adapter 现在会向被包装命令暴露 artifact 目录，并自动把截图、trace、`console.ndjson`、`network.ndjson` 等 rich artifacts 写入 manifest；`M11_artifact_content_quality` 检查 rich artifacts 存在、图片格式基本可信、console/network JSON/JSONL 可解析。
@@ -90,15 +91,15 @@ DEVNS 的核心风险不是“没有跑命令”，而是 evidence 看起来很�
 1. T2 已接入 frozen review-result golden 和 frozen review-packet quality golden；还没有把 live model adapter 的完整 prompt 校准纳入 runner。
 2. T3 seed repository 还没有 pass^k、成本、耗时和失败分类。
 3. Browser smoke lane 已有通用 adapter/template、smoke 覆盖、dashboard/morning review artifact refs 展示、rich artifact manifest、项目级 console/network policy、预算和 URL allow/block-list、review packet/morning review artifact digest、dashboard artifact digest 富预览、dashboard artifact preview 的 DOM/文本快照语义 grader、从 browser-smoke manifest 读取 DOM/OCR/accessibility snapshot artifact 的 ingestion gate，以及 `devns init` 默认安装的 URL 驱动 Playwright semantic browser lane；下一步是把它接入 T3 seed repo。
-4. Orchestrator trace 已覆盖 handoff、lane run、review ingest、complete 的连续性；contextBudget 已能在 orchestrator packet 和 Stop Hook active block reason 中要求 fresh worker/compact handoff；worker result 和 repair loop 还没有进入同一 trace。
-5. Eval schema 和 T1/T2 cases 已能表达 trace continuity、semantic artifact requirements、browser-smoke manifest integrity、基础 rich artifact parseability、console/network policy trap、预算和 URL allow/block-list、artifact digest、dashboard artifact preview 语义快照、browser-smoke semantic snapshot ingestion、review packet 输入质量、context-budget reset 判断，以及 project extension resolved-config 合并；下一步是把默认 browser command 模板和 host adapter 校准放进真实 pass/fail 场景。
+4. Orchestrator trace 已覆盖 handoff、worker result、repair loop、lane run、review ingest、complete 的连续性；下一步是把这些 trace 和真实 host adapter/T3 seed repo 的运行结果关联起来。
+5. Eval schema 和 T1/T2 cases 已能表达 trace continuity、semantic artifact requirements、browser-smoke manifest integrity、基础 rich artifact parseability、console/network policy trap、预算和 URL allow/block-list、artifact digest、dashboard artifact preview 语义快照、browser-smoke semantic snapshot ingestion、review packet 输入质量、context-budget reset 判断、project extension resolved-config 合并，以及 worker/repair trace continuity；下一步是把默认 browser command 模板和 host adapter 校准放进真实 pass/fail 场景。
 6. CI 目前能跑 T1/T2，但没有 nightly/release 级别的 T3。
 
 ## 建议顺序
 
 1. 完成 T1 控制面 eval 覆盖：domain drift、scope、review independence、evidence quality、review finding grounding。
 2. 扩展 T2 frozen review packets 到 live adapter calibration：用固定 diff 注入 correctness/security/test/scope bug，要求 review agent 返回结构化 findings，再用 `review_lane_result` golden grader 校验。
-3. 扩展 local trace record：当前已记录 orchestrate claim/handoff/review-routing、lane run、review result、complete，并已能在 contextBudget 超限时要求 fresh worker/compact handoff；下一步把 worker result 和 repair loop 串进同一 workflow trace。
+3. 扩展 local trace record：当前已记录 orchestrate claim/handoff/review-routing、worker result、repair request/result、lane run、review result、complete；下一步把这些 trace 用在真实 host adapter/T3 seed repo 的失败分类里。
 4. 扩展 browser smoke artifact 体验：当前 adapter 已产出 run/stdout/stderr 和可选截图/trace/console/network/DOM/OCR/accessibility artifact refs，并已在 evidence-quality、artifact-integrity、morning review、review packet、dashboard artifact digest 预览和 dashboard semantic snapshot grader 中使用；`devns init` 也已默认安装 URL 驱动的 Playwright semantic browser lane。下一步把 T3 seed repo 接起来。
 5. 增加 T3 seed repos：小型 CLI、React/Vite、Next、Python package，按 pass^k 和成本统计。
 6. 将 eval report 接入 dashboard/morning review，让人看到 harness 质量趋势，而不只是当前 feature 状态。

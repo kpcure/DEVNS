@@ -175,7 +175,7 @@ DEVNS is licensed under the Apache License, Version 2.0. See `LICENSE` and `NOTI
 
 DEVNS is at the 1.0 hardening stage. The core workflow is implemented: doctor/init/discover/RFC/run/lanes/evidence/review/complete/stop, plugin packages, JSON schemas, a local dashboard, review packets, evidence quality gates, and smoke coverage.
 
-The stable surface is the local `devns` entrypoint, `.devns/` workspace contract, atomic feature/candidate state writes, feature/RFC/evidence schemas, command lanes, project-local policy/agent extension loading, browser-smoke artifact adapter, review packets, local orchestrator traces, T1/T2 harness evals, and completion metadata. Areas still evolving are host adapter calibration, richer browser artifact display, long-context repair tracing, and T3 seed repos. See `ROADMAP.md`, `docs/1.0-hardening-roadmap.zh-CN.md`, and `docs/solidification-analysis.zh-CN.md`.
+The stable surface is the local `devns` entrypoint, `.devns/` workspace contract, atomic feature/candidate state writes, feature/RFC/evidence schemas, command lanes, project-local policy/agent extension loading, browser-smoke artifact adapter, review packets, local orchestrator and worker/repair traces, T1/T2 harness evals, and completion metadata. Areas still evolving are host adapter calibration, richer browser artifact display, trace-backed failure classification, and T3 seed repos. See `ROADMAP.md`, `docs/1.0-hardening-roadmap.zh-CN.md`, and `docs/solidification-analysis.zh-CN.md`.
 
 ## Local Development
 

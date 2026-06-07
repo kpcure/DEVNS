@@ -40,7 +40,22 @@ Worker output:
 
 The normal orchestrator prompt should not ask the main context to implement directly. It should instruct the host to start a Sub Agent, isolated worker, or fresh implementation context with the worker handoff. The main context should keep queue orchestration, evidence aggregation, review routing, completion, and commits. The worker should implement exactly one feature.
 
-When `contextBudget.resetRecommended` is true, the main context should not keep repairing inside the same accumulated conversation. Start a fresh worker/context, keep the static instructions first, and pass only the bounded handoff plus links to durable history and artifacts.
+When the worker returns, the main orchestrator should record a bounded worker-result span before running lanes:
+
+```sh
+npm run devns -- trace worker-result --feature <feature-id> --status implemented --changed-files <n> --commands <n> --artifacts <n> --blockers <n> --json
+```
+
+When `contextBudget.resetRecommended` is true, the main context should not keep repairing inside the same accumulated conversation. Start a fresh worker/context, keep the static instructions first, pass only the bounded handoff plus links to durable history and artifacts, and make sure the trace includes `worker.result` after the `context.reset.recommended` event.
+
+If lanes or review block completion and the main orchestrator sends a focused repair prompt back to the implementation worker, record the repair loop:
+
+```sh
+npm run devns -- trace repair --feature <feature-id> --phase requested --reason "<lane-or-review blocker>" --json
+npm run devns -- trace repair --feature <feature-id> --phase result --status implemented --attempt <n> --json
+```
+
+These trace commands must stay metadata-only. Do not paste worker prompts, diffs, transcripts, stdout, or stderr into trace reasons.
 
 ## Code Review Lane
 

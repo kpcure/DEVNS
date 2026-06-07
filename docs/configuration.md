@@ -161,4 +161,14 @@ This follows the same shape as trace-context propagation: carry the identifiers 
 
 ## Local Traces
 
-`traces` defaults to `.devns/traces`. `devns orchestrate` appends one bounded JSONL record to `.devns/traces/orchestrator.jsonl` for each workspace decision. The record includes mode, host, selected feature, claim status, subagent names, reasons, events, and next-step labels. It intentionally does not store generated prompts, diffs, model transcripts, stdout, or stderr. Use `devns trace --audit` to inspect recent records.
+`traces` defaults to `.devns/traces`. `devns orchestrate` appends one bounded JSONL record to `.devns/traces/orchestrator.jsonl` for each workspace decision. The record includes mode, host, selected feature, claim status, subagent names, reasons, events, and next-step labels. It intentionally does not store generated prompts, diffs, model transcripts, stdout, or stderr.
+
+Lifecycle commands append additional bounded spans:
+
+- `devns lanes run --write` records `lane.run` and optional `review.result`.
+- `devns lanes ingest` records `lane.result.ingested` and optional `review.result`.
+- `devns complete` records `review.decision` and `feature.completed`.
+- `devns trace worker-result --feature <id>` records that an isolated worker returned, including status and small counts.
+- `devns trace repair --feature <id> --phase requested|result` records repair-loop handoff and closure.
+
+Use `devns trace --audit` to inspect recent records. The audit verifies queue/feature/handoff events, lane/review/completion continuity, worker-result continuity after `context.reset.recommended`, repair-result continuity after `repair.requested`, and forbidden prompt/diff/transcript/stdout/stderr markers.

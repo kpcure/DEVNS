@@ -1,0 +1,130 @@
+{
+  "id": "m21-worker-repair-trace-continuity-clean",
+  "tier": "t1",
+  "mode": "M21_worker_repair_trace_continuity",
+  "generality_level": "general",
+  "given": {
+    "records": [
+      {
+        "schemaVersion": 1,
+        "traceId": "trace-reset",
+        "spanId": "span-reset",
+        "name": "devns.orchestrate",
+        "kind": "agent.workflow",
+        "startedAt": "2026-06-07T00:00:00.000Z",
+        "completedAt": "2026-06-07T00:00:00.500Z",
+        "host": "codex",
+        "mode": "claim_next",
+        "featureId": "TRACE-021",
+        "featureTitle": "Trace worker repair",
+        "claimed": true,
+        "stopHookRole": "safety_net_only",
+        "reasons": [],
+        "subagents": {
+          "implementation": "devns_feature_worker",
+          "review": "devns_code_reviewer"
+        },
+        "events": [
+          { "name": "queue.inspect", "at": "2026-06-07T00:00:00.000Z" },
+          { "name": "feature.selected", "at": "2026-06-07T00:00:00.100Z" },
+          { "name": "feature.claimed", "at": "2026-06-07T00:00:00.200Z" },
+          { "name": "handoff.prepared", "at": "2026-06-07T00:00:00.300Z" },
+          { "name": "context.reset.recommended", "at": "2026-06-07T00:00:00.400Z" }
+        ],
+        "attributes": {
+          "devns.host": "codex",
+          "devns.mode": "claim_next",
+          "devns.claimed": true,
+          "devns.feature.id": "TRACE-021",
+          "devns.stop_hook.role": "safety_net_only"
+        },
+        "nextSteps": ["Launch implementation subagent."]
+      },
+      {
+        "schemaVersion": 1,
+        "traceId": "trace-worker",
+        "spanId": "span-worker",
+        "name": "devns.worker.result",
+        "kind": "agent.workflow",
+        "startedAt": "2026-06-07T00:00:01.000Z",
+        "completedAt": "2026-06-07T00:00:01.100Z",
+        "featureId": "TRACE-021",
+        "events": [{ "name": "worker.result", "at": "2026-06-07T00:00:01.050Z" }],
+        "attributes": { "devns.feature.id": "TRACE-021", "devns.worker.status": "implemented" }
+      },
+      {
+        "schemaVersion": 1,
+        "traceId": "trace-repair-request",
+        "spanId": "span-repair-request",
+        "name": "devns.repair.loop",
+        "kind": "agent.workflow",
+        "startedAt": "2026-06-07T00:00:02.000Z",
+        "completedAt": "2026-06-07T00:00:02.100Z",
+        "featureId": "TRACE-021",
+        "events": [{ "name": "repair.requested", "at": "2026-06-07T00:00:02.050Z" }],
+        "attributes": { "devns.feature.id": "TRACE-021", "devns.repair.phase": "requested" }
+      },
+      {
+        "schemaVersion": 1,
+        "traceId": "trace-repair-result",
+        "spanId": "span-repair-result",
+        "name": "devns.repair.loop",
+        "kind": "agent.workflow",
+        "startedAt": "2026-06-07T00:00:03.000Z",
+        "completedAt": "2026-06-07T00:00:03.100Z",
+        "featureId": "TRACE-021",
+        "events": [{ "name": "repair.result", "at": "2026-06-07T00:00:03.050Z" }],
+        "attributes": { "devns.feature.id": "TRACE-021", "devns.repair.phase": "result" }
+      },
+      {
+        "schemaVersion": 1,
+        "traceId": "trace-lanes",
+        "spanId": "span-lanes",
+        "name": "devns.lanes.run",
+        "kind": "tool.command",
+        "startedAt": "2026-06-07T00:00:04.000Z",
+        "completedAt": "2026-06-07T00:00:04.100Z",
+        "featureId": "TRACE-021",
+        "events": [{ "name": "lane.run", "at": "2026-06-07T00:00:04.050Z" }],
+        "attributes": { "devns.feature.id": "TRACE-021" }
+      },
+      {
+        "schemaVersion": 1,
+        "traceId": "trace-review",
+        "spanId": "span-review",
+        "name": "devns.lanes.ingest",
+        "kind": "tool.command",
+        "startedAt": "2026-06-07T00:00:05.000Z",
+        "completedAt": "2026-06-07T00:00:05.100Z",
+        "featureId": "TRACE-021",
+        "events": [
+          { "name": "lane.result.ingested", "at": "2026-06-07T00:00:05.040Z" },
+          { "name": "review.result", "at": "2026-06-07T00:00:05.050Z" }
+        ],
+        "attributes": { "devns.feature.id": "TRACE-021" }
+      },
+      {
+        "schemaVersion": 1,
+        "traceId": "trace-complete",
+        "spanId": "span-complete",
+        "name": "devns.complete",
+        "kind": "tool.command",
+        "startedAt": "2026-06-07T00:00:06.000Z",
+        "completedAt": "2026-06-07T00:00:06.100Z",
+        "featureId": "TRACE-021",
+        "events": [
+          { "name": "review.decision", "at": "2026-06-07T00:00:06.040Z" },
+          { "name": "feature.completed", "at": "2026-06-07T00:00:06.050Z" }
+        ],
+        "attributes": { "devns.feature.id": "TRACE-021" }
+      }
+    ]
+  },
+  "action": {
+    "gate": "orchestrator_trace"
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "passed"
+  }
+}
