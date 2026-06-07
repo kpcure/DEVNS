@@ -22,6 +22,8 @@ A review agent should not receive only a feature title. Build a review packet fi
 
 The concrete prompt template lives at `plugins/codex/devns/prompts/code-review-lane.md`. Host-specific adapters may copy it, but must keep the same read-only boundary and lane-result output.
 
+Project-local `.devns/agents/*.json` files are loaded into `config.agents[id]`. Treat them as adapter configuration for named workers, not as automatic permission to edit files. `.devns/policies/*.json` files are resolved as config patches before review lanes run, so browser artifact policy, Stop Hook gates, and additional review lanes should be read from the resolved config instead of re-parsing policy files ad hoc.
+
 Generate the packet with:
 
 ```sh

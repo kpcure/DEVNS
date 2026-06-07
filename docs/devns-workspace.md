@@ -18,7 +18,10 @@ This directory is ignored by Git by default because it is runtime state for a ta
   traces/
   reviews/
   skills/
+  agents/
   policies/
+  lanes/
+  sensors/
 ```
 
 - `devns.config.json`: paths, hook policy, review lanes, and skill names.
@@ -32,7 +35,10 @@ This directory is ignored by Git by default because it is runtime state for a ta
 - `reviews/`: feature-centered morning review packets for humans and future agent handoff.
 - `artifacts/`: generated verification artifacts such as browser smoke reports, screenshots, stdout, and stderr.
 - `skills/`: project-local skill overrides or extra workflow notes.
-- `policies/`: project-local harness rules.
+- `agents/`: project-local agent records loaded into `config.agents[id]` for host adapters.
+- `policies/`: project-local JSON config patches merged after `devns.config.json`.
+- `lanes/`: project-local review lane definitions merged into `reviewLanes`.
+- `sensors/`: project-local sensor scripts indexed under `config.sensors[id]`.
 
 ## Agent Reading Order
 

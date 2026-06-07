@@ -1,0 +1,130 @@
+{
+  "id": "m20-project-extension-config-clean",
+  "tier": "t1",
+  "mode": "M20_project_extension_config",
+  "generality_level": "general",
+  "given": {
+    "artifacts": [
+      {
+        "path": ".devns/devns.config.json",
+        "content": {
+          "version": 1,
+          "features": ".devns/features.json",
+          "hooks": {
+            "stop": {
+              "retryBudget": 3
+            }
+          },
+          "artifactIntegrity": {
+            "browserSmoke": {
+              "consoleErrorBudget": 5
+            }
+          },
+          "reviewLanes": [
+            {
+              "id": "project-build",
+              "type": "command",
+              "command": "npm run build",
+              "required": true,
+              "blocksCompletion": true
+            }
+          ]
+        }
+      },
+      {
+        "path": ".devns/agents/codex-review.json",
+        "content": {
+          "description": "Codex review worker",
+          "prompt": "Return lane-result JSON only."
+        }
+      },
+      {
+        "path": ".devns/policies/strict-stop.json",
+        "content": {
+          "hooks": {
+            "stop": {
+              "retryBudget": 7,
+              "blockOn": {
+                "policyGate": true
+              }
+            }
+          },
+          "artifactIntegrity": {
+            "browserSmoke": {
+              "consoleErrorBudget": 0
+            }
+          },
+          "reviewLanes": [
+            {
+              "id": "policy-review",
+              "type": "builtin",
+              "required": true,
+              "blocksCompletion": false
+            }
+          ]
+        }
+      },
+      {
+        "path": ".devns/lanes/scope-guard.json",
+        "content": {}
+      }
+    ],
+    "expectedConfig": {
+      "hooks": {
+        "stop": {
+          "retryBudget": 7,
+          "blockOn": {
+            "policyGate": true
+          }
+        }
+      },
+      "artifactIntegrity": {
+        "browserSmoke": {
+          "consoleErrorBudget": 0
+        }
+      },
+      "agents": {
+        "codex-review": {
+          "description": "Codex review worker",
+          "prompt": "Return lane-result JSON only."
+        }
+      },
+      "extensions": {
+        "agents": {
+          "codex-review": ".devns/agents/codex-review.json"
+        },
+        "policies": {
+          "strict-stop": ".devns/policies/strict-stop.json"
+        },
+        "lanes": {
+          "scope-guard": ".devns/lanes/scope-guard.json"
+        }
+      },
+      "reviewLanes": [
+        {
+          "id": "project-build",
+          "type": "command",
+          "required": true,
+          "blocksCompletion": true
+        },
+        {
+          "id": "policy-review",
+          "type": "builtin",
+          "required": true,
+          "blocksCompletion": false
+        },
+        {
+          "id": "scope-guard",
+          "type": "builtin"
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "project_extension_config"
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "passed"
+  }
+}

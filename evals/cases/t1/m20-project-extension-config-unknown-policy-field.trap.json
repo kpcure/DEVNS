@@ -1,0 +1,31 @@
+{
+  "id": "m20-project-extension-config-unknown-policy-field-trap",
+  "tier": "t1",
+  "mode": "M20_project_extension_config",
+  "generality_level": "general",
+  "given": {
+    "artifacts": [
+      {
+        "path": ".devns/devns.config.json",
+        "content": {
+          "version": 1,
+          "features": ".devns/features.json"
+        }
+      },
+      {
+        "path": ".devns/policies/freeform.json",
+        "content": {
+          "policyOnlyMagic": true
+        }
+      }
+    ],
+    "expectedConfig": {}
+  },
+  "action": {
+    "gate": "project_extension_config"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "schema validation"
+  }
+}

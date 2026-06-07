@@ -6,6 +6,7 @@ import { evaluateEvidenceQuality } from "../packages/core/src/harness/evidence-q
 import { evaluateArtifactIntegrity } from "../packages/core/src/harness/artifact-integrity";
 import { buildArtifactDigests, type ArtifactDigest } from "../packages/core/src/harness/artifact-digest";
 import { evaluateContextBudgetFromCounts } from "../packages/core/src/harness/context-budget";
+import { loadConfig } from "../packages/core/src/harness/config";
 import {
   auditDashboardArtifactPreview,
   auditDashboardArtifactPreviewArtifacts
@@ -40,6 +41,7 @@ export type EvalCase = {
       | "review_lane_result"
       | "review_packet_quality"
       | "context_budget"
+      | "project_extension_config"
       | "orchestrator_trace"
       | "state_atomic_write";
     cmd?: string;
@@ -345,6 +347,56 @@ function evaluateContextBudgetGate(given: Record<string, unknown>) {
   };
 }
 
+function valueLabel(value: unknown) {
+  return typeof value === "string" ? JSON.stringify(value) : JSON.stringify(value);
+}
+
+function expectedConfigMismatches(actual: unknown, expected: unknown, pathLabel = "config"): string[] {
+  if (isExpectedObject(expected)) {
+    if (!isExpectedObject(actual)) {
+      return [`${pathLabel} expected object, got ${valueLabel(actual)}.`];
+    }
+    return Object.entries(expected).flatMap(([key, value]) => expectedConfigMismatches(actual[key], value, `${pathLabel}.${key}`));
+  }
+
+  if (Array.isArray(expected)) {
+    if (!Array.isArray(actual)) {
+      return [`${pathLabel} expected array, got ${valueLabel(actual)}.`];
+    }
+    const missing = expected.filter(
+      (expectedItem) => !actual.some((actualItem) => expectedConfigMismatches(actualItem, expectedItem, pathLabel).length === 0)
+    );
+    return missing.map((item) => `${pathLabel} missing expected array item ${valueLabel(item)}.`);
+  }
+
+  return Object.is(actual, expected) ? [] : [`${pathLabel} expected ${valueLabel(expected)}, got ${valueLabel(actual)}.`];
+}
+
+function isExpectedObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+async function evaluateProjectExtensionConfig(given: Record<string, unknown>) {
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-eval-extensions-"));
+  try {
+    await writeEvalArtifacts(cwd, (given.artifacts ?? []) as EvalArtifact[]);
+    const resolved = await loadConfig(cwd);
+    const expectedConfig = isExpectedObject(given.expectedConfig) ? given.expectedConfig : {};
+    const mismatches = expectedConfigMismatches(resolved.config, expectedConfig);
+    return {
+      decision: mismatches.length ? ("blocked" as const) : ("allowed" as const),
+      reason: mismatches.length ? `Project extension config failed: ${mismatches.join(" ")}` : "Project extension config gate passed."
+    };
+  } catch (error) {
+    return {
+      decision: "blocked" as const,
+      reason: `Project extension config failed: ${error instanceof Error ? error.message : "unknown error"}`
+    };
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
+}
+
 async function evaluateStateAtomicWrite(given: Record<string, unknown>) {
   const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-eval-state-"));
   try {
@@ -511,6 +563,8 @@ export async function runT1Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
     result = evaluateOrchestratorTrace(testCase.given);
   } else if (testCase.action.gate === "context_budget") {
     result = evaluateContextBudgetGate(testCase.given);
+  } else if (testCase.action.gate === "project_extension_config") {
+    result = await evaluateProjectExtensionConfig(testCase.given);
   } else if (testCase.action.gate === "state_atomic_write") {
     result = await evaluateStateAtomicWrite(testCase.given);
   } else {

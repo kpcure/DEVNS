@@ -36,6 +36,18 @@ DEVNS configuration lives in:
 - `policies`: project-local harness policies.
 - `skills`: host-visible skill names or project-local skill overrides.
 
+## Project Local Extensions
+
+Files under `.devns/skills`, `.devns/agents`, `.devns/policies`, `.devns/lanes`, and `.devns/sensors` are scanned after the project config is loaded. The resolved config keeps their file paths under `extensions` so review packets, dashboards, and adapters can show where a rule came from.
+
+- `.devns/skills/*.md|*.json` become project-local `skills[id]` overrides.
+- `.devns/agents/*.json` are parsed into `agents[id]`. Host adapters can use these records to map names such as `codex-review` or `claude-review` to prompts, commands, or runtime-specific agent settings.
+- `.devns/policies/*.json` are schema-checked DEVNS config patches. They are merged after `.devns/devns.config.json`, so a policy pack can tighten Stop Hook gates, browser artifact budgets, completion policy, or review lanes without editing the main config file.
+- `.devns/lanes/*.json` are merged into `reviewLanes` by lane id.
+- `.devns/sensors/*.js|*.mjs|*.sh` become project-local `sensors[id]` entries.
+
+Policy files are loaded in stable filename order. Keep them small and explicit; use the same fields declared by `tools/schema/devns-config.schema.json` rather than adding arbitrary policy-only keys.
+
 ## Stop Hook
 
 ```json

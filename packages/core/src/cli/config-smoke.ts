@@ -23,8 +23,47 @@ async function main() {
     await mkdir(path.join(cwd, ".devns", "lanes"), { recursive: true });
     await mkdir(path.join(cwd, ".devns", "sensors"), { recursive: true });
     await writeFile(path.join(cwd, ".devns", "skills", "run.md"), "# Project run skill\n");
-    await writeFile(path.join(cwd, ".devns", "agents", "code-reviewer.json"), "{}\n");
-    await writeFile(path.join(cwd, ".devns", "policies", "stop-hook.json"), "{}\n");
+    await writeFile(
+      path.join(cwd, ".devns", "agents", "code-reviewer.json"),
+      JSON.stringify(
+        {
+          description: "Project-local review agent",
+          prompt: "Review the active RFC, diff, lane output, and history before approving completion."
+        },
+        null,
+        2
+      )
+    );
+    await writeFile(
+      path.join(cwd, ".devns", "policies", "stop-hook.json"),
+      JSON.stringify(
+        {
+          hooks: {
+            stop: {
+              retryBudget: 11,
+              blockOn: {
+                policyGate: true
+              }
+            }
+          },
+          artifactIntegrity: {
+            browserSmoke: {
+              consoleErrorBudget: 0
+            }
+          },
+          reviewLanes: [
+            {
+              id: "policy-review",
+              type: "builtin",
+              required: true,
+              blocksCompletion: false
+            }
+          ]
+        },
+        null,
+        2
+      )
+    );
     await writeFile(path.join(cwd, ".devns", "lanes", "scope-guard.json"), "{}\n");
     await writeFile(path.join(cwd, ".devns", "sensors", "api-contract.sh"), "#!/usr/bin/env sh\n");
     await writeFile(
@@ -88,20 +127,31 @@ async function main() {
     assert.equal(resolved.config.features, "override/features.json");
     assert.equal(resolved.config.candidates, "plugin/candidates.json");
     assert.equal(resolved.config.artifactIntegrity?.browserSmoke?.requireRichBrowserArtifacts, true);
-    assert.equal(resolved.config.artifactIntegrity?.browserSmoke?.consoleErrorBudget, 1);
+    assert.equal(resolved.config.artifactIntegrity?.browserSmoke?.consoleErrorBudget, 0);
     assert.deepEqual(resolved.config.artifactIntegrity?.browserSmoke?.networkAllowedUrls, ["http://127.0.0.1/*"]);
     assert.equal(resolved.config.hooks?.stop?.mode, "gate");
-    assert.equal(resolved.config.hooks?.stop?.retryBudget, 9);
+    assert.equal(resolved.config.hooks?.stop?.retryBudget, 11);
     assert.equal(resolved.config.hooks?.stop?.blockOn?.pluginGate, true);
+    assert.equal(resolved.config.hooks?.stop?.blockOn?.policyGate, true);
     assert.equal(resolved.config.completionPolicy?.whenNoClaimableFeature, "allow_stop");
     assert.equal(resolved.config.completionPolicy?.requireEvidence, true);
     assert.equal(resolved.config.completionPolicy?.contextBudget?.preferFreshWorkerPerFeature, true);
     assert.equal(resolved.config.skills?.run, ".devns/skills/run.md");
+    assert.equal(
+      (resolved.config.agents?.["code-reviewer"] as { description?: string } | undefined)?.description,
+      "Project-local review agent"
+    );
+    assert.match(
+      (resolved.config.agents?.["code-reviewer"] as { prompt?: string } | undefined)?.prompt ?? "",
+      /lane output/
+    );
     assert.equal(resolved.config.extensions?.agents?.["code-reviewer"], ".devns/agents/code-reviewer.json");
     assert.equal(resolved.config.extensions?.policies?.["stop-hook"], ".devns/policies/stop-hook.json");
     assert.equal(resolved.config.extensions?.lanes?.["scope-guard"], ".devns/lanes/scope-guard.json");
     assert.equal(resolved.config.sensors?.["api-contract"], ".devns/sensors/api-contract.sh");
     assert.equal(resolved.config.reviewLanes?.[0]?.id, "project-build");
+    assert.equal(resolved.config.reviewLanes?.some((lane) => lane.id === "policy-review"), true);
+    assert.equal(resolved.config.reviewLanes?.some((lane) => lane.id === "scope-guard"), true);
 
     await writeFile(
       path.join(cwd, ".devns", "bad.config.json"),

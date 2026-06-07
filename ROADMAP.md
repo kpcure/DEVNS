@@ -15,6 +15,6 @@
 
 - Add focused unit and golden tests around evidence quality, live review adapter calibration, RFC clarification, and queue state.
 - Add T3 seed repositories that exercise the default URL-driven Playwright semantic browser lane and emit DOM/OCR/accessibility snapshots.
-- Expand project extension wiring for policies, agents, and lanes.
+- Calibrate real host adapters against the resolved project policy/agent/lanes registry.
 - Extend worker/repair trace continuity after context-budget reset decisions.
-- Expand evals from T2 frozen review-result and review-packet golden checks, M6/M8 trace checks, M7 state-reliability checks, M9 artifact requirements, M10 artifact integrity, M11 rich artifact parseability, M12 basic browser policy graders, M13 browser policy budgets/URL lists, M14 project-configured browser policies, M15 artifact digests, M16 dashboard artifact previews, M17 browser semantic snapshots, and M19 context-budget checks into live adapter calibration, worker/repair trace continuity, real browser command templates, and T3 seed repositories.
+- Expand evals from T2 frozen review-result and review-packet golden checks, M6/M8 trace checks, M7 state-reliability checks, M9 artifact requirements, M10 artifact integrity, M11 rich artifact parseability, M12 basic browser policy graders, M13 browser policy budgets/URL lists, M14 project-configured browser policies, M15 artifact digests, M16 dashboard artifact previews, M17 browser semantic snapshots, M19 context-budget checks, and M20 project extension config checks into live adapter calibration, worker/repair trace continuity, real browser command templates, and T3 seed repositories.

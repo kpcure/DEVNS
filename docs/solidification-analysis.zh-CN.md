@@ -51,6 +51,7 @@ OpenAI 的 agent eval 指南把 trace、grader、dataset、eval run 作为 agent
 - Browser policy 进一步支持 `consoleErrorBudget`、`networkFailureBudget`、`networkAllowedUrls`、`networkBlockedUrls`；`M13_browser_policy_budget_allowlist` 覆盖预算内通过、console 预算超限、network allowlist 越界、blocklist 命中。
 - `artifactIntegrity.browserSmoke` 进入 `.devns/devns.config.json` schema 和 `devns validate`；`M14_project_browser_policy_config` 覆盖项目配置直接驱动 browser artifact policy。
 - 新增 `artifact-digest`：review packet 和 morning review 会把 browser-smoke refs 转成可读摘要，包含 rich artifact 数、截图/trace、console entries/errors、network requests/failures、sample URLs 和 policy findings；`M15_artifact_digest_review_surface` 覆盖 digest clean/missing case。
+- project-local extension 基础接线已完成：`.devns/agents/*.json` 进入 `config.agents[id]`，`.devns/policies/*.json` 作为 schema 约束的 config patch 合并，`.devns/lanes/*.json` 继续按 lane id 合并进 `reviewLanes`；`M20_project_extension_config` 覆盖 clean/trap 回归。
 
 ### 3. Evidence Must Match Verification Type
 
@@ -90,7 +91,7 @@ DEVNS 的核心风险不是“没有跑命令”，而是 evidence 看起来很�
 2. T3 seed repository 还没有 pass^k、成本、耗时和失败分类。
 3. Browser smoke lane 已有通用 adapter/template、smoke 覆盖、dashboard/morning review artifact refs 展示、rich artifact manifest、项目级 console/network policy、预算和 URL allow/block-list、review packet/morning review artifact digest、dashboard artifact digest 富预览、dashboard artifact preview 的 DOM/文本快照语义 grader、从 browser-smoke manifest 读取 DOM/OCR/accessibility snapshot artifact 的 ingestion gate，以及 `devns init` 默认安装的 URL 驱动 Playwright semantic browser lane；下一步是把它接入 T3 seed repo。
 4. Orchestrator trace 已覆盖 handoff、lane run、review ingest、complete 的连续性；contextBudget 已能在 orchestrator packet 和 Stop Hook active block reason 中要求 fresh worker/compact handoff；worker result 和 repair loop 还没有进入同一 trace。
-5. Eval schema 和 T1/T2 cases 已能表达 trace continuity、semantic artifact requirements、browser-smoke manifest integrity、基础 rich artifact parseability、console/network policy trap、预算和 URL allow/block-list、artifact digest、dashboard artifact preview 语义快照、browser-smoke semantic snapshot ingestion、review packet 输入质量，以及 context-budget reset 判断；下一步是把默认 browser command 模板放进 T3 seed repo 的真实 pass/fail 场景。
+5. Eval schema 和 T1/T2 cases 已能表达 trace continuity、semantic artifact requirements、browser-smoke manifest integrity、基础 rich artifact parseability、console/network policy trap、预算和 URL allow/block-list、artifact digest、dashboard artifact preview 语义快照、browser-smoke semantic snapshot ingestion、review packet 输入质量、context-budget reset 判断，以及 project extension resolved-config 合并；下一步是把默认 browser command 模板和 host adapter 校准放进真实 pass/fail 场景。
 6. CI 目前能跑 T1/T2，但没有 nightly/release 级别的 T3。
 
 ## 建议顺序

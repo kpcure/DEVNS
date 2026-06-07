@@ -27,6 +27,7 @@
             "review_lane_result",
             "review_packet_quality",
             "context_budget",
+            "project_extension_config",
             "orchestrator_trace",
             "state_atomic_write"
           ]
