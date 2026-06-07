@@ -9,6 +9,8 @@ function metadataSummary(value?: Record<string, unknown>) {
   if (!value) return "";
   const t3 = value.t3 as
     | {
+        projectType?: string;
+        riskArea?: string;
         attempts?: number;
         successes?: number;
         k?: number;
@@ -20,6 +22,8 @@ function metadataSummary(value?: Record<string, unknown>) {
     | undefined;
   if (!t3) return JSON.stringify(value).replaceAll("|", "\\|");
   return [
+    `type=${t3.projectType ?? "unknown"}`,
+    `risk=${t3.riskArea ?? "unknown"}`,
     `attempts=${t3.attempts ?? 0}`,
     `successes=${t3.successes ?? 0}`,
     `pass^${t3.k ?? 1}=${typeof t3.passK === "number" ? t3.passK.toFixed(3) : "n/a"}`,

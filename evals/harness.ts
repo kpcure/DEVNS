@@ -660,6 +660,8 @@ async function evaluateSeedRepository(given: Record<string, unknown>, repoRoot =
     const metadata = {
       t3: {
         seedId: stringValue(seed.id) || "seed",
+        projectType: stringValue(seed.projectType) || "unknown",
+        riskArea: stringValue(seed.riskArea) || "unknown",
         attempts,
         successes,
         passK: passExponentK,

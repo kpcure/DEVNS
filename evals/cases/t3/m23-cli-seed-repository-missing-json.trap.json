@@ -1,0 +1,57 @@
+{
+  "id": "m23-cli-seed-repository-missing-json-trap",
+  "tier": "t3",
+  "mode": "M23_t3_project_shape_seeds",
+  "generality_level": "general",
+  "given": {
+    "seedRepository": {
+      "id": "cli-missing-json-contract-seed",
+      "projectType": "cli",
+      "riskArea": "command_contract",
+      "attempts": 1,
+      "passK": 1,
+      "estimatedCostUsd": 0,
+      "files": [
+        {
+          "path": "package.json",
+          "content": {
+            "type": "module",
+            "bin": {
+              "devns-seed": "./src/cli.mjs"
+            }
+          }
+        },
+        {
+          "path": "src/cli.mjs",
+          "content": "console.log('DEVNS seed CLI ready');\n"
+        },
+        {
+          "path": "scripts/check-cli-contract.mjs",
+          "content": "import { spawnSync } from 'node:child_process';\nimport fs from 'node:fs';\nimport path from 'node:path';\n\nconst outDir = path.join(process.cwd(), '.devns/artifacts/t3');\nfs.mkdirSync(outDir, { recursive: true });\nconst cli = path.join(process.cwd(), 'src/cli.mjs');\nconst json = spawnSync(process.execPath, [cli, 'status', '--json'], { encoding: 'utf8' });\nlet parsed = null;\ntry {\n  parsed = JSON.parse(json.stdout);\n} catch {}\nconst artifact = {\n  projectType: 'cli',\n  json: Boolean(parsed?.ok === true && parsed?.status === 'ready'),\n  stdout: json.stdout.trim(),\n  attempt: process.env.DEVNS_T3_ATTEMPT\n};\nfs.writeFileSync(path.join(outDir, 'cli-contract.json'), JSON.stringify(artifact, null, 2) + '\\n');\n"
+        }
+      ],
+      "commands": [
+        {
+          "command": "node",
+          "args": ["scripts/check-cli-contract.mjs"],
+          "expectedExitCode": 0,
+          "failureClass": "cli_contract_command_failed"
+        }
+      ],
+      "expectedArtifacts": [
+        {
+          "path": ".devns/artifacts/t3/cli-contract.json",
+          "contains": ["\"json\": true"],
+          "failureClass": "cli_json_contract_missing"
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "seed_repository"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "cli_json_contract_missing"
+  }
+}

@@ -61,5 +61,6 @@ T1 and T2 cases are deterministic regression fixtures for the DEVNS control plan
 - `M20_project_extension_config`: project-local policy/agent/lane extension files must merge into resolved config, while schema-invalid policy patches are blocked.
 - `M21_worker_repair_trace_continuity`: context-reset traces must include a later worker result, and repair requests must close with a later repair result before completion.
 - `M22_t3_seed_repository`: T3 seed repositories run local commands, verify browser-smoke semantic artifacts, and report pass^k, elapsed time, estimated cost, and failure taxonomy.
+- `M23_t3_project_shape_seeds`: T3 now includes paired CLI, React/Vite, and Python package seed repositories, covering JSON command contracts, frontend semantic surfaces, package import/contract failures, multi-attempt pass^k, and per-seed project type/risk metadata.
 
 This keeps the eval suite focused on the behaviors that make DEVNS trustworthy as an agent harness: intent provenance, scope control, independent review, and evidence that matches the acceptance criterion's verification type.

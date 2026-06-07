@@ -34,6 +34,7 @@ function usage() {
     [
       "Usage:",
       "  devns eval run --tier t1 [--mode M3_fake_evidence] [--json]",
+      "  devns eval run --tier t2 [--mode M18_review_packet_quality] [--json]",
       "  devns eval run --mode M18_review_packet_quality [--json]",
       "  devns eval run --tier t3 [--json]",
       "  devns eval run --all --report evals/out/report.md",

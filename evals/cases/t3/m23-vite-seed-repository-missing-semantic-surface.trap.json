@@ -1,0 +1,60 @@
+{
+  "id": "m23-vite-seed-repository-missing-semantic-surface-trap",
+  "tier": "t3",
+  "mode": "M23_t3_project_shape_seeds",
+  "generality_level": "general",
+  "given": {
+    "seedRepository": {
+      "id": "react-vite-refs-only-surface-seed",
+      "projectType": "react-vite",
+      "riskArea": "frontend_semantic_surface",
+      "attempts": 1,
+      "passK": 1,
+      "estimatedCostUsd": 0,
+      "files": [
+        {
+          "path": "package.json",
+          "content": {
+            "type": "module",
+            "dependencies": {
+              "@vitejs/plugin-react": "present",
+              "vite": "present",
+              "react": "present",
+              "react-dom": "present"
+            }
+          }
+        },
+        {
+          "path": "src/App.tsx",
+          "content": "export function App() {\n  return <div data-artifact-ref=\"browser-smoke/run.json\">Loading refs...</div>;\n}\n"
+        },
+        {
+          "path": "scripts/check-vite-surface.mjs",
+          "content": "import fs from 'node:fs';\nimport path from 'node:path';\n\nconst source = fs.readFileSync(path.join(process.cwd(), 'src/App.tsx'), 'utf8');\nconst semanticSnapshot = ['Feature queue', 'Review packets', 'Artifact digest'].filter((text) => source.includes(text));\nconst artifact = {\n  projectType: 'react-vite',\n  landmark: source.includes('<main') ? 'main' : 'missing',\n  accessibilityName: source.includes('aria-label=\"DEVNS workbench\"') ? 'DEVNS workbench' : 'missing',\n  semanticSnapshot: semanticSnapshot.join(' | ')\n};\nconst outDir = path.join(process.cwd(), '.devns/artifacts/t3');\nfs.mkdirSync(outDir, { recursive: true });\nfs.writeFileSync(path.join(outDir, 'vite-surface.json'), JSON.stringify(artifact, null, 2) + '\\n');\n"
+        }
+      ],
+      "commands": [
+        {
+          "command": "node",
+          "args": ["scripts/check-vite-surface.mjs"],
+          "expectedExitCode": 0,
+          "failureClass": "react_vite_surface_command_failed"
+        }
+      ],
+      "expectedArtifacts": [
+        {
+          "path": ".devns/artifacts/t3/vite-surface.json",
+          "contains": ["\"landmark\": \"main\"", "Feature queue", "Review packets", "Artifact digest"],
+          "failureClass": "react_vite_semantic_surface_missing"
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "seed_repository"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "react_vite_semantic_surface_missing"
+  }
+}

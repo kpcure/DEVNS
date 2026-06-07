@@ -1,0 +1,51 @@
+{
+  "id": "m23-python-package-seed-clean",
+  "tier": "t3",
+  "mode": "M23_t3_project_shape_seeds",
+  "generality_level": "general",
+  "given": {
+    "seedRepository": {
+      "id": "python-package-contract-seed",
+      "projectType": "python-package",
+      "riskArea": "package_contract",
+      "attempts": 1,
+      "passK": 1,
+      "estimatedCostUsd": 0,
+      "files": [
+        {
+          "path": "pyproject.toml",
+          "content": "[project]\nname = \"devns-seed\"\nversion = \"0.0.0\"\n"
+        },
+        {
+          "path": "src/devns_seed/__init__.py",
+          "content": "def normalize_status(status: str) -> str:\n    return status.strip().lower().replace(' ', '_')\n"
+        },
+        {
+          "path": "scripts/check_package.py",
+          "content": "import importlib.util\nimport json\nimport pathlib\nimport sys\n\nroot = pathlib.Path.cwd()\nspec = importlib.util.spec_from_file_location('devns_seed', root / 'src/devns_seed/__init__.py')\nmodule = importlib.util.module_from_spec(spec)\nspec.loader.exec_module(module)\ncontract = module.normalize_status(' In Progress ') == 'in_progress'\nout_dir = root / '.devns/artifacts/t3'\nout_dir.mkdir(parents=True, exist_ok=True)\n(out_dir / 'python-package.json').write_text(json.dumps({\n    'projectType': 'python-package',\n    'imports': True,\n    'contract': 'pass' if contract else 'fail',\n    'pytestStyle': 'deterministic'\n}, indent=2) + '\\n')\nsys.exit(0 if contract else 1)\n"
+        }
+      ],
+      "commands": [
+        {
+          "command": "python3",
+          "args": ["scripts/check_package.py"],
+          "expectedExitCode": 0,
+          "failureClass": "python_package_contract_failed"
+        }
+      ],
+      "expectedArtifacts": [
+        {
+          "path": ".devns/artifacts/t3/python-package.json",
+          "contains": ["\"projectType\": \"python-package\"", "\"imports\": true", "\"contract\": \"pass\""]
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "seed_repository"
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "pass^1=1.000"
+  }
+}

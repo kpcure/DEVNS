@@ -6,6 +6,8 @@
   "given": {
     "seedRepository": {
       "id": "browser-semantic-seed-missing-accessibility",
+      "projectType": "browser-smoke",
+      "riskArea": "semantic_artifacts",
       "attempts": 1,
       "passK": 1,
       "estimatedCostUsd": 0,

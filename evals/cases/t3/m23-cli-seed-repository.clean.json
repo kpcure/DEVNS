@@ -1,0 +1,60 @@
+{
+  "id": "m23-cli-seed-repository-clean",
+  "tier": "t3",
+  "mode": "M23_t3_project_shape_seeds",
+  "generality_level": "general",
+  "given": {
+    "seedRepository": {
+      "id": "cli-json-contract-seed",
+      "projectType": "cli",
+      "riskArea": "command_contract",
+      "attempts": 2,
+      "passK": 2,
+      "estimatedCostUsd": 0,
+      "files": [
+        {
+          "path": "package.json",
+          "content": {
+            "type": "module",
+            "bin": {
+              "devns-seed": "./src/cli.mjs"
+            }
+          }
+        },
+        {
+          "path": "src/cli.mjs",
+          "content": "const wantsJson = process.argv.includes('--json');\nif (wantsJson) {\n  console.log(JSON.stringify({ ok: true, status: 'ready', mode: 'queue' }));\n} else {\n  console.log('DEVNS seed CLI ready');\n}\n"
+        },
+        {
+          "path": "scripts/check-cli-contract.mjs",
+          "content": "import { spawnSync } from 'node:child_process';\nimport fs from 'node:fs';\nimport path from 'node:path';\n\nconst outDir = path.join(process.cwd(), '.devns/artifacts/t3');\nfs.mkdirSync(outDir, { recursive: true });\nconst cli = path.join(process.cwd(), 'src/cli.mjs');\nconst text = spawnSync(process.execPath, [cli, 'status'], { encoding: 'utf8' });\nconst json = spawnSync(process.execPath, [cli, 'status', '--json'], { encoding: 'utf8' });\nlet parsed = null;\ntry {\n  parsed = JSON.parse(json.stdout);\n} catch {}\nconst artifact = {\n  projectType: 'cli',\n  text: text.stdout.trim(),\n  json: Boolean(parsed?.ok === true && parsed?.status === 'ready' && parsed?.mode === 'queue'),\n  exitCodes: [text.status, json.status],\n  attempt: process.env.DEVNS_T3_ATTEMPT\n};\nfs.writeFileSync(path.join(outDir, 'cli-contract.json'), JSON.stringify(artifact, null, 2) + '\\n');\nfs.appendFileSync(path.join(outDir, 'cli-attempts.log'), `attempt=${process.env.DEVNS_T3_ATTEMPT}\\n`);\n"
+        }
+      ],
+      "commands": [
+        {
+          "command": "node",
+          "args": ["scripts/check-cli-contract.mjs"],
+          "expectedExitCode": 0,
+          "failureClass": "cli_contract_command_failed"
+        }
+      ],
+      "expectedArtifacts": [
+        {
+          "path": ".devns/artifacts/t3/cli-contract.json",
+          "contains": ["\"projectType\": \"cli\"", "\"json\": true", "\"attempt\": \"2\""]
+        },
+        {
+          "path": ".devns/artifacts/t3/cli-attempts.log",
+          "contains": ["attempt=1", "attempt=2"]
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "seed_repository"
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "pass^2=1.000"
+  }
+}
