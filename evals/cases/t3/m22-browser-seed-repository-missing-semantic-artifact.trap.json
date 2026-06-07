@@ -1,0 +1,46 @@
+{
+  "id": "m22-browser-seed-repository-missing-semantic-artifact-trap",
+  "tier": "t3",
+  "mode": "M22_t3_seed_repository",
+  "generality_level": "general",
+  "given": {
+    "seedRepository": {
+      "id": "browser-semantic-seed-missing-accessibility",
+      "attempts": 1,
+      "passK": 1,
+      "estimatedCostUsd": 0,
+      "files": [
+        {
+          "path": "scripts/semantic-browser.mjs",
+          "content": "import fs from 'node:fs';\nimport path from 'node:path';\n\nconst dir = process.env.DEVNS_BROWSER_SMOKE_ARTIFACT_ABS_DIR;\nif (!dir) throw new Error('DEVNS_BROWSER_SMOKE_ARTIFACT_ABS_DIR is required');\nfs.mkdirSync(dir, { recursive: true });\nfs.writeFileSync(path.join(dir, 'visible-text.txt'), 'DEVNS T3 Dashboard\\nRefs only would be insufficient.\\n');\nfs.writeFileSync(path.join(dir, 'console.ndjson'), JSON.stringify({ type: 'log', text: 'seed ok' }) + '\\n');\nfs.writeFileSync(path.join(dir, 'network.ndjson'), JSON.stringify({ url: 'http://127.0.0.1:5173/', status: 200, failed: false }) + '\\n');\n"
+        }
+      ],
+      "commands": [
+        {
+          "command": "bash",
+          "args": ["${repoRoot}/templates/devns/adapters/browser-smoke.sh"],
+          "env": {
+            "DEVNS_BROWSER_SMOKE_COMMAND": "node scripts/semantic-browser.mjs",
+            "DEVNS_BROWSER_SMOKE_ARTIFACT_DIR": ".devns/artifacts/browser-smoke/t3-trap"
+          },
+          "expectedExitCode": 0,
+          "failureClass": "browser_smoke_command"
+        }
+      ],
+      "expectedArtifacts": [
+        {
+          "path": ".devns/artifacts/browser-smoke/t3-trap/run.json",
+          "contains": ["browser_smoke", "accessibility.json"],
+          "failureClass": "browser_semantic_snapshot_missing"
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "seed_repository"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "browser_semantic_snapshot_missing"
+  }
+}

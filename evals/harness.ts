@@ -1,6 +1,8 @@
+import { execFile } from "node:child_process";
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 import { evaluateCompletionGate } from "../packages/core/src/harness/completion-gate";
 import { evaluateEvidenceQuality } from "../packages/core/src/harness/evidence-quality";
 import { evaluateArtifactIntegrity } from "../packages/core/src/harness/artifact-integrity";
@@ -19,6 +21,9 @@ import type { CandidateFeature, DevnsConfig, Feature, ReviewDecision } from "../
 import { validateSchema } from "../packages/core/src/harness/schema-validator";
 import evalCaseSchema from "../tools/schema/eval-case.schema.json";
 import laneResultSchema from "../tools/schema/lane-result.schema.json";
+import { passK } from "./metrics";
+
+const execFileAsync = promisify(execFile);
 
 export type EvalDecision = "allowed" | "blocked";
 export type EvalTier = "t1" | "t2" | "t3";
@@ -42,6 +47,7 @@ export type EvalCase = {
       | "review_packet_quality"
       | "context_budget"
       | "project_extension_config"
+      | "seed_repository"
       | "orchestrator_trace"
       | "state_atomic_write";
     cmd?: string;
@@ -66,6 +72,7 @@ export type EvalCaseOutcome = {
   actual: EvalDecision;
   reason: string;
   pass: boolean;
+  metadata?: Record<string, unknown>;
 };
 
 type FindingExpectation = {
@@ -84,6 +91,21 @@ type EvalArtifact = {
   path: string;
   content: string | Record<string, unknown>;
   encoding?: "base64";
+};
+
+type SeedCommand = {
+  command: string;
+  args?: string[];
+  env?: Record<string, string>;
+  expectedExitCode?: number;
+  timeoutMs?: number;
+  failureClass?: string;
+};
+
+type SeedExpectedArtifact = {
+  path: string;
+  contains?: string | string[];
+  failureClass?: string;
 };
 
 function asDecision(blocked: boolean): EvalDecision {
@@ -244,6 +266,10 @@ function arrayValue(value: unknown) {
 
 function stringValue(value: unknown) {
   return typeof value === "string" ? value : "";
+}
+
+function numberValue(value: unknown, fallback = 0) {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 function packetHasReviewOutputContract(packet: Record<string, unknown>) {
@@ -513,6 +539,155 @@ async function writeEvalArtifacts(cwd: string, artifacts: EvalArtifact[]) {
   }
 }
 
+function substituteSeedValue(value: string, input: { repoRoot: string; seedRepo: string; attempt: number }) {
+  return value
+    .replaceAll("${repoRoot}", input.repoRoot)
+    .replaceAll("${seedRepo}", input.seedRepo)
+    .replaceAll("${attempt}", String(input.attempt));
+}
+
+async function runSeedCommand(seedRepo: string, repoRoot: string, command: SeedCommand, attempt: number) {
+  const started = Date.now();
+  const executable = substituteSeedValue(command.command, { repoRoot, seedRepo, attempt });
+  const args = (command.args ?? []).map((arg) => substituteSeedValue(arg, { repoRoot, seedRepo, attempt }));
+  const env = Object.fromEntries(
+    Object.entries(command.env ?? {}).map(([key, value]) => [
+      key,
+      substituteSeedValue(value, { repoRoot, seedRepo, attempt })
+    ])
+  );
+  const expectedExitCode = command.expectedExitCode ?? 0;
+
+  try {
+    const result = await execFileAsync(executable, args, {
+      cwd: seedRepo,
+      env: {
+        ...process.env,
+        DEVNS_REPO: seedRepo,
+        DEVNS_T3_ATTEMPT: String(attempt),
+        ...env
+      },
+      timeout: command.timeoutMs ?? 30_000,
+      maxBuffer: 2 * 1024 * 1024
+    });
+    return {
+      ok: expectedExitCode === 0,
+      exitCode: 0,
+      elapsedMs: Date.now() - started,
+      stdoutBytes: result.stdout.length,
+      stderrBytes: result.stderr.length,
+      failureClass: expectedExitCode === 0 ? undefined : command.failureClass ?? "unexpected_command_success"
+    };
+  } catch (error) {
+    const exitCode = typeof (error as { code?: unknown }).code === "number" ? ((error as { code: number }).code) : 1;
+    return {
+      ok: exitCode === expectedExitCode,
+      exitCode,
+      elapsedMs: Date.now() - started,
+      stdoutBytes: typeof (error as { stdout?: unknown }).stdout === "string" ? ((error as { stdout: string }).stdout.length) : 0,
+      stderrBytes: typeof (error as { stderr?: unknown }).stderr === "string" ? ((error as { stderr: string }).stderr.length) : 0,
+      failureClass: exitCode === expectedExitCode ? undefined : command.failureClass ?? "command_exit_mismatch"
+    };
+  }
+}
+
+async function evaluateSeedArtifacts(seedRepo: string, artifacts: SeedExpectedArtifact[]) {
+  const failures: string[] = [];
+  const failureClasses: string[] = [];
+
+  for (const artifact of artifacts) {
+    const artifactPath = path.join(seedRepo, artifact.path);
+    let content: string;
+    try {
+      content = await readFile(artifactPath, "utf8");
+    } catch {
+      failures.push(`Missing expected seed artifact ${artifact.path}.`);
+      failureClasses.push(artifact.failureClass ?? "artifact_missing");
+      continue;
+    }
+
+    for (const expected of Array.isArray(artifact.contains) ? artifact.contains : artifact.contains ? [artifact.contains] : []) {
+      if (!content.includes(expected)) {
+        failures.push(`Seed artifact ${artifact.path} does not contain ${JSON.stringify(expected)}.`);
+        failureClasses.push(artifact.failureClass ?? "artifact_content_mismatch");
+      }
+    }
+  }
+
+  return { failures, failureClasses };
+}
+
+async function evaluateSeedRepository(given: Record<string, unknown>, repoRoot = process.cwd()) {
+  const seed = recordValue(given.seedRepository ?? given.seed);
+  if (!seed) {
+    return {
+      decision: "blocked" as const,
+      reason: "Seed repository gate failed: missing seedRepository object.",
+      metadata: { t3: { failureTaxonomy: ["missing_seed_repository"] } }
+    };
+  }
+
+  const seedRepo = await mkdtemp(path.join(os.tmpdir(), "devns-eval-t3-"));
+  const started = Date.now();
+  try {
+    await writeEvalArtifacts(seedRepo, (seed.files ?? []) as EvalArtifact[]);
+    const attempts = Math.max(1, Math.floor(numberValue(seed.attempts, 1)));
+    const k = Math.max(1, Math.floor(numberValue(seed.passK, 1)));
+    const commands = (seed.commands ?? []) as SeedCommand[];
+    const commandResults = [];
+    let successes = 0;
+
+    for (let attempt = 1; attempt <= attempts; attempt += 1) {
+      const results = [];
+      for (const command of commands) {
+        results.push(await runSeedCommand(seedRepo, repoRoot, command, attempt));
+      }
+      commandResults.push({ attempt, results });
+      if (results.every((result) => result.ok)) {
+        successes += 1;
+      }
+    }
+
+    const artifactCheck = await evaluateSeedArtifacts(seedRepo, (seed.expectedArtifacts ?? []) as SeedExpectedArtifact[]);
+    const commandFailureClasses = commandResults.flatMap((attempt) =>
+      attempt.results.flatMap((result) => (result.failureClass ? [result.failureClass] : []))
+    );
+    const failureTaxonomy = [...new Set([...commandFailureClasses, ...artifactCheck.failureClasses])];
+    const blocked = successes < attempts || artifactCheck.failures.length > 0;
+    const elapsedMs = Date.now() - started;
+    const passExponentK = passK(successes, attempts, Math.min(k, attempts));
+    const estimatedCostUsd = numberValue(seed.estimatedCostUsd, 0);
+    const metadata = {
+      t3: {
+        seedId: stringValue(seed.id) || "seed",
+        attempts,
+        successes,
+        passK: passExponentK,
+        k: Math.min(k, attempts),
+        elapsedMs,
+        estimatedCostUsd,
+        failureTaxonomy: failureTaxonomy.length ? failureTaxonomy : ["none"],
+        commandResults
+      }
+    };
+    const reason = [
+      `Seed repository ${metadata.t3.seedId}: attempts=${attempts}; successes=${successes}; pass^${metadata.t3.k}=${passExponentK.toFixed(3)}; elapsedMs=${elapsedMs}; estimatedCostUsd=${estimatedCostUsd.toFixed(4)}.`,
+      failureTaxonomy.length ? `Failure taxonomy: ${failureTaxonomy.join(", ")}.` : "Failure taxonomy: none.",
+      artifactCheck.failures.join(" ")
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    return {
+      decision: blocked ? ("blocked" as const) : ("allowed" as const),
+      reason,
+      metadata
+    };
+  } finally {
+    await rm(seedRepo, { recursive: true, force: true });
+  }
+}
+
 async function evaluateDashboardArtifactPreviewGate(given: Record<string, unknown>) {
   if (Array.isArray(given.artifactRefs) || Array.isArray(given.artifacts)) {
     const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-eval-dashboard-preview-"));
@@ -602,6 +777,28 @@ export async function runT2Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
     actual: result.decision,
     reason: result.reason,
     pass: result.decision === testCase.expect.decision && reasonMatches
+  };
+}
+
+export async function runT3Case(testCase: EvalCase, repoRoot = process.cwd()): Promise<EvalCaseOutcome> {
+  const result =
+    testCase.action.gate === "seed_repository"
+      ? await evaluateSeedRepository(testCase.given, repoRoot)
+      : {
+          decision: "blocked" as const,
+          reason: `T3 gate ${testCase.action.gate} is not implemented.`,
+          metadata: {}
+        };
+  const reasonMatches = testCase.expect.reasonContains ? result.reason.includes(testCase.expect.reasonContains) : true;
+  return {
+    id: testCase.id,
+    tier: testCase.tier,
+    mode: testCase.mode,
+    expected: testCase.expect.decision,
+    actual: result.decision,
+    reason: result.reason,
+    pass: result.decision === testCase.expect.decision && reasonMatches,
+    metadata: result.metadata
   };
 }
 

@@ -6,7 +6,7 @@ DEVNS evals measure the harness as a controller rather than measuring a coding m
 
 - `t1`: deterministic gate fixtures. These run in CI and treat each gate as a classifier over paired trap/clean cases.
 - `t2`: frozen review-packet and review-result golden fixtures. These run locally and grade whether a review agent receives enough bounded context, and whether its lane-result output is grounded, schema-valid, and calibrated instead of acting as a rubber stamp. Future T2 cases may add live model adapter calibration on top of these deterministic goldens.
-- `t3`: end-to-end seed repositories. These are intended for nightly or release workflows with pass^k and cost reporting.
+- `t3`: local seed repositories. These run commands inside temporary repositories, verify artifacts, and report pass^k, elapsed time, estimated cost, and failure taxonomy for nightly or release workflows.
 
 ## Current CI Surface
 
@@ -15,6 +15,7 @@ Run the deterministic suite:
 ```sh
 npm run devns -- eval run --tier t1 --json
 npm run devns -- eval run --tier t2 --json
+npm run devns -- eval run --tier t3 --json
 ```
 
 Generate a local report:
@@ -36,7 +37,7 @@ Per-mode precision, recall, and F1 are computed from those expected and actual d
 
 ## What T1/T2 Protect
 
-T1 and T2 cases are deterministic regression fixtures for the DEVNS control plane. They intentionally model paired clean/trap examples instead of broad unit coverage:
+T1 and T2 cases are deterministic regression fixtures for the DEVNS control plane. T3 cases run seed repositories and classify end-to-end harness failures. All tiers prefer paired clean/trap examples over broad but ungrounded coverage:
 
 - `M1_domain_drift`: candidate provenance and project-external terminology traps.
 - `M2_scope_creep`: implementation-surface scope guard traps.
@@ -59,5 +60,6 @@ T1 and T2 cases are deterministic regression fixtures for the DEVNS control plan
 - `M19_context_budget`: long continuation loops must recommend a fresh worker or compact implementation context once history or stop-hook turn budgets are exceeded.
 - `M20_project_extension_config`: project-local policy/agent/lane extension files must merge into resolved config, while schema-invalid policy patches are blocked.
 - `M21_worker_repair_trace_continuity`: context-reset traces must include a later worker result, and repair requests must close with a later repair result before completion.
+- `M22_t3_seed_repository`: T3 seed repositories run local commands, verify browser-smoke semantic artifacts, and report pass^k, elapsed time, estimated cost, and failure taxonomy.
 
 This keeps the eval suite focused on the behaviors that make DEVNS trustworthy as an agent harness: intent provenance, scope control, independent review, and evidence that matches the acceptance criterion's verification type.

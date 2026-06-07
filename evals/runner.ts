@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { loadEvalCases, runT1Case, runT2Case, type EvalTier } from "./harness";
+import { loadEvalCases, runT1Case, runT2Case, runT3Case, type EvalTier } from "./harness";
 import { metricsForOutcomes } from "./metrics";
 import { renderEvalReport } from "./report";
 
@@ -32,15 +32,7 @@ export async function runEval(options: EvalRunOptions = {}, cwd = process.cwd())
       continue;
     }
 
-    outcomes.push({
-      id: testCase.id,
-      tier: testCase.tier,
-      mode: testCase.mode,
-      expected: testCase.expect.decision,
-      actual: "blocked" as const,
-      reason: "Only T1 deterministic gates and T2 frozen review-lane-result golden checks are implemented in this runner.",
-      pass: false
-    });
+    outcomes.push(await runT3Case(testCase, cwd));
   }
 
   const metrics = metricsForOutcomes(outcomes);

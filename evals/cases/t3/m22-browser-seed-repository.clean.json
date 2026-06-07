@@ -1,0 +1,49 @@
+{
+  "id": "m22-browser-seed-repository-clean",
+  "tier": "t3",
+  "mode": "M22_t3_seed_repository",
+  "generality_level": "general",
+  "given": {
+    "seedRepository": {
+      "id": "browser-semantic-seed",
+      "attempts": 1,
+      "passK": 1,
+      "estimatedCostUsd": 0,
+      "files": [
+        {
+          "path": "scripts/semantic-browser.mjs",
+          "content": "import fs from 'node:fs';\nimport path from 'node:path';\n\nconst dir = process.env.DEVNS_BROWSER_SMOKE_ARTIFACT_ABS_DIR;\nif (!dir) throw new Error('DEVNS_BROWSER_SMOKE_ARTIFACT_ABS_DIR is required');\nfs.mkdirSync(dir, { recursive: true });\nfs.writeFileSync(path.join(dir, 'visible-text.txt'), 'DEVNS T3 Dashboard\\nArtifacts: screenshot trace console network\\nSample URL http://127.0.0.1:5173/\\nPolicy findings none\\n');\nfs.writeFileSync(path.join(dir, 'dom-snapshot.html'), '<main><h1>DEVNS T3 Dashboard</h1><p>Browser semantic snapshot ready.</p></main>\\n');\nfs.writeFileSync(path.join(dir, 'accessibility.json'), JSON.stringify({ role: 'main', name: 'DEVNS T3 Dashboard', children: [{ role: 'heading', name: 'DEVNS T3 Dashboard' }] }, null, 2) + '\\n');\nfs.writeFileSync(path.join(dir, 'console.ndjson'), JSON.stringify({ type: 'log', text: 'seed ok' }) + '\\n');\nfs.writeFileSync(path.join(dir, 'network.ndjson'), JSON.stringify({ url: 'http://127.0.0.1:5173/', status: 200, failed: false }) + '\\n');\n"
+        }
+      ],
+      "commands": [
+        {
+          "command": "bash",
+          "args": ["${repoRoot}/templates/devns/adapters/browser-smoke.sh"],
+          "env": {
+            "DEVNS_BROWSER_SMOKE_COMMAND": "node scripts/semantic-browser.mjs",
+            "DEVNS_BROWSER_SMOKE_ARTIFACT_DIR": ".devns/artifacts/browser-smoke/t3-clean"
+          },
+          "expectedExitCode": 0,
+          "failureClass": "browser_smoke_command"
+        }
+      ],
+      "expectedArtifacts": [
+        {
+          "path": ".devns/artifacts/browser-smoke/t3-clean/run.json",
+          "contains": ["browser_smoke", "visible-text.txt", "accessibility.json", "console.ndjson", "network.ndjson"]
+        },
+        {
+          "path": ".devns/artifacts/browser-smoke/t3-clean/visible-text.txt",
+          "contains": ["DEVNS T3 Dashboard", "Policy findings none"]
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "seed_repository"
+  },
+  "expect": {
+    "decision": "allowed",
+    "reasonContains": "pass^1=1.000"
+  }
+}

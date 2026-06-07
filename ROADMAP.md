@@ -14,7 +14,7 @@
 ## Next
 
 - Add focused unit and golden tests around evidence quality, live review adapter calibration, RFC clarification, and queue state.
-- Add T3 seed repositories that exercise the default URL-driven Playwright semantic browser lane and emit DOM/OCR/accessibility snapshots.
+- Expand T3 seed repositories beyond the browser-smoke semantic artifact seed into CLI, React/Vite, Next, and Python package scenarios.
 - Calibrate real host adapters against the resolved project policy/agent/lanes registry.
 - Connect worker/repair trace continuity to real host adapter and T3 seed-repository failure classification.
-- Expand evals from T2 frozen review-result and review-packet golden checks, M6/M8 trace checks, M7 state-reliability checks, M9 artifact requirements, M10 artifact integrity, M11 rich artifact parseability, M12 basic browser policy graders, M13 browser policy budgets/URL lists, M14 project-configured browser policies, M15 artifact digests, M16 dashboard artifact previews, M17 browser semantic snapshots, M19 context-budget checks, M20 project extension config checks, and M21 worker/repair trace checks into live adapter calibration, real browser command templates, and T3 seed repositories.
+- Expand evals from T2 frozen review-result and review-packet golden checks, M6/M8 trace checks, M7 state-reliability checks, M9 artifact requirements, M10 artifact integrity, M11 rich artifact parseability, M12 basic browser policy graders, M13 browser policy budgets/URL lists, M14 project-configured browser policies, M15 artifact digests, M16 dashboard artifact previews, M17 browser semantic snapshots, M19 context-budget checks, M20 project extension config checks, M21 worker/repair trace checks, and M22 T3 seed repository checks into live adapter calibration, real browser command templates, and multi-seed trend reporting.

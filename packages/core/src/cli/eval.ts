@@ -35,9 +35,10 @@ function usage() {
       "Usage:",
       "  devns eval run --tier t1 [--mode M3_fake_evidence] [--json]",
       "  devns eval run --mode M18_review_packet_quality [--json]",
+      "  devns eval run --tier t3 [--json]",
       "  devns eval run --all --report evals/out/report.md",
       "",
-      "T1 deterministic gate evals and T2 frozen review-result/review-packet golden checks run locally. T3 cases are reserved for nightly workflows."
+      "T1 deterministic gate evals, T2 frozen review-result/review-packet golden checks, and T3 local seed repositories run locally."
     ].join("\n") + "\n"
   );
 }
