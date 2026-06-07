@@ -1,0 +1,34 @@
+{
+  "id": "m18-review-packet-title-only.trap",
+  "tier": "t2",
+  "mode": "M18_review_packet_quality",
+  "generality_level": "general",
+  "given": {
+    "reviewPacket": {
+      "schemaVersion": 1,
+      "generatedAt": "2026-06-07T00:00:00.000Z",
+      "feature": {
+        "id": "PKT-102",
+        "title": "Review this feature"
+      },
+      "git": {
+        "status": "",
+        "diff": "",
+        "truncated": false
+      },
+      "evidence": [],
+      "artifactRefs": [".devns/artifacts/browser-smoke/PKT-102/run.json"],
+      "artifactDigests": [],
+      "history": [],
+      "projectRules": [],
+      "reviewInstructions": ["Looks good?"]
+    }
+  },
+  "action": {
+    "gate": "review_packet_quality"
+  },
+  "expect": {
+    "decision": "blocked",
+    "reasonContains": "missing approved RFC"
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "id": "m18-review-packet-context.clean",
+  "tier": "t2",
+  "mode": "M18_review_packet_quality",
+  "generality_level": "general",
+  "given": {
+    "reviewPacket": {
+      "schemaVersion": 1,
+      "generatedAt": "2026-06-07T00:00:00.000Z",
+      "feature": {
+        "id": "PKT-101",
+        "title": "Review packet quality",
+        "description": "Ensure review agents receive bounded, reviewable context.",
+        "status": "done",
+        "priority": "P1",
+        "risk": "high",
+        "acceptanceCriteria": ["Review packet contains RFC, diff, evidence, history, rules, and artifact digest context."],
+        "changedFiles": ["packages/core/src/harness/review-packet.ts"],
+        "implementationFiles": ["packages/core/src/harness/review-packet.ts"],
+        "reviewDecision": "approved"
+      },
+      "rfc": {
+        "status": "approved",
+        "summary": "Review packet must carry enough context for read-only review.",
+        "background": "A review agent cannot audit a feature from only a title.",
+        "featureDescription": "Build a deterministic review packet quality gate.",
+        "expectedOutcome": "Packet exposes requirements, diff, evidence, history, project rules, and artifacts.",
+        "goals": ["Bounded review context"],
+        "nonGoals": ["Do not run a live model in this eval."],
+        "requirements": [
+          {
+            "id": "REQ-101",
+            "type": "explicit",
+            "statement": "The review packet includes reviewable implementation context.",
+            "priority": "must"
+          }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-101",
+            "requirementIds": ["REQ-101"],
+            "statement": "Packet includes RFC, diff, evidence, history, rules, and artifact digests.",
+            "verificationType": "review_agent"
+          }
+        ],
+        "validationPlan": {
+          "dynamic": ["npm run devns -- eval run --mode M18_review_packet_quality --json"],
+          "static": ["Inspect review packet fields."]
+        },
+        "testCases": [
+          {
+            "id": "TC-101",
+            "acceptanceCriteriaIds": ["AC-101"],
+            "type": "integration",
+            "scenario": "Grade a complete review packet.",
+            "expected": "Gate allows the packet."
+          }
+        ],
+        "humanDecision": {
+          "status": "approved"
+        }
+      },
+      "git": {
+        "base": "abc123",
+        "head": "def456",
+        "status": " M packages/core/src/harness/review-packet.ts",
+        "diff": "diff --git a/packages/core/src/harness/review-packet.ts b/packages/core/src/harness/review-packet.ts\n@@ -1,1 +1,2 @@\n export const packet = true;\n+export const quality = true;\n",
+        "truncated": false
+      },
+      "evidenceQuality": {
+        "decision": "allow",
+        "summary": "Evidence quality passed for 1 acceptance criterion/criteria.",
+        "findings": []
+      },
+      "evidence": [
+        {
+          "type": "lane:eval",
+          "summary": "M18 review packet quality eval passed.",
+          "verificationType": "review_agent",
+          "artifactRefs": [".devns/reviews/packets/PKT-101.review-packet.json"],
+          "coversAcceptanceCriteriaIds": ["AC-101"]
+        }
+      ],
+      "artifactRefs": [".devns/artifacts/browser-smoke/PKT-101/run.json"],
+      "artifactDigests": [
+        {
+          "artifactRef": ".devns/artifacts/browser-smoke/PKT-101/run.json",
+          "status": "ok",
+          "summary": "Browser smoke .devns/artifacts/browser-smoke/PKT-101/run.json; exit code: 0; rich artifacts: 4; screenshots: 1; traces: 1; console entries: 1; console errors: 0; network requests: 2; network failures: 0",
+          "browserSmoke": {
+            "exitCode": 0,
+            "richArtifacts": 4,
+            "screenshots": 1,
+            "traces": 1,
+            "consoleEntries": 1,
+            "consoleErrors": 0,
+            "networkRequests": 2,
+            "networkFailures": 0,
+            "sampleUrls": ["http://127.0.0.1:5173/", "http://127.0.0.1:5173/api"]
+          }
+        }
+      ],
+      "history": [
+        {
+          "id": "hist-101",
+          "featureId": "PKT-101",
+          "attempt": 1,
+          "createdAt": "2026-06-07T00:00:00.000Z",
+          "actor": "agent",
+          "summary": "Built review packet quality gate.",
+          "decisions": ["Review agents receive packet context before returning lane-result JSON."],
+          "alternativesRejected": ["Do not review from only a feature title."],
+          "changedFiles": [],
+          "impact": ["Review input becomes auditable."],
+          "pitfalls": [],
+          "errors": [],
+          "fixes": [],
+          "lessons": ["Packet completeness should be frozen-tested."],
+          "risks": [],
+          "dynamicChecks": [],
+          "staticChecks": []
+        }
+      ],
+      "projectRules": [
+        {
+          "path": "AGENTS.md",
+          "content": "Review agents are read-only and must return findings grounded in diff, evidence, and requirements.",
+          "truncated": false
+        }
+      ],
+      "reviewInstructions": [
+        "Act as a read-only code review agent.",
+        "Prioritize correctness, security, requirements drift, missing tests, and evidence gaps.",
+        "Return exactly one lane-result JSON object with grounded findings."
+      ]
+    }
+  },
+  "action": {
+    "gate": "review_packet_quality"
+  },
+  "expect": {
+    "decision": "allowed"
+  }
+}

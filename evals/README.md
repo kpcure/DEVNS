@@ -5,7 +5,7 @@ DEVNS evals measure the harness as a controller rather than measuring a coding m
 ## Tiers
 
 - `t1`: deterministic gate fixtures. These run in CI and treat each gate as a classifier over paired trap/clean cases.
-- `t2`: frozen review-result golden fixtures. These run locally and grade whether a review agent's lane-result output is grounded, schema-valid, and calibrated instead of acting as a rubber stamp. Future T2 cases may also use frozen review packets with model adapters.
+- `t2`: frozen review-packet and review-result golden fixtures. These run locally and grade whether a review agent receives enough bounded context, and whether its lane-result output is grounded, schema-valid, and calibrated instead of acting as a rubber stamp. Future T2 cases may add live model adapter calibration on top of these deterministic goldens.
 - `t3`: end-to-end seed repositories. These are intended for nightly or release workflows with pass^k and cost reporting.
 
 ## Current CI Surface
@@ -55,5 +55,6 @@ T1 and T2 cases are deterministic regression fixtures for the DEVNS control plan
 - `M15_artifact_digest_review_surface`: browser artifact refs are converted into review-facing digests instead of staying refs-only.
 - `M16_dashboard_artifact_preview`: dashboard/browser semantic snapshots must expose artifact digest status, metrics, sample URLs, and policy findings instead of refs-only evidence.
 - `M17_browser_semantic_snapshot_ingestion`: browser-smoke manifests can carry DOM, OCR, or accessibility text artifacts that feed the M16 preview grader without hand-written visible text.
+- `M18_review_packet_quality`: frozen review packets must include approved RFC context, acceptance criteria, Git diff, evidence quality, evidence/artifact digest context, execution history, project rules, and read-only lane-result output instructions.
 
 This keeps the eval suite focused on the behaviors that make DEVNS trustworthy as an agent harness: intent provenance, scope control, independent review, and evidence that matches the acceptance criterion's verification type.

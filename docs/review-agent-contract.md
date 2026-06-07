@@ -58,13 +58,14 @@ The worker prompt should ask for findings first, focused on bugs, regressions, r
 
 This mirrors the Codex code-review shape: assemble PR/change context and diff, run in read-only mode, and require machine-readable findings rather than free-form prose.
 
-Review-agent output can be regression-tested without invoking a model:
+Review-agent packet input and output can be regression-tested without invoking a model:
 
 ```sh
 npm run devns -- eval run --tier t2 --mode M5_review_result_quality --json
+npm run devns -- eval run --mode M18_review_packet_quality --json
 ```
 
-T2 frozen review-result cases grade whether a `lane-result` is schema-valid, grounded, calibrated, and non-rubber-stamp. A valid blocking review must include high-confidence, evidence-backed error findings with file/line grounding. A valid allow review must include review context evidence or artifacts and recommended follow-up text for residual test gaps or an explicit no-action statement.
+T2 frozen review-packet cases grade whether a packet contains approved RFC context, acceptance criteria, Git diff, evidence quality, evidence/artifact digests, execution history, project rules, and read-only lane-result output instructions. T2 frozen review-result cases grade whether a `lane-result` is schema-valid, grounded, calibrated, and non-rubber-stamp. A valid blocking review must include high-confidence, evidence-backed error findings with file/line grounding. A valid allow review must include review context evidence or artifacts and recommended follow-up text for residual test gaps or an explicit no-action statement.
 
 ## Findings
 

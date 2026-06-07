@@ -25,6 +25,7 @@
             "artifact_digest",
             "dashboard_artifact_preview",
             "review_lane_result",
+            "review_packet_quality",
             "orchestrator_trace",
             "state_atomic_write"
           ]

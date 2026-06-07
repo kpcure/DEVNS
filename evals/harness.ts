@@ -37,6 +37,7 @@ export type EvalCase = {
       | "artifact_digest"
       | "dashboard_artifact_preview"
       | "review_lane_result"
+      | "review_packet_quality"
       | "orchestrator_trace"
       | "state_atomic_write";
     cmd?: string;
@@ -226,6 +227,99 @@ function evaluateReviewLaneResult(given: Record<string, unknown>, expect: EvalCa
   return {
     decision: issues.length ? ("blocked" as const) : ("allowed" as const),
     reason: issues.length ? issues.join(" ") : "Review lane result golden gate passed."
+  };
+}
+
+function recordValue(value: unknown) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined;
+}
+
+function arrayValue(value: unknown) {
+  return Array.isArray(value) ? value : [];
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function packetHasReviewOutputContract(packet: Record<string, unknown>) {
+  const instructions = arrayValue(packet.reviewInstructions).map((item) => stringValue(item).toLowerCase());
+  const rendered = stringValue(packet.renderedPrompt ?? packet.prompt).toLowerCase();
+  return (
+    instructions.some((item) => item.includes("read-only") || item.includes("read only")) &&
+    (instructions.some((item) => item.includes("lane-result") || item.includes("findings")) ||
+      rendered.includes("lane-result json object"))
+  );
+}
+
+function evaluateReviewPacketQuality(given: Record<string, unknown>) {
+  const packet = recordValue(given.reviewPacket ?? given.packet);
+  if (!packet) {
+    return {
+      decision: "blocked" as const,
+      reason: "Review packet quality failed: missing review packet object."
+    };
+  }
+
+  const issues: string[] = [];
+  const feature = recordValue(packet.feature);
+  const rfc = recordValue(packet.rfc);
+  const git = recordValue(packet.git);
+  const evidenceQuality = recordValue(packet.evidenceQuality);
+  const evidence = arrayValue(packet.evidence);
+  const artifactRefs = arrayValue(packet.artifactRefs);
+  const artifactDigests = arrayValue(packet.artifactDigests).map(recordValue).filter(Boolean);
+  const history = arrayValue(packet.history).map(recordValue).filter(Boolean);
+  const projectRules = arrayValue(packet.projectRules).map(recordValue).filter(Boolean);
+
+  if (packet.schemaVersion !== 1) issues.push("missing schemaVersion=1");
+  if (!stringValue(feature?.id) || !stringValue(feature?.title)) issues.push("missing feature identity");
+  if (!arrayValue(feature?.acceptanceCriteria).length) issues.push("missing feature acceptance criteria");
+  if (rfc?.status !== "approved") issues.push("missing approved RFC");
+  if (!arrayValue(rfc?.requirements).length) issues.push("missing RFC requirements");
+  if (!arrayValue(rfc?.acceptanceCriteria).length) issues.push("missing RFC acceptance criteria");
+  const validationPlan = recordValue(rfc?.validationPlan);
+  if (!arrayValue(validationPlan?.dynamic).length && !arrayValue(validationPlan?.static).length) {
+    issues.push("missing RFC validation plan");
+  }
+  if (!stringValue(git?.diff).trim()) issues.push("missing Git diff");
+  if (git?.truncated === true && !stringValue(git?.diff).includes("truncated by DEVNS review packet budget")) {
+    issues.push("truncated diff lacks explicit truncation marker");
+  }
+  if (!stringValue(evidenceQuality?.summary) || !stringValue(evidenceQuality?.decision)) {
+    issues.push("missing evidence quality report");
+  }
+  if (!evidence.length && !artifactRefs.length && !artifactDigests.length) {
+    issues.push("missing evidence or artifacts");
+  }
+  if (artifactRefs.length && !artifactDigests.length) {
+    issues.push("artifact refs lack review-facing digests");
+  }
+  if (
+    artifactDigests.some(
+      (digest) =>
+        !stringValue(digest?.artifactRef) ||
+        !stringValue(digest?.summary) ||
+        ["missing", "invalid"].includes(stringValue(digest?.status))
+    )
+  ) {
+    issues.push("artifact digest is missing, invalid, or not review-facing");
+  }
+  if (!history.length) issues.push("missing execution history");
+  if (history.length && !history.some((record) => arrayValue(record?.decisions).length || arrayValue(record?.lessons).length)) {
+    issues.push("history lacks decisions or lessons");
+  }
+  if (!projectRules.length) issues.push("missing project rules");
+  if (projectRules.length && !projectRules.some((rule) => stringValue(rule?.path).endsWith("AGENTS.md") || stringValue(rule?.content))) {
+    issues.push("project rules lack readable content");
+  }
+  if (!packetHasReviewOutputContract(packet)) {
+    issues.push("missing read-only lane-result output contract");
+  }
+
+  return {
+    decision: issues.length ? ("blocked" as const) : ("allowed" as const),
+    reason: issues.length ? `Review packet quality failed: ${issues.join("; ")}.` : "Review packet quality golden gate passed."
   };
 }
 
@@ -424,10 +518,12 @@ export async function runT2Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
   const result =
     testCase.action.gate === "review_lane_result"
       ? evaluateReviewLaneResult(testCase.given, testCase.expect)
-      : {
-          decision: "blocked" as const,
-          reason: `T2 gate ${testCase.action.gate} is not implemented.`
-        };
+      : testCase.action.gate === "review_packet_quality"
+        ? evaluateReviewPacketQuality(testCase.given)
+        : {
+            decision: "blocked" as const,
+            reason: `T2 gate ${testCase.action.gate} is not implemented.`
+          };
   const reasonMatches = testCase.expect.reasonContains ? result.reason.includes(testCase.expect.reasonContains) : true;
   return {
     id: testCase.id,

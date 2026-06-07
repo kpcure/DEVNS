@@ -12,7 +12,7 @@ export type EvalRunOptions = {
 };
 
 export async function runEval(options: EvalRunOptions = {}, cwd = process.cwd()) {
-  const tier = options.all ? undefined : options.tier ?? "t1";
+  const tier = options.all || (options.mode && !options.tier) ? undefined : options.tier ?? "t1";
   const casesRoot = path.join(cwd, "evals/cases");
   const cases = (await loadEvalCases(casesRoot)).filter((testCase) => {
     if (tier && testCase.tier !== tier) return false;
