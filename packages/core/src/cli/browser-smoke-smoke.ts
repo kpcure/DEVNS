@@ -23,6 +23,7 @@ async function main() {
     'fs.writeFileSync(dir + "/network.ndjson", JSON.stringify({ method: "GET", url: "http://127.0.0.1/", status: 200 }) + "\\n");',
     'fs.writeFileSync(dir + "/visible-text.txt", "Dashboard artifact preview\\n");',
     'fs.writeFileSync(dir + "/accessibility.json", JSON.stringify({ role: "main", name: "Dashboard artifact preview" }) + "\\n");',
+    'fs.writeFileSync(dir + "/accessibility.aria.yml", "- main \\"Dashboard artifact preview\\"\\n");',
     'fs.writeFileSync(dir + "/ocr.txt", "Screenshot OCR dashboard artifact preview\\n");',
     'process.stdout.write("browser ok");'
   ].join(" ");
@@ -58,6 +59,7 @@ async function main() {
     assert.ok(report.artifacts?.some((item) => item.kind === "network" && item.path.endsWith("/network.ndjson")));
     assert.ok(report.artifacts?.some((item) => item.kind === "dom_snapshot" && item.path.endsWith("/visible-text.txt")));
     assert.ok(report.artifacts?.some((item) => item.kind === "accessibility_snapshot" && item.path.endsWith("/accessibility.json")));
+    assert.ok(report.artifacts?.some((item) => item.kind === "accessibility_snapshot" && item.path.endsWith("/accessibility.aria.yml")));
     assert.ok(report.artifacts?.some((item) => item.kind === "ocr_text" && item.path.endsWith("/ocr.txt")));
     const feature: Feature = {
       id: "BROWSER-001",

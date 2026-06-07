@@ -89,7 +89,7 @@ Command lanes produce a structured result envelope with command, exit code, dura
 - `lint` is nonblocking by default because existing projects often carry legacy lint debt.
 - `security_basic` is a builtin lightweight secret/config-change scanner and starts as nonblocking risk evidence.
 
-Browser smoke checks are project-specific because teams use different browser runners. `devns init` installs `.devns/adapters/browser-smoke.sh`; copy `templates/devns/lanes/browser-smoke.json` into `.devns/lanes/browser-smoke.json` and replace `DEVNS_BROWSER_SMOKE_COMMAND` with the project command, such as `npx playwright test` or `npm run e2e`. The adapter emits `DEVNS_ARTIFACT=...` lines that command lanes capture as artifact refs.
+Browser smoke checks are project-specific because teams use different browser runners. `devns init` installs `.devns/lanes/browser-smoke.json`, `.devns/adapters/browser-smoke.sh`, and `.devns/adapters/playwright-semantic-smoke.mjs`. The lane is optional and inert until `DEVNS_BROWSER_SMOKE_URL` is set; then it runs the Playwright semantic helper through the browser-smoke adapter. The helper writes screenshot, trace, console, network, visible text, DOM HTML, and accessibility/ARIA text artifacts when Playwright is available. Replace the lane command with the project's existing Playwright, Cypress, or browser script when that script already emits richer artifacts. The adapter emits `DEVNS_ARTIFACT=...` lines that command lanes capture as artifact refs.
 
 ## Artifact Integrity
 
@@ -116,7 +116,7 @@ Project-level browser artifact policy lives under `artifactIntegrity.browserSmok
 
 Review packets and morning review reports reuse the same browser-smoke artifact refs to produce artifact digests: exit code, rich artifact counts, screenshot/trace counts, console entry/error counts, network request/failure counts, sample URLs, and policy findings. This keeps human and review-agent surfaces inspectable without requiring readers to manually open every `run.json` first.
 
-Browser lanes can also write semantic text artifacts into the same artifact directory. The adapter recognizes DOM text, accessibility-tree text, and OCR text files such as `visible-text.txt`, `accessibility.json`, and `ocr.txt` as `dom_snapshot`, `accessibility_snapshot`, and `ocr_text`. The `dashboard_artifact_preview` eval gate can read those artifacts from `run.json` and verify that dashboard/browser previews expose artifact digest status, metrics, sample URLs, and policy findings rather than refs-only evidence.
+Browser lanes can also write semantic text artifacts into the same artifact directory. The adapter recognizes DOM text, accessibility-tree text, ARIA YAML, and OCR text files such as `visible-text.txt`, `dom-snapshot.html`, `accessibility.json`, `accessibility.aria.yml`, and `ocr.txt` as `dom_snapshot`, `accessibility_snapshot`, and `ocr_text`. The `dashboard_artifact_preview` eval gate can read those artifacts from `run.json` and verify that dashboard/browser previews expose artifact digest status, metrics, sample URLs, and policy findings rather than refs-only evidence.
 
 The config schema is fixed in:
 

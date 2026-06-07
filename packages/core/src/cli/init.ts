@@ -157,6 +157,20 @@ async function writeBrowserSmokeAdapter(cwd: string, force: boolean) {
   return didCopy;
 }
 
+async function writePlaywrightSemanticSmokeAdapter(cwd: string, force: boolean) {
+  const sourcePath = path.join(packageRoot, "templates", "devns", "adapters", "playwright-semantic-smoke.mjs");
+  const destinationPath = path.join(cwd, ".devns", "adapters", "playwright-semantic-smoke.mjs");
+  const didCopy = await copyNewFile(sourcePath, destinationPath, force);
+  await chmod(destinationPath, 0o755);
+  return didCopy;
+}
+
+async function writeBrowserSmokeLane(cwd: string, force: boolean) {
+  const sourcePath = path.join(packageRoot, "templates", "devns", "lanes", "browser-smoke.json");
+  const destinationPath = path.join(cwd, ".devns", "lanes", "browser-smoke.json");
+  return copyNewFile(sourcePath, destinationPath, force);
+}
+
 async function writeReviewAgentLane(cwd: string, adapter: "codex" | "claude", force: boolean) {
   const lane = {
     id: "code-review",
@@ -439,6 +453,12 @@ export async function main(inputOptions?: InitOptions) {
 
   const didCopyBrowserSmokeAdapter = await writeBrowserSmokeAdapter(cwd, options.force);
   (didCopyBrowserSmokeAdapter ? written : skipped).push(".devns/adapters/browser-smoke.sh");
+
+  const didCopyPlaywrightSemanticSmokeAdapter = await writePlaywrightSemanticSmokeAdapter(cwd, options.force);
+  (didCopyPlaywrightSemanticSmokeAdapter ? written : skipped).push(".devns/adapters/playwright-semantic-smoke.mjs");
+
+  const didCopyBrowserSmokeLane = await writeBrowserSmokeLane(cwd, options.force);
+  (didCopyBrowserSmokeLane ? written : skipped).push(".devns/lanes/browser-smoke.json");
 
   if (reviewAdapter) {
     const didCopyAdapter = await writeReviewAgentAdapter(cwd, reviewAdapter, options.force);

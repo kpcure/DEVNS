@@ -46,7 +46,7 @@ This creates:
   policies/
 ```
 
-By default `init` uses `--host auto`: when it is run inside Codex or Claude Code it also writes the matching local host adapter. Use `--host codex`, `--host claude`, `--host both`, or `--host none` to be explicit. The Codex adapter writes `.codex/hooks.json` with an absolute hook command, installs `.codex/agents/*.toml`, marks `plugins/codex/devns/scripts/devns-stop-hook.sh` executable, and prepares `.devns/adapters/code-review.codex.sh` plus `.devns/lanes/code-review.json`. The Claude adapter writes `.claude/settings.json` as a safety-net `type: "agent"` Stop hook and installs `.claude/agents/*.md` for normal orchestrator-mode subagents.
+By default `init` uses `--host auto`: when it is run inside Codex or Claude Code it also writes the matching local host adapter. Use `--host codex`, `--host claude`, `--host both`, or `--host none` to be explicit. The Codex adapter writes `.codex/hooks.json` with an absolute hook command, installs `.codex/agents/*.toml`, marks `plugins/codex/devns/scripts/devns-stop-hook.sh` executable, and prepares `.devns/adapters/code-review.codex.sh` plus `.devns/lanes/code-review.json`. The Claude adapter writes `.claude/settings.json` as a safety-net `type: "agent"` Stop hook and installs `.claude/agents/*.md` for normal orchestrator-mode subagents. `init` also installs `.devns/lanes/browser-smoke.json`, `.devns/adapters/browser-smoke.sh`, and `.devns/adapters/playwright-semantic-smoke.mjs`; set `DEVNS_BROWSER_SMOKE_URL` to enable the optional Playwright semantic browser lane.
 
 Then use the `devns-init` skill to scan repository context and fill `.devns/candidates.json`.
 
@@ -87,6 +87,14 @@ npx @kpcure/devns orchestrate --host codex --json
 ```
 
 Use `--host claude` inside Claude Code. The returned packet tells the main agent which implementation and review subagents to launch and what prompts to send.
+
+1. For UI or browser-facing projects, enable semantic browser evidence:
+
+```sh
+DEVNS_BROWSER_SMOKE_URL=http://127.0.0.1:5173 npx @kpcure/devns lanes run --write --json
+```
+
+The default browser lane uses Playwright when available and captures screenshot, trace, console, network, visible text, DOM HTML, and accessibility/ARIA text artifacts. Replace `.devns/lanes/browser-smoke.json` if the project already has a richer Playwright, Cypress, or browser command.
 
 1. Open the dashboard when you want the human view:
 

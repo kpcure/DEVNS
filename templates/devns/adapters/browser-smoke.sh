@@ -47,7 +47,7 @@ function walk(dir, prefix = "") {
 
 function kindFor(file) {
   const lower = file.toLowerCase();
-  const textLike = /\.(txt|text|html?|json|jsonl|ndjson)$/.test(lower);
+  const textLike = /\.(txt|text|html?|json|jsonl|ndjson|ya?ml)$/.test(lower);
   if (/\.(png|jpe?g|webp)$/.test(lower)) return "screenshot";
   if (/trace.*\.zip$/.test(lower) || /\.trace\.zip$/.test(lower)) return "trace";
   if (/console.*\.(ndjson|jsonl|json)$/.test(lower)) return "console";

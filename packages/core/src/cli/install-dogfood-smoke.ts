@@ -92,6 +92,12 @@ async function main() {
     assert.equal(Boolean(reviewAdapter.mode & 0o111), true);
     const browserSmokeAdapter = await stat(path.join(cwd, ".devns", "adapters", "browser-smoke.sh"));
     assert.equal(Boolean(browserSmokeAdapter.mode & 0o111), true);
+    const playwrightSemanticSmoke = await stat(path.join(cwd, ".devns", "adapters", "playwright-semantic-smoke.mjs"));
+    assert.equal(Boolean(playwrightSemanticSmoke.mode & 0o111), true);
+    const browserSmokeLane = JSON.parse(await readFile(path.join(cwd, ".devns", "lanes", "browser-smoke.json"), "utf8"));
+    assert.equal(browserSmokeLane.type, "command");
+    assert.match(browserSmokeLane.command, /DEVNS_BROWSER_SMOKE_URL/);
+    assert.match(browserSmokeLane.command, /playwright-semantic-smoke\.mjs/);
     const reviewLane = JSON.parse(await readFile(path.join(cwd, ".devns", "lanes", "code-review.json"), "utf8"));
     assert.equal(reviewLane.type, "agent");
     assert.equal(reviewLane.command, "bash .devns/adapters/code-review.codex.sh");
@@ -106,6 +112,15 @@ async function main() {
     const lanes = JSON.parse(await runDevns(repoRoot, cwd, "lanes", "run", "--json"));
     assert.equal(lanes.blocksCompletion, false);
     assert.ok(lanes.results.some((result: { lane: string }) => result.lane === "security_basic"));
+    assert.ok(
+      lanes.results.some(
+        (result: { lane: string; status: string; summary: string; artifacts?: string[] }) =>
+          result.lane === "browser-smoke" &&
+          result.status === "pass" &&
+          result.artifacts?.length === 0 &&
+          /Command succeeded/.test(result.summary)
+      )
+    );
     assert.ok(
       lanes.results.some(
         (result: { lane: string; type: string; status: string; summary: string }) =>

@@ -1,7 +1,7 @@
 {
   "id": "browser-smoke",
   "type": "command",
-  "command": "DEVNS_BROWSER_SMOKE_COMMAND='npx playwright test' bash .devns/adapters/browser-smoke.sh",
+  "command": "if [ -n \"${DEVNS_BROWSER_SMOKE_URL:-}\" ]; then DEVNS_BROWSER_SMOKE_COMMAND='node .devns/adapters/playwright-semantic-smoke.mjs' bash .devns/adapters/browser-smoke.sh; else echo 'DEVNS browser smoke skipped: set DEVNS_BROWSER_SMOKE_URL to enable semantic browser evidence.'; fi",
   "required": false,
   "blocksCompletion": false
 }
