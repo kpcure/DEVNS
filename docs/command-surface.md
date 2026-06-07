@@ -116,6 +116,7 @@ In a target repository, this alias may not exist yet. Agents should inspect `pac
 
 `npm run devns:dashboard` starts the local human control plane at `http://127.0.0.1:5173/`.
 The dashboard reads the latest morning review from `/api/reviews/latest`; review packets can show browser-smoke artifact digests with screenshot/trace/console/network counts, sample URLs, and policy findings instead of refs-only evidence.
+The dashboard also reads `/api/evals/latest` from `DEVNS_EVAL_HISTORY_PATH` or `evals/out/eval-history.jsonl` and renders T3 trend summaries by project type, risk area, pass^k, elapsed time, estimated cost, and failure taxonomy.
 The `dashboard_artifact_preview` eval gate can grade DOM text, OCR text, or accessibility text snapshots captured by a browser lane against those digests, so projects can use Playwright, Cypress, or another local browser runner without changing DEVNS core. Browser-smoke manifests recognize `dom_snapshot`, `accessibility_snapshot`, `ocr_text`, `visible_text`, and `semantic_snapshot` artifacts as semantic text sources for that grader.
 
 `npm run devns:run` is the agent-facing loop entry. It detects bootstrap, active, claimable, blocked, and empty-queue modes. By default it claims the next approved feature when no feature is active; pass `--no-claim` to inspect without mutating state. When a feature is active or claimed, JSON output includes `workerHandoff`, a compact contract for running that one feature in an isolated worker/subagent or fresh implementation context when the host supports it.
@@ -144,7 +145,7 @@ For robust review automation, run deterministic static and dynamic lanes first, 
 
 `evidence-quality-gate` is a built-in review lane that checks acceptance criteria, compatible evidence coverage, and semantic evidence traceability. Browser, human, and review-agent evidence should include artifact refs or URLs when it covers acceptance criteria. The gate is also used by validation and completion so a feature cannot be marked done from a title plus prose-only notes.
 
-`npm run devns:review -- generate` creates `.devns/reviews/<date>.json` and `.md`. The report groups completed work by feature, includes RFC intent, commits, changed files, lane evidence, evidence artifact refs, history decisions/pitfalls/lessons, cross-feature risks, and suggested human actions.
+`npm run devns:review -- generate` creates `.devns/reviews/<date>.json` and `.md`. The report groups completed work by feature, includes RFC intent, commits, changed files, lane evidence, evidence artifact refs, history decisions/pitfalls/lessons, cross-feature risks, T3 eval trend summaries when `evals/out/eval-history.jsonl` exists, and suggested human actions.
 
 `npm run devns:review -- packet` creates a bounded review-agent packet for one feature. Use `--format prompt --write` when handing the packet to a read-only review agent. The packet includes RFC context, Git status and diff, evidence quality, feature evidence, durable history, and project rules. Use `--commit HEAD` or `--base <sha> --commit <sha>` when reviewing a clean worktree after the implementation commit but before `devns complete`.
 

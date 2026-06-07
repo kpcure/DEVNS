@@ -9,8 +9,10 @@ import type { FeaturePatch, DevnsConfig } from "./packages/core/src/harness/type
 const projectRoot = process.env.DEVNS_PROJECT_DIR ?? __dirname;
 const inventoryPath = process.env.DEVNS_FEATURES_PATH ?? ".devns/features.json";
 const candidatesPath = process.env.DEVNS_CANDIDATES_PATH ?? ".devns/candidates.json";
+const evalHistoryPath = process.env.DEVNS_EVAL_HISTORY_PATH ?? "evals/out/eval-history.jsonl";
 const roadmapPath = path.resolve(projectRoot, inventoryPath);
 const candidatesRoadmapPath = path.resolve(projectRoot, candidatesPath);
+const evalHistoryAbsolutePath = path.resolve(projectRoot, evalHistoryPath);
 const dashboardConfig: DevnsConfig = {
   version: 1,
   features: inventoryPath,
@@ -64,6 +66,32 @@ async function readCandidatesPayload() {
   }
 }
 
+async function readEvalTrendPayload() {
+  try {
+    const raw = await readFile(evalHistoryAbsolutePath, "utf8");
+    const history = raw
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => JSON.parse(line))
+      .slice(-10);
+    return {
+      history,
+      latest: history.at(-1),
+      path: evalHistoryPath
+    };
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      return {
+        history: [],
+        latest: undefined,
+        path: evalHistoryPath
+      };
+    }
+    throw error;
+  }
+}
+
 function roadmapApiPlugin() {
   return {
     name: "devns-roadmap-api",
@@ -85,6 +113,11 @@ function roadmapApiPlugin() {
             sendJson(res, 200, {
               report: await readLatestMorningReview(projectRoot, dashboardConfig)
             });
+            return;
+          }
+
+          if (req.method === "GET" && req.url === "/api/evals/latest") {
+            sendJson(res, 200, await readEvalTrendPayload());
             return;
           }
 

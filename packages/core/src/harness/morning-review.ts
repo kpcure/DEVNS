@@ -66,6 +66,42 @@ export type MorningReviewReport = {
   };
   packets: FeatureReviewPacket[];
   crossFeatureRisks: string[];
+  evalTrend?: EvalTrendPayload;
+};
+
+export type EvalT3GroupMetrics = {
+  label: string;
+  total: number;
+  passed: number;
+  failed: number;
+  actualAllowed: number;
+  actualBlocked: number;
+  attempts: number;
+  successfulAttempts: number;
+  attemptSuccessRate: number;
+  averagePassK: number;
+  elapsedMs: number;
+  estimatedCostUsd: number;
+  failureTaxonomy: Record<string, number>;
+};
+
+export type EvalT3Metrics = Omit<EvalT3GroupMetrics, "label"> & {
+  byProjectType: EvalT3GroupMetrics[];
+  byRiskArea: EvalT3GroupMetrics[];
+};
+
+export type EvalTrendRecord = {
+  generatedAt: string;
+  total: number;
+  passed: number;
+  failed: number;
+  t3: EvalT3Metrics;
+};
+
+export type EvalTrendPayload = {
+  path: string;
+  latest?: EvalTrendRecord;
+  history: EvalTrendRecord[];
 };
 
 function reviewOutputDir(cwd: string, config: DevnsConfig) {
@@ -73,8 +109,42 @@ function reviewOutputDir(cwd: string, config: DevnsConfig) {
   return resolveFromCwd(cwd, configured);
 }
 
+function evalHistoryPath(cwd: string) {
+  return resolveFromCwd(cwd, process.env.DEVNS_EVAL_HISTORY_PATH ?? "evals/out/eval-history.jsonl");
+}
+
 function unique(values: string[]) {
   return [...new Set(values.filter(Boolean))];
+}
+
+function relativePath(cwd: string, filePath: string) {
+  return path.isAbsolute(filePath) ? path.relative(cwd, filePath) : filePath;
+}
+
+async function readEvalTrend(cwd: string): Promise<EvalTrendPayload> {
+  const filePath = evalHistoryPath(cwd);
+  try {
+    const raw = await readFile(filePath, "utf8");
+    const history = raw
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as EvalTrendRecord)
+      .slice(-10);
+    return {
+      path: relativePath(cwd, filePath),
+      latest: history.at(-1),
+      history
+    };
+  } catch (error) {
+    if ((error as { code?: unknown }).code === "ENOENT") {
+      return {
+        path: relativePath(cwd, filePath),
+        history: []
+      };
+    }
+    throw error;
+  }
 }
 
 function formatEvidence(item: Evidence) {
@@ -261,7 +331,8 @@ export async function buildMorningReviewReport(
       highRisk: sortedPackets.filter((packet) => packet.risk === "high").length
     },
     packets: sortedPackets,
-    crossFeatureRisks: crossFeatureRisks(sortedPackets)
+    crossFeatureRisks: crossFeatureRisks(sortedPackets),
+    evalTrend: await readEvalTrend(cwd)
   };
 }
 
@@ -275,6 +346,30 @@ function artifactDigestLines(packet: FeatureReviewPacket) {
     ...(digest.browserSmoke?.sampleUrls.length ? [`sample URLs: ${digest.browserSmoke.sampleUrls.join(", ")}`] : []),
     ...(digest.browserSmoke?.policyFindings.length ? digest.browserSmoke.policyFindings.map((finding) => `policy: ${finding}`) : [])
   ]);
+}
+
+function pct(value: number) {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function failureSummary(failures: Record<string, number>) {
+  const entries = Object.entries(failures).sort(([, left], [, right]) => right - left);
+  return entries.length ? entries.map(([name, count]) => `${name}:${count}`).join(", ") : "none";
+}
+
+function evalTrendLines(trend?: EvalTrendPayload) {
+  const latest = trend?.latest;
+  if (!latest) return ["- No eval trend history found."];
+  return [
+    `- Source: ${trend.path}`,
+    `- Eval pass: ${latest.passed}/${latest.total}`,
+    `- T3 decisions: ${latest.t3.actualAllowed} allowed, ${latest.t3.actualBlocked} blocked`,
+    `- T3 seed success: ${latest.t3.successfulAttempts}/${latest.t3.attempts} (${pct(latest.t3.attemptSuccessRate)})`,
+    `- T3 average pass^k: ${latest.t3.averagePassK.toFixed(3)}`,
+    `- T3 elapsed: ${latest.t3.elapsedMs} ms`,
+    `- T3 cost: $${latest.t3.estimatedCostUsd.toFixed(4)}`,
+    `- T3 failures: ${failureSummary(latest.t3.failureTaxonomy)}`
+  ];
 }
 
 export function renderMorningReviewMarkdown(report: MorningReviewReport) {
@@ -314,6 +409,9 @@ export function renderMorningReviewMarkdown(report: MorningReviewReport) {
     "",
     "## Cross-Feature Risks",
     markdownList(report.crossFeatureRisks),
+    "",
+    "## Eval Trend",
+    evalTrendLines(report.evalTrend).join("\n"),
     "",
     ...packetSections
   ].join("\n");

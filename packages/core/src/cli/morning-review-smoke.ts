@@ -45,6 +45,39 @@ async function writeBrowserSmokeArtifact(cwd: string, id: string) {
   );
 }
 
+async function writeEvalHistory(cwd: string) {
+  const outDir = path.join(cwd, "evals", "out");
+  await mkdir(outDir, { recursive: true });
+  await writeFile(
+    path.join(outDir, "eval-history.jsonl"),
+    `${JSON.stringify({
+      generatedAt: "2026-05-30T08:00:00.000Z",
+      total: 8,
+      passed: 8,
+      failed: 0,
+      t3: {
+        total: 8,
+        passed: 8,
+        failed: 0,
+        actualAllowed: 4,
+        actualBlocked: 4,
+        attempts: 9,
+        successfulAttempts: 5,
+        attemptSuccessRate: 5 / 9,
+        averagePassK: 0.5,
+        elapsedMs: 321,
+        estimatedCostUsd: 0,
+        failureTaxonomy: {
+          browser_semantic_snapshot_missing: 1,
+          cli_json_contract_missing: 1
+        },
+        byProjectType: [],
+        byRiskArea: []
+      }
+    })}\n`
+  );
+}
+
 function doneFeature(id: string, changedFiles: string[], commit?: string): Feature {
   return {
     id,
@@ -113,6 +146,7 @@ async function main() {
     const head = (await execFileAsync("git", ["rev-parse", "HEAD"], { cwd })).stdout.trim();
     await writeBrowserSmokeArtifact(cwd, "REV-001");
     await writeBrowserSmokeArtifact(cwd, "REV-002");
+    await writeEvalHistory(cwd);
 
     inventory.features = [
       doneFeature("REV-001", ["src/shared.ts", "src/a.ts"], head),
@@ -139,6 +173,8 @@ async function main() {
 
     const result = await writeMorningReviewReport(cwd, "2026-05-30");
     assert.equal(result.report.summary.featureCount, 2);
+    assert.equal(result.report.evalTrend?.latest?.t3.total, 8);
+    assert.equal(result.report.evalTrend?.latest?.t3.actualBlocked, 4);
     assert.equal(result.report.crossFeatureRisks[0], "src/shared.ts changed by REV-002, REV-001");
     const rev001 = result.report.packets.find((packet) => packet.featureId === "REV-001");
     assert.match(rev001?.lessons[0] ?? "", /RFC intent/);
@@ -164,6 +200,9 @@ async function main() {
     assert.match(markdown, /\.devns\/artifacts\/browser-smoke\/REV-001\/run\.json/);
     assert.match(markdown, /console errors: 1/);
     assert.match(markdown, /network failures: 1/);
+    assert.match(markdown, /## Eval Trend/);
+    assert.match(markdown, /T3 average pass\^k: 0\.500/);
+    assert.match(markdown, /browser_semantic_snapshot_missing:1/);
 
     process.stdout.write("Morning review smoke passed.\n");
   } finally {

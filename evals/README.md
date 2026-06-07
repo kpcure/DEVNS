@@ -25,7 +25,7 @@ npm run devns -- eval run --all --report evals/out/report.md
 npm run devns -- eval run --all --report evals/out/report.md --history evals/out/eval-history.jsonl
 ```
 
-`evals/out/` is ignored because reports and JSONL trend history are generated artifacts. When `--history` is provided, the Markdown report includes a recent T3 trend table.
+`evals/out/` is ignored because reports and JSONL trend history are generated artifacts. When `--history` is provided, the Markdown report includes a recent T3 trend table; the dashboard and morning review read the same JSONL history when it exists.
 
 ## Adding Cases
 

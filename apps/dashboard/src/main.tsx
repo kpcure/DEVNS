@@ -235,6 +235,41 @@ type MorningReviewReport = {
   crossFeatureRisks: string[];
 };
 
+type EvalT3GroupMetrics = {
+  label: string;
+  total: number;
+  passed: number;
+  failed: number;
+  actualAllowed: number;
+  actualBlocked: number;
+  attempts: number;
+  successfulAttempts: number;
+  attemptSuccessRate: number;
+  averagePassK: number;
+  elapsedMs: number;
+  estimatedCostUsd: number;
+  failureTaxonomy: Record<string, number>;
+};
+
+type EvalT3Metrics = Omit<EvalT3GroupMetrics, "label"> & {
+  byProjectType: EvalT3GroupMetrics[];
+  byRiskArea: EvalT3GroupMetrics[];
+};
+
+type EvalTrendRecord = {
+  generatedAt: string;
+  total: number;
+  passed: number;
+  failed: number;
+  t3: EvalT3Metrics;
+};
+
+type EvalTrendPayload = {
+  path: string;
+  latest?: EvalTrendRecord;
+  history: EvalTrendRecord[];
+};
+
 type Roadmap = {
   revision?: string;
   project: {
@@ -311,6 +346,14 @@ async function loadLatestReview() {
   return ((await response.json()) as { report?: MorningReviewReport }).report;
 }
 
+async function loadLatestEvalTrend() {
+  const response = await fetch("/api/evals/latest");
+  if (!response.ok) {
+    throw new Error(`Failed to load eval trend: ${response.status}`);
+  }
+  return (await response.json()) as EvalTrendPayload;
+}
+
 async function patchFeature(featureId: string, patch: FeaturePatch, expectedRevision?: string) {
   const response = await fetch(`/api/features/${encodeURIComponent(featureId)}`, {
     method: "PATCH",
@@ -382,6 +425,30 @@ function artifactCount(packet: ReviewPacket) {
 function artifactCountLabel(packet: ReviewPacket) {
   const count = artifactCount(packet);
   return `${count} ${count === 1 ? "ref" : "refs"}`;
+}
+
+function percent(value: number) {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function usd(value: number) {
+  return value.toFixed(4);
+}
+
+function shortDate(value: string) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function failureSummary(failures: Record<string, number>) {
+  const entries = Object.entries(failures).sort(([, left], [, right]) => right - left);
+  return entries.length ? entries.map(([name, count]) => `${name}:${count}`).join(", ") : "none";
 }
 
 function StatCard({
@@ -978,6 +1045,88 @@ function MorningReview({ report }: { report?: MorningReviewReport }) {
   );
 }
 
+function EvalTrend({ trend }: { trend?: EvalTrendPayload }) {
+  const latest = trend?.latest;
+  const recent = (trend?.history ?? []).slice(-4).reverse();
+
+  return (
+    <section className="panel">
+      <div className="section-heading">
+        <div>
+          <h2>Eval Trend</h2>
+          <p>T3 seed signal by project shape and risk area.</p>
+        </div>
+        <Pill tone={latest ? (latest.failed ? "bad" : "good") : "neutral"}>
+          {latest ? `${latest.passed}/${latest.total}` : "no history"}
+        </Pill>
+      </div>
+      {!latest ? (
+        <div className="sync-note">Generate one with `npm run devns -- eval run --tier t3 --report evals/out/t3-report.md --history evals/out/eval-history.jsonl`.</div>
+      ) : (
+        <div className="eval-trend-stack">
+          <div className="eval-summary-row">
+            <span>
+              <strong>{latest.t3.total}</strong>
+              cases
+            </span>
+            <span>
+              <strong>{latest.t3.actualAllowed}</strong>
+              allowed
+            </span>
+            <span>
+              <strong>{latest.t3.actualBlocked}</strong>
+              blocked
+            </span>
+            <span>
+              <strong>{latest.t3.averagePassK.toFixed(3)}</strong>
+              avg pass^k
+            </span>
+          </div>
+          <div className="eval-meta-row">
+            <span>{shortDate(latest.generatedAt)}</span>
+            <span>{latest.t3.successfulAttempts}/{latest.t3.attempts} seed successes</span>
+            <span>{latest.t3.elapsedMs} ms</span>
+            <span>${usd(latest.t3.estimatedCostUsd)}</span>
+          </div>
+          <div className="eval-group-list">
+            {latest.t3.byProjectType.map((group) => (
+              <div className="eval-group" key={group.label}>
+                <div className="eval-group-head">
+                  <strong>{group.label}</strong>
+                  <span>{group.passed}/{group.total}</span>
+                </div>
+                <div className="eval-meter" aria-label={`${group.label} eval pass`}>
+                  <span style={{ width: `${(group.passed / Math.max(1, group.total)) * 100}%` }} />
+                </div>
+                <div className="eval-group-meta">
+                  <span>{group.actualAllowed} allow</span>
+                  <span>{group.actualBlocked} block</span>
+                  <span>{percent(group.attemptSuccessRate)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="eval-failure-line">
+            <CircleDot size={14} />
+            {failureSummary(latest.t3.failureTaxonomy)}
+          </div>
+          {recent.length > 1 && (
+            <div className="eval-history-list">
+              {recent.map((record) => (
+                <div className="eval-history-row" key={record.generatedAt}>
+                  <span>{shortDate(record.generatedAt)}</span>
+                  <span>{record.passed}/{record.total}</span>
+                  <span>{record.t3.averagePassK.toFixed(3)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function ReviewPacketDialog({
   packet,
   actionTone,
@@ -1407,14 +1556,16 @@ function App() {
   const [view, setView] = useState<"review" | "backlog" | "extensions" | "questions">("review");
   const [data, setData] = useState<Roadmap>(fallbackData);
   const [morningReview, setMorningReview] = useState<MorningReviewReport | undefined>();
+  const [evalTrend, setEvalTrend] = useState<EvalTrendPayload | undefined>();
   const [loadError, setLoadError] = useState<string | null>(null);
   const features = data.features;
 
   useEffect(() => {
-    Promise.all([loadRoadmap(), loadLatestReview()])
-      .then(([roadmap, report]) => {
+    Promise.all([loadRoadmap(), loadLatestReview(), loadLatestEvalTrend()])
+      .then(([roadmap, report, trend]) => {
         setData(roadmap);
         setMorningReview(report);
+        setEvalTrend(trend);
         setLoadError(null);
       })
       .catch((error) => {
@@ -1481,6 +1632,9 @@ function App() {
             <a href="/api/reviews/latest" target="_blank" rel="noreferrer">
               Latest review
             </a>
+            <a href="/api/evals/latest" target="_blank" rel="noreferrer">
+              Eval trend
+            </a>
           </div>
         </header>
 
@@ -1495,6 +1649,7 @@ function App() {
             </div>
             <div className="stack">
               <CandidatePanel candidates={data.candidates} />
+              <EvalTrend trend={evalTrend} />
               <MorningReview report={morningReview} />
               <Milestones features={features} />
               <DecisionRail sources={data.researchSources} />
