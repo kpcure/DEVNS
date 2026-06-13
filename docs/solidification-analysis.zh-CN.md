@@ -80,7 +80,7 @@ DEVNS 的核心风险不是“没有跑命令”，而是 evidence 看起来很�
 - 低置信风险进入 human review。
 - allow 也必须说明残余测试缺口。
 
-现状已经有 grounding/downranking 逻辑，也新增了 T2 frozen review packet quality gate：只给 feature title、缺 RFC/diff/evidence/history/project rules/output contract 的 review packet 会被阻断。下一步是把 live model adapter/prompt 校准接上这些 frozen packet。
+现状已经有 grounding/downranking 逻辑，也新增了 T2 frozen review packet quality gate：只给 feature title、缺 RFC/diff/evidence/history/project rules/output contract 的 review packet 会被阻断。M28 进一步把 adapter command 执行接上 frozen packet：评测会写入 `DEVNS_REVIEW_PACKET` / `DEVNS_REVIEW_PROMPT`，执行 adapter，解析 lane-result JSON，再复用 hidden oracle calibration 阻断 rubber-stamp 输出。下一步是把真实 Codex/Claude provider-backed model adapter 接到同一合同。
 
 ## 不应该直接照搬的东西
 
@@ -91,17 +91,17 @@ DEVNS 的核心风险不是“没有跑命令”，而是 evidence 看起来很�
 
 ## 当前缺口
 
-1. T2 已接入 frozen review-result golden、frozen review-packet quality golden 和 M27 fixed-defect review calibration golden；还没有把 provider-backed live model adapter 的完整执行校准纳入 runner。
+1. T2 已接入 frozen review-result golden、frozen review-packet quality golden、M27 fixed-defect review calibration golden 和 M28 review adapter command execution golden；还没有把 provider-backed live model adapter 的完整模型调用校准纳入 runner。
 2. T3 seed repository 已有本地 runner、端到端 pass^k/耗时/估算成本/failure taxonomy、browser-smoke semantic artifact seed、第一组 CLI/React/Vite/Python package 多形态 seed、Codex host adapter 执行 seed，以及 JSONL trend history、Markdown trend report、morning review/dashboard trend 面和 release/nightly trend gate；下一步是补 Next、真实 dashboard browser command seed 和 live provider 校准。
 3. Browser smoke lane 已有通用 adapter/template、smoke 覆盖、dashboard/morning review artifact refs 展示、rich artifact manifest、项目级 console/network policy、预算和 URL allow/block-list、review packet/morning review artifact digest、dashboard artifact digest 富预览、dashboard artifact preview 的 DOM/文本快照语义 grader、从 browser-smoke manifest 读取 DOM/OCR/accessibility snapshot artifact 的 ingestion gate，以及 `devns init` 默认安装的 URL 驱动 Playwright semantic browser lane；T3 已能用真实 browser-smoke adapter 跑 semantic artifact clean/trap seed。
 4. Orchestrator trace 已覆盖 handoff、worker result、repair loop、lane run、review ingest、complete 的连续性；下一步是把这些 trace 和真实 host adapter/T3 seed repo 的运行结果关联起来。
-5. Eval schema 和 T1/T2/T3 cases 已能表达 trace continuity、semantic artifact requirements、browser-smoke manifest integrity、基础 rich artifact parseability、console/network policy trap、预算和 URL allow/block-list、artifact digest、dashboard artifact preview 语义快照、browser-smoke semantic snapshot ingestion、review packet 输入质量、review fixed-defect calibration、context-budget reset 判断、project extension resolved-config 合并、worker/repair trace continuity、host adapter init contract、Stop Hook Review Agent 编排、browser-smoke T3 artifact 分类、CLI/React-Vite/Python 多形态 T3 项目契约，以及 Codex host adapter 执行 seed；下一步是把 provider-backed live adapter 校准和真实 browser command seed 放进 pass/fail 执行场景。
+5. Eval schema 和 T1/T2/T3 cases 已能表达 trace continuity、semantic artifact requirements、browser-smoke manifest integrity、基础 rich artifact parseability、console/network policy trap、预算和 URL allow/block-list、artifact digest、dashboard artifact preview 语义快照、browser-smoke semantic snapshot ingestion、review packet 输入质量、review fixed-defect calibration、review adapter command execution、context-budget reset 判断、project extension resolved-config 合并、worker/repair trace continuity、host adapter init contract、Stop Hook Review Agent 编排、browser-smoke T3 artifact 分类、CLI/React-Vite/Python 多形态 T3 项目契约，以及 Codex host adapter 执行 seed；下一步是把 provider-backed live model 校准和真实 browser command seed 放进 pass/fail 执行场景。
 6. CI 目前能跑 T1/T2/T3 本地 deterministic/seed cases；本地 report、morning review 和 dashboard 已能输出多 seed pass^k 趋势，下一步是把该趋势接入 nightly/release。
 
 ## 建议顺序
 
 1. 完成 T1 控制面 eval 覆盖：domain drift、scope、review independence、evidence quality、review finding grounding。
-2. 扩展 T2 calibration 到 provider-backed live adapter execution：当前 M27 已用固定 diff 注入 security/scope bug，并要求 lane-result 命中 oracle finding；下一步是让真实 Codex/Claude review adapter 在可配置 provider 环境下跑同一组 packet。
+2. 扩展 T2 calibration 到 provider-backed live model adapter execution：当前 M27 已用固定 diff 注入 security/scope bug，并要求 lane-result 命中 oracle finding；M28 已证明 adapter command 能真实读取 frozen packet 并输出 schema-valid lane-result。下一步是让真实 Codex/Claude review adapter 在可配置 provider 环境下跑同一组 packet。
 3. 扩展 local trace record：当前已记录 orchestrate claim/handoff/review-routing、worker result、repair request/result、lane run、review result、complete；下一步把这些 trace 用在真实 host adapter/T3 seed repo 的失败分类里。
 4. 扩展 browser smoke artifact 体验：当前 adapter 已产出 run/stdout/stderr 和可选截图/trace/console/network/DOM/OCR/accessibility artifact refs，并已在 evidence-quality、artifact-integrity、morning review、review packet、dashboard artifact digest 预览、dashboard semantic snapshot grader 和 T3 seed repo 中使用；下一步接真实 Next/browser command seed。
 5. 增加更多 T3 seed repos：已覆盖小型 CLI、React/Vite、Python package、Codex host adapter 执行，并已支持 JSONL/Markdown/morning-review/dashboard 趋势报告和 nightly/release trend gate；T1 已覆盖 host adapter 初始化 contract；下一步补 Next、真实 dashboard browser command seed，并把 pass^k、耗时、估算成本、项目类型、风险类型和 failure taxonomy 与 live adapter 失败分类关联起来。

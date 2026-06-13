@@ -1,0 +1,148 @@
+{
+  "id": "m28-review-adapter-security-detected-clean",
+  "tier": "t2",
+  "mode": "M28_review_adapter_execution",
+  "generality_level": "general",
+  "given": {
+    "reviewPacket": {
+      "schemaVersion": 1,
+      "generatedAt": "2026-06-13T00:00:00.000Z",
+      "feature": {
+        "id": "CAL-ADAPT-SEC-001",
+        "title": "Audit export auth check",
+        "description": "Keep audit export unavailable to anonymous callers.",
+        "status": "done",
+        "priority": "P0",
+        "risk": "high",
+        "acceptanceCriteria": ["Anonymous callers cannot export audit records."],
+        "changedFiles": ["src/audit/export.ts"],
+        "implementationFiles": ["src/audit/export.ts"],
+        "reviewDecision": "pending"
+      },
+      "rfc": {
+        "status": "approved",
+        "summary": "Audit export must reject unauthenticated callers.",
+        "background": "Audit exports contain sensitive operational records.",
+        "featureDescription": "Preserve the existing authenticated-only export path.",
+        "expectedOutcome": "Anonymous callers receive a 401 and no export body.",
+        "goals": ["Protect audit export access"],
+        "nonGoals": ["Do not redesign roles or permissions."],
+        "requirements": [
+          {
+            "id": "REQ-SEC-001",
+            "type": "explicit",
+            "statement": "Audit export must reject unauthenticated requests.",
+            "priority": "must"
+          }
+        ],
+        "acceptanceCriteria": [
+          {
+            "id": "AC-SEC-001",
+            "requirementIds": ["REQ-SEC-001"],
+            "statement": "Anonymous callers cannot download audit export data.",
+            "verification": "adapter execution review calibration",
+            "verificationType": "review_agent"
+          }
+        ],
+        "validationPlan": {
+          "dynamic": ["npm run devns -- eval run --mode M28_review_adapter_execution --json"],
+          "static": ["Review diff for auth guard behavior."]
+        },
+        "testCases": [],
+        "unknowns": [],
+        "risks": [],
+        "humanDecision": {
+          "status": "approved"
+        }
+      },
+      "git": {
+        "base": "base-adapter-sec",
+        "head": "head-adapter-sec",
+        "status": " M src/audit/export.ts",
+        "diff": "diff --git a/src/audit/export.ts b/src/audit/export.ts\n@@ -9,7 +9,7 @@ export async function exportAudit(request) {\n   const session = await getSession(request);\n-  if (!session?.userId) return unauthorized();\n+  if (!session?.userId) return streamAuditCsv();\n   return streamAuditCsv();\n }\n",
+        "truncated": false
+      },
+      "evidenceQuality": {
+        "decision": "needs_human_review",
+        "summary": "A review adapter must inspect the security-sensitive diff.",
+        "findings": []
+      },
+      "evidence": [
+        {
+          "type": "lane:build",
+          "summary": "Build passed but does not prove auth behavior.",
+          "verificationType": "command",
+          "coversAcceptanceCriteriaIds": ["AC-SEC-001"]
+        }
+      ],
+      "artifactRefs": [],
+      "artifactDigests": [],
+      "history": [
+        {
+          "id": "hist-adapter-sec-001",
+          "featureId": "CAL-ADAPT-SEC-001",
+          "attempt": 1,
+          "createdAt": "2026-06-13T00:00:00.000Z",
+          "actor": "agent",
+          "summary": "Changed audit export guard.",
+          "decisions": ["Keep export endpoint behavior unchanged for authenticated callers."],
+          "alternativesRejected": [],
+          "changedFiles": [],
+          "impact": ["Security-sensitive export path changed."],
+          "pitfalls": [],
+          "errors": [],
+          "fixes": [],
+          "lessons": ["Adapter execution must be calibrated against fixed security regressions."],
+          "risks": [],
+          "dynamicChecks": [],
+          "staticChecks": []
+        }
+      ],
+      "projectRules": [
+        {
+          "path": "AGENTS.md",
+          "content": "Review agents are read-only and must block high-confidence security regressions grounded in diff and RFC requirements.",
+          "truncated": false
+        }
+      ],
+      "reviewInstructions": [
+        "Act as a read-only code review agent.",
+        "Prioritize correctness, security, requirements drift, missing tests, and evidence gaps.",
+        "Return exactly one lane-result JSON object with grounded findings."
+      ]
+    },
+    "adapter": {
+      "command": "${node}",
+      "args": ["adapter.cjs"],
+      "files": [
+        {
+          "path": "adapter.cjs",
+          "content": "const fs = require(\"node:fs\");\nconst packet = JSON.parse(fs.readFileSync(process.env.DEVNS_REVIEW_PACKET, \"utf8\"));\nif (!process.env.DEVNS_REVIEW_PROMPT || process.env.DEVNS_STOP_COMMAND !== \"true\") process.exit(2);\nconst result = {\n  lane: \"code-review\",\n  type: \"agent\",\n  status: \"fail\",\n  decision: \"block\",\n  summary: `${packet.feature.id} adapter detected an unauthenticated audit export regression.`,\n  confidence: \"high\",\n  findings: [\n    {\n      severity: \"error\",\n      category: \"security\",\n      confidence: \"high\",\n      file: \"src/audit/export.ts\",\n      line: 12,\n      requirementIds: [\"REQ-SEC-001\"],\n      message: \"Unauthenticated callers now receive streamAuditCsv instead of unauthorized.\",\n      evidence: [\n        { type: \"diff\", summary: \"The diff replaces unauthorized() with streamAuditCsv() when session.userId is missing.\" },\n        { type: \"requirement\", summary: \"REQ-SEC-001 requires audit export to reject unauthenticated requests.\" }\n      ],\n      suggestedFix: \"Restore the unauthorized response and add an anonymous export regression test.\"\n    }\n  ],\n  scores: { security: 0.2, correctness: 0.6, requirementCoverage: 0.8, scope: 0.9, test: 0.5 },\n  evidence: [{ type: \"review-context\", summary: \"Adapter read DEVNS_REVIEW_PACKET and DEVNS_REVIEW_PROMPT.\" }],\n  artifacts: [process.env.DEVNS_REVIEW_PACKET],\n  recommendedActions: [\"Restore the auth guard and add a regression test.\"],\n  blocksCompletion: true,\n  required: true\n};\nprocess.stdout.write(JSON.stringify(result));\n"
+        }
+      ]
+    },
+    "oracle": {
+      "findings": [
+        {
+          "id": "SEC-ADAPTER-001",
+          "severity": "error",
+          "category": "security",
+          "confidence": "high",
+          "file": "src/audit/export.ts",
+          "line": 12,
+          "messageContains": "Unauthenticated",
+          "requirementIds": ["REQ-SEC-001"],
+          "evidenceTypes": ["diff", "requirement"],
+          "blocksCompletion": true
+        }
+      ]
+    }
+  },
+  "action": {
+    "gate": "review_adapter_execution"
+  },
+  "expect": {
+    "decision": "allowed",
+    "laneDecision": "block"
+  }
+}

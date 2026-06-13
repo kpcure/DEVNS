@@ -33,6 +33,10 @@ async function main() {
   if (!reviewCalibrationMode || reviewCalibrationMode.total !== 4 || reviewCalibrationMode.failed !== 0) {
     throw new Error("Eval smoke expected M27 review calibration evals to run 4 passing clean/trap cases.");
   }
+  const reviewAdapterMode = t2.metrics.perMode.find((metric) => metric.mode === "M28_review_adapter_execution");
+  if (!reviewAdapterMode || reviewAdapterMode.total !== 2 || reviewAdapterMode.failed !== 0) {
+    throw new Error("Eval smoke expected M28 review adapter execution evals to run 2 passing clean/trap cases.");
+  }
   if (failed > 0) {
     throw new Error(`Eval smoke failed: ${failed}/${total} case(s) failed.`);
   }

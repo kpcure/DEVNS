@@ -68,7 +68,7 @@ http://127.0.0.1:5173/
 
 ```sh
 npm run devns -- eval run --all --history evals/out/eval-history.jsonl
-npm run devns -- eval gate --history evals/out/eval-history.jsonl --min-t3-cases 8 --min-t3-pass-rate 1
+npm run devns -- eval gate --history evals/out/eval-history.jsonl --min-t3-cases 10 --min-t3-pass-rate 1
 ```
 
 ## 推荐工作流
@@ -170,7 +170,7 @@ npm run smoke
 
 ```sh
 npm run devns -- eval run --all --history evals/out/eval-history.jsonl
-npm run devns -- eval gate --history evals/out/eval-history.jsonl --min-t3-cases 8 --min-t3-pass-rate 1
+npm run devns -- eval gate --history evals/out/eval-history.jsonl --min-t3-cases 10 --min-t3-pass-rate 1
 ```
 
 校验当前 DEVNS 状态：

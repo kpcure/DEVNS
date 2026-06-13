@@ -26,6 +26,7 @@
             "dashboard_artifact_preview",
             "review_lane_result",
             "review_calibration_result",
+            "review_adapter_execution",
             "review_packet_quality",
             "context_budget",
             "project_extension_config",

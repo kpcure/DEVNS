@@ -47,6 +47,7 @@ export type EvalCase = {
       | "dashboard_artifact_preview"
       | "review_lane_result"
       | "review_calibration_result"
+      | "review_adapter_execution"
       | "review_packet_quality"
       | "context_budget"
       | "project_extension_config"
@@ -111,6 +112,13 @@ type SeedExpectedArtifact = {
   path: string;
   contains?: string | string[];
   failureClass?: string;
+};
+
+type ReviewAdapterCommand = {
+  command?: string;
+  args?: string[];
+  env?: Record<string, string>;
+  timeoutMs?: number;
 };
 
 type HostAdapterInitMutation = {
@@ -376,6 +384,139 @@ function evaluateReviewCalibrationResult(given: Record<string, unknown>, expect:
     decision: issues.length ? ("blocked" as const) : ("allowed" as const),
     reason: issues.length ? issues.join(" ") : "Review calibration golden gate passed."
   };
+}
+
+function extractJsonObject(value: string) {
+  const trimmed = value.trim();
+  if (trimmed.startsWith("{")) return trimmed;
+  const start = trimmed.indexOf("{");
+  const end = trimmed.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) {
+    throw new Error("Review adapter did not return a JSON object.");
+  }
+  return trimmed.slice(start, end + 1);
+}
+
+function substituteAdapterValue(
+  value: string,
+  input: { repoRoot: string; workdir: string; packetPath: string; promptPath: string }
+) {
+  return value
+    .replaceAll("${repoRoot}", input.repoRoot)
+    .replaceAll("${workdir}", input.workdir)
+    .replaceAll("${packetPath}", input.packetPath)
+    .replaceAll("${promptPath}", input.promptPath)
+    .replaceAll("${node}", process.execPath);
+}
+
+async function evaluateReviewAdapterExecution(given: Record<string, unknown>, expect: EvalCase["expect"], repoRoot = process.cwd()) {
+  const packet = recordValue(given.reviewPacket ?? given.packet);
+  if (!packet) {
+    return {
+      decision: "blocked" as const,
+      reason: "Review adapter execution failed: missing review packet object."
+    };
+  }
+
+  const adapter = recordValue(given.adapter ?? given.reviewAdapter);
+  const command = adapter as ReviewAdapterCommand | undefined;
+  const commandText = stringValue(command?.command);
+  if (!adapter || !command || !commandText) {
+    return {
+      decision: "blocked" as const,
+      reason: "Review adapter execution failed: missing adapter command."
+    };
+  }
+
+  const cwd = await mkdtemp(path.join(os.tmpdir(), "devns-eval-review-adapter-"));
+  try {
+    await writeEvalArtifacts(cwd, (adapter.files ?? given.files ?? []) as EvalArtifact[]);
+    const packetPath = path.join(cwd, "review-packet.json");
+    const promptPath = path.join(cwd, "review-prompt.md");
+    const prompt =
+      stringValue(given.reviewPrompt) ||
+      [
+        "# DEVNS Review Adapter Eval",
+        "",
+        ...arrayValue(packet.reviewInstructions).map(stringValue).filter(Boolean),
+        "",
+        "Return exactly one lane-result JSON object."
+      ].join("\n");
+    await writeFile(packetPath, `${JSON.stringify(packet, null, 2)}\n`);
+    await writeFile(promptPath, `${prompt}\n`);
+
+    const replacementInput = { repoRoot, workdir: cwd, packetPath, promptPath };
+    const executable = substituteAdapterValue(commandText, replacementInput);
+    const args = (command.args ?? []).map((arg) => substituteAdapterValue(arg, replacementInput));
+    const env = Object.fromEntries(
+      Object.entries(command.env ?? {}).map(([key, value]) => [key, substituteAdapterValue(value, replacementInput)])
+    );
+
+    const feature = recordValue(packet.feature);
+    const git = recordValue(packet.git);
+    let stdout = "";
+    let stderr = "";
+    try {
+      const result = await execFileAsync(executable, args, {
+        cwd,
+        env: {
+          ...process.env,
+          DEVNS_STOP_COMMAND: "true",
+          DEVNS_FEATURE_ID: stringValue(feature?.id),
+          DEVNS_REVIEW_PACKET: packetPath,
+          DEVNS_REVIEW_PROMPT: promptPath,
+          DEVNS_DIFF_BASE: stringValue(git?.base),
+          DEVNS_REPO: cwd,
+          ...env
+        },
+        timeout: command.timeoutMs ?? 30_000,
+        maxBuffer: 2 * 1024 * 1024
+      });
+      stdout = result.stdout;
+      stderr = result.stderr;
+    } catch (error) {
+      const execError = error as Error & { code?: number; stdout?: string; stderr?: string };
+      return {
+        decision: "blocked" as const,
+        reason: [
+          `Review adapter execution failed: command exited with ${execError.code ?? 1}: ${execError.message}`,
+          stringValue(execError.stdout) ? `stdout: ${stringValue(execError.stdout)}` : "",
+          stringValue(execError.stderr) ? `stderr: ${stringValue(execError.stderr)}` : ""
+        ]
+          .filter(Boolean)
+          .join(" ")
+      };
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(extractJsonObject(stdout));
+    } catch (error) {
+      return {
+        decision: "blocked" as const,
+        reason: `Review adapter execution failed: ${error instanceof Error ? error.message : "invalid JSON output"}. stderr: ${stderr}`
+      };
+    }
+
+    const validation = validateSchema(parsed, laneResultSchema);
+    if (!validation.valid) {
+      return {
+        decision: "blocked" as const,
+        reason: `Review adapter execution failed lane-result schema validation: ${validation.errors.join(" ")}`
+      };
+    }
+
+    const calibration = evaluateReviewCalibrationResult({ ...given, reviewPacket: packet, laneResult: parsed }, expect);
+    return {
+      decision: calibration.decision,
+      reason:
+        calibration.decision === "allowed"
+          ? `Review adapter execution golden gate passed. ${calibration.reason}`
+          : calibration.reason
+    };
+  } finally {
+    await rm(cwd, { recursive: true, force: true });
+  }
 }
 
 function recordValue(value: unknown) {
@@ -1457,6 +1598,8 @@ export async function runT2Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
       ? evaluateReviewLaneResult(testCase.given, testCase.expect)
       : testCase.action.gate === "review_calibration_result"
         ? evaluateReviewCalibrationResult(testCase.given, testCase.expect)
+      : testCase.action.gate === "review_adapter_execution"
+        ? await evaluateReviewAdapterExecution(testCase.given, testCase.expect)
       : testCase.action.gate === "review_packet_quality"
         ? evaluateReviewPacketQuality(testCase.given)
         : {

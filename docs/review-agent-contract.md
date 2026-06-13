@@ -65,9 +65,11 @@ Review-agent packet input and output can be regression-tested without invoking a
 ```sh
 npm run devns -- eval run --tier t2 --mode M5_review_result_quality --json
 npm run devns -- eval run --mode M18_review_packet_quality --json
+npm run devns -- eval run --mode M27_review_calibration --json
+npm run devns -- eval run --mode M28_review_adapter_execution --json
 ```
 
-T2 frozen review-packet cases grade whether a packet contains approved RFC context, acceptance criteria, Git diff, evidence quality, evidence/artifact digests, execution history, project rules, and read-only lane-result output instructions. T2 frozen review-result cases grade whether a `lane-result` is schema-valid, grounded, calibrated, and non-rubber-stamp. A valid blocking review must include high-confidence, evidence-backed error findings with file/line grounding. A valid allow review must include review context evidence or artifacts and recommended follow-up text for residual test gaps or an explicit no-action statement.
+T2 frozen review-packet cases grade whether a packet contains approved RFC context, acceptance criteria, Git diff, evidence quality, evidence/artifact digests, execution history, project rules, and read-only lane-result output instructions. T2 frozen review-result cases grade whether a `lane-result` is schema-valid, grounded, calibrated, and non-rubber-stamp. T2 review-calibration cases inject fixed security/scope defects and hidden oracle findings. T2 review-adapter execution cases run an adapter command with `DEVNS_REVIEW_PACKET` and `DEVNS_REVIEW_PROMPT`, parse one lane-result JSON object, and reuse the hidden-oracle calibration gate. A valid blocking review must include high-confidence, evidence-backed error findings with file/line grounding. A valid allow review must include review context evidence or artifacts and recommended follow-up text for residual test gaps or an explicit no-action statement.
 
 ## Findings
 
