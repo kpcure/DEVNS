@@ -29,6 +29,10 @@ async function main() {
   if (!stopHookReviewMode || stopHookReviewMode.total !== 3 || stopHookReviewMode.failed !== 0) {
     throw new Error("Eval smoke expected M25 stop hook review-agent evals to run 3 passing clean/trap cases.");
   }
+  const reviewCalibrationMode = t2.metrics.perMode.find((metric) => metric.mode === "M27_review_calibration");
+  if (!reviewCalibrationMode || reviewCalibrationMode.total !== 4 || reviewCalibrationMode.failed !== 0) {
+    throw new Error("Eval smoke expected M27 review calibration evals to run 4 passing clean/trap cases.");
+  }
   if (failed > 0) {
     throw new Error(`Eval smoke failed: ${failed}/${total} case(s) failed.`);
   }

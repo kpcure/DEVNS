@@ -46,6 +46,7 @@ export type EvalCase = {
       | "artifact_digest"
       | "dashboard_artifact_preview"
       | "review_lane_result"
+      | "review_calibration_result"
       | "review_packet_quality"
       | "context_budget"
       | "project_extension_config"
@@ -266,6 +267,114 @@ function evaluateReviewLaneResult(given: Record<string, unknown>, expect: EvalCa
   return {
     decision: issues.length ? ("blocked" as const) : ("allowed" as const),
     reason: issues.length ? issues.join(" ") : "Review lane result golden gate passed."
+  };
+}
+
+function packetDiffIncludesFile(packet: Record<string, unknown>, file: string) {
+  const diff = stringValue(recordValue(packet.git)?.diff);
+  return (
+    diff.includes(` b/${file}`) ||
+    diff.includes(` a/${file}`) ||
+    diff.includes(`+++ b/${file}`) ||
+    diff.includes(`--- a/${file}`)
+  );
+}
+
+function packetChangedFiles(packet: Record<string, unknown>) {
+  return arrayValue(recordValue(packet.feature)?.changedFiles).map(stringValue).filter(Boolean);
+}
+
+function packetRequirementIds(packet: Record<string, unknown>) {
+  const rfc = recordValue(packet.rfc);
+  const requirements = arrayValue(rfc?.requirements).map(recordValue).filter(Boolean);
+  const acceptanceCriteria = arrayValue(rfc?.acceptanceCriteria).map(recordValue).filter(Boolean);
+  return new Set([
+    ...requirements.map((requirement) => stringValue(requirement?.id)).filter(Boolean),
+    ...acceptanceCriteria.flatMap((criterion) => arrayValue(criterion?.requirementIds).map(stringValue).filter(Boolean))
+  ]);
+}
+
+function findingGroundedInPacket(finding: LaneFinding, packet: Record<string, unknown>) {
+  const issues: string[] = [];
+  if (finding.file) {
+    const changedFiles = packetChangedFiles(packet);
+    if (!changedFiles.includes(finding.file) && !packetDiffIncludesFile(packet, finding.file)) {
+      issues.push(`Finding file ${finding.file} is not present in packet changedFiles or diff.`);
+    }
+  }
+
+  const packetRequirements = packetRequirementIds(packet);
+  for (const requirementId of finding.requirementIds ?? []) {
+    if (!packetRequirements.has(requirementId)) {
+      issues.push(`Finding requirement ${requirementId} is not present in packet RFC context.`);
+    }
+  }
+
+  const evidenceTypes = new Set((finding.evidence ?? []).map((item) => item.type));
+  if (evidenceTypes.has("diff") && finding.file && !packetDiffIncludesFile(packet, finding.file)) {
+    issues.push(`Diff evidence for ${finding.file} is not grounded in packet diff.`);
+  }
+  if (evidenceTypes.has("requirement") && !(finding.requirementIds ?? []).some((id) => packetRequirements.has(id))) {
+    issues.push("Requirement evidence does not cite a requirement present in the packet.");
+  }
+
+  return issues;
+}
+
+function oracleFindingExpectations(given: Record<string, unknown>) {
+  const oracle = recordValue(given.oracle);
+  return arrayValue(oracle?.findings ?? given.oracleFindings)
+    .map(recordValue)
+    .filter(Boolean)
+    .map((finding) => ({
+      id: stringValue(finding?.id),
+      expectation: finding as FindingExpectation
+    }));
+}
+
+function evaluateReviewCalibrationResult(given: Record<string, unknown>, expect: EvalCase["expect"]) {
+  const packet = recordValue(given.reviewPacket ?? given.packet);
+  if (!packet) {
+    return {
+      decision: "blocked" as const,
+      reason: "Review calibration failed: missing review packet object."
+    };
+  }
+
+  const issues: string[] = [];
+  const packetGate = evaluateReviewPacketQuality({ reviewPacket: packet });
+  if (packetGate.decision === "blocked") {
+    issues.push(packetGate.reason);
+  }
+
+  const laneGate = evaluateReviewLaneResult(given, expect);
+  if (laneGate.decision === "blocked") {
+    issues.push(laneGate.reason);
+  }
+
+  const laneResult = recordValue(given.laneResult);
+  const result = laneResult as LaneResult | undefined;
+  const oracleFindings = oracleFindingExpectations(given);
+  if (!oracleFindings.length) {
+    issues.push("Review calibration failed: missing oracle findings.");
+  }
+
+  for (const { id, expectation } of oracleFindings) {
+    const finding = result?.findings?.find((candidate) => findingMatches(candidate, expectation));
+    if (!finding) {
+      issues.push(`Missing oracle review finding${id ? ` ${id}` : ""}: ${JSON.stringify(expectation)}.`);
+      continue;
+    }
+
+    const groundingIssues = findingGroundedInPacket(finding, packet);
+    if (groundingIssues.length) {
+      issues.push(`Oracle finding${id ? ` ${id}` : ""} is not grounded in packet: ${groundingIssues.join(" ")}`);
+    }
+  }
+
+  return {
+    decision: issues.length ? ("blocked" as const) : ("allowed" as const),
+    reason: issues.length ? issues.join(" ") : "Review calibration golden gate passed."
   };
 }
 
@@ -1346,6 +1455,8 @@ export async function runT2Case(testCase: EvalCase): Promise<EvalCaseOutcome> {
   const result =
     testCase.action.gate === "review_lane_result"
       ? evaluateReviewLaneResult(testCase.given, testCase.expect)
+      : testCase.action.gate === "review_calibration_result"
+        ? evaluateReviewCalibrationResult(testCase.given, testCase.expect)
       : testCase.action.gate === "review_packet_quality"
         ? evaluateReviewPacketQuality(testCase.given)
         : {

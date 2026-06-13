@@ -5,7 +5,7 @@ DEVNS evals measure the harness as a controller rather than measuring a coding m
 ## Tiers
 
 - `t1`: deterministic gate fixtures. These run in CI and treat each gate as a classifier over paired trap/clean cases.
-- `t2`: frozen review-packet and review-result golden fixtures. These run locally and grade whether a review agent receives enough bounded context, and whether its lane-result output is grounded, schema-valid, and calibrated instead of acting as a rubber stamp. Future T2 cases may add live model adapter calibration on top of these deterministic goldens.
+- `t2`: frozen review-packet, review-result, and review-calibration golden fixtures. These run locally and grade whether a review agent receives enough bounded context, whether its lane-result output is grounded and schema-valid, and whether fixed-defect outputs hit the expected finding classes instead of acting as a rubber stamp. Future T2 cases may add provider-backed live adapter calibration on top of these deterministic goldens.
 - `t3`: local seed repositories. These run commands inside temporary repositories, verify artifacts, and report end-to-end pass^k, elapsed time, estimated cost, project type, risk area, and failure taxonomy for nightly or release workflows.
 
 ## Current CI Surface
@@ -66,6 +66,7 @@ T1 and T2 cases are deterministic regression fixtures for the DEVNS control plan
 - `M16_dashboard_artifact_preview`: dashboard/browser semantic snapshots must expose artifact digest status, metrics, sample URLs, and policy findings instead of refs-only evidence.
 - `M17_browser_semantic_snapshot_ingestion`: browser-smoke manifests can carry DOM, OCR, or accessibility text artifacts that feed the M16 preview grader without hand-written visible text.
 - `M18_review_packet_quality`: frozen review packets must include approved RFC context, acceptance criteria, Git diff, evidence quality, evidence/artifact digest context, execution history, project rules, and read-only lane-result output instructions.
+- `M27_review_calibration`: frozen review-calibration packets pair fixed security and scope-drift defects with hidden oracle findings, requiring review outputs to match category, file, line, requirement, confidence, and evidence grounding.
 - `M19_context_budget`: long continuation loops must recommend a fresh worker or compact implementation context once history or stop-hook turn budgets are exceeded.
 - `M20_project_extension_config`: project-local policy/agent/lane extension files must merge into resolved config, while schema-invalid policy patches are blocked.
 - `M21_worker_repair_trace_continuity`: context-reset traces must include a later worker result, and repair requests must close with a later repair result before completion.
